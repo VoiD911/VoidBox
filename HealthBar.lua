@@ -101,9 +101,9 @@ function VB:UpdateHealthBar(button)
         local pctText = ""
         
         if UnitIsDeadOrGhost(unit) then
-            pctText = "Mort"
+            pctText = VB.L["DEAD"]
         elseif not UnitIsConnected(unit) then
-            pctText = "D/C"
+            pctText = VB.L["OFFLINE"]
         else
             local ok, r = pcall(function()
                 if UnitHealthPercent and C_CurveUtil and C_CurveUtil.CreateCurve then

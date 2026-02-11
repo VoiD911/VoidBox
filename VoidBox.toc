@@ -1,12 +1,22 @@
 ## Interface: 120000
 ## Title: VoidBox
-## Notes: Raid frames pour healers avec click-casting - Style Cell/VuhDo
-## Author: Kiro
+## Notes: Minimalist healer raid frames with click-casting - Cell/VuhDo style
+## Notes-frFR: Raid frames minimalistes pour healers avec click-casting - Style Cell/VuhDo
+## Notes-deDE: Minimalistische Heiler-Raidframes mit Click-Casting - Cell/VuhDo Stil
+## Notes-esES: Marcos de raid minimalistas para sanadores con click-casting - Estilo Cell/VuhDo
+## Notes-ptBR: Quadros de raid minimalistas para curandeiros com click-casting - Estilo Cell/VuhDo
+## Notes-ruRU: Минималистичные рейд-фреймы для хилеров с click-casting - Стиль Cell/VuhDo
+## Notes-zhCN: 简约治疗者团队框架，支持点击施法 - Cell/VuhDo风格
+## Notes-zhTW: 簡約治療者團隊框架，支援點擊施法 - Cell/VuhDo風格
+## Notes-koKR: 미니멀리스트 힐러 레이드 프레임 - Cell/VuhDo 스타일
+## Notes-itIT: Raid frame minimalisti per healer con click-casting - Stile Cell/VuhDo
+## Author: VoiD911
 ## Version: 1.0.0
 ## SavedVariables: VoidBoxDB
 ## IconTexture: Interface\Icons\Spell_Holy_Heal
 
 Compat.lua
+Locales.lua
 Core.lua
 HealthBar.lua
 UnitFrames.lua

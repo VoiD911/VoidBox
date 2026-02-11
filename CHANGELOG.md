@@ -2,12 +2,13 @@
 
 ## v1.0.0 (2026-02-10)
 
-- Release initiale
-- Raid frames compacts avec click-casting (SecureUnitButtonTemplate)
-- Pourcentage de vie via UnitHealthPercent + C_CurveUtil (compatible secret values 12.0)
-- Bindings par classe (partagés entre tous les personnages de la même classe)
-- Drag & drop depuis le grimoire
-- Indicateurs : rôle, HOTs/boucliers, debuffs dispellables, menace, portée
-- Tri par rôle (Tank > DPS > Healer)
-- Configuration UI (taille, couleurs de classe, verrouillage)
-- Compatible WoW 12.0 Midnight
+- Initial release
+- Compact raid frames with click-casting (SecureUnitButtonTemplate)
+- Health percentage via UnitHealthPercent + C_CurveUtil (compatible with 12.0 secret values)
+- Per-class bindings (shared across all characters of the same class)
+- Drag & drop from spellbook
+- Indicators: role, HOTs/shields, dispellable debuffs, threat, range
+- Role sorting (Tank > DPS > Healer)
+- Config UI (frame size, class colors, lock/unlock)
+- Full localization: enUS, frFR, deDE, esES, esMX, ptBR, itIT, ruRU, koKR, zhCN, zhTW
+- Compatible with WoW 12.0 Midnight

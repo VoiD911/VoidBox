@@ -183,7 +183,7 @@ function VB:OnAddonLoaded()
     VB.config = VoidBoxDB
     VB.config.clickCastings = VoidBoxDB.classBindings[VB.playerClass]
     
-    VB:Print("Chargé (" .. VB.playerClass .. ") - /vb pour les options")
+    VB:Print(VB.L["LOADED"] .. " (" .. VB.playerClass .. ") - /vb " .. VB.L["OPTIONS"])
 end
 
 function VB:MergeDefaults(saved, defaults)
@@ -320,8 +320,8 @@ function VB:CreateMainFrame()
         self:SetBackdropColor(0.8, 0.5, 1, 1)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:AddLine("|cFF9966FFVoidBox|r")
-        GameTooltip:AddLine("Glisser pour déplacer", 1, 1, 1)
-        GameTooltip:AddLine("Clic droit: config", 0.7, 0.7, 0.7)
+        GameTooltip:AddLine(VB.L["DRAG_TO_MOVE"], 1, 1, 1)
+        GameTooltip:AddLine(VB.L["RIGHT_CLICK_CONFIG"], 0.7, 0.7, 0.7)
         GameTooltip:Show()
     end)
     handle:SetScript("OnLeave", function(self)
@@ -437,17 +437,17 @@ SlashCmdList["VOIDBOX"] = function(msg)
         VB.config.locked = true
         VB.frames.main:EnableMouse(false)
         if VB.frames.handle then VB.frames.handle:Hide() end
-        VB:Print("Frames verrouillés")
+        VB:Print(VB.L["FRAMES_LOCKED"])
     elseif msg == "unlock" then
         VB.config.locked = false
         VB.frames.main:EnableMouse(true)
         if VB.frames.handle then VB.frames.handle:Show() end
-        VB:Print("Frames déverrouillés - Glissez pour déplacer")
+        VB:Print(VB.L["FRAMES_UNLOCKED"])
     elseif msg == "reset" then
         VB.config.position = { point = "CENTER", x = 0, y = 0 }
         VB.frames.main:ClearAllPoints()
         VB.frames.main:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-        VB:Print("Position réinitialisée")
+        VB:Print(VB.L["POS_RESET"])
     elseif msg == "config" or msg == "options" then
         VB:ShowConfig()
     elseif msg == "debughealth" then
@@ -505,10 +505,10 @@ SlashCmdList["VOIDBOX"] = function(msg)
             end
         end
     else
-        VB:Print("Commandes:")
-        VB:Print("  /vb config - Ouvrir la configuration")
-        VB:Print("  /vb lock - Verrouiller les frames")
-        VB:Print("  /vb unlock - Déverrouiller les frames")
-        VB:Print("  /vb reset - Réinitialiser la position")
+        VB:Print(VB.L["COMMANDS"])
+        VB:Print("  /vb config - " .. VB.L["CONFIG_OPEN"])
+        VB:Print("  /vb lock - " .. VB.L["LOCK"])
+        VB:Print("  /vb unlock - " .. VB.L["UNLOCK"])
+        VB:Print("  /vb reset - " .. VB.L["RESET_POS"])
     end
 end

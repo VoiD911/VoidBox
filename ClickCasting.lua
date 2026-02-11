@@ -116,7 +116,7 @@ end
 
 function VB:ApplyClickCastingsToAllFrames()
     if InCombatLockdown() then
-        VB:Print("Impossible de modifier les bindings en combat!")
+        VB:Print(VB.L["CANNOT_BIND_COMBAT"])
         return
     end
     for _, button in pairs(VB.unitButtons) do
@@ -127,13 +127,13 @@ end
 
 function VB:AddClickCasting(modifier, mouseButton, actionType, actionValue)
     if InCombatLockdown() then
-        VB:Print("Impossible de modifier les bindings en combat!")
+        VB:Print(VB.L["CANNOT_BIND_COMBAT"])
         return false
     end
     
     local attrKey = VB:GetAttributeKey(modifier, mouseButton)
     if not attrKey then
-        VB:Print("Combinaison de touches invalide")
+        VB:Print(VB.L["INVALID_COMBO"])
         return false
     end
     
@@ -152,7 +152,7 @@ end
 
 function VB:RemoveClickCasting(attrKey)
     if InCombatLockdown() then
-        VB:Print("Impossible de modifier les bindings en combat!")
+        VB:Print(VB.L["CANNOT_BIND_COMBAT"])
         return false
     end
     
@@ -188,28 +188,28 @@ function VB:GetActionDisplayText(actionType, actionValue)
     if actionType == "spell" then
         local spellName = actionValue
         if type(actionValue) == "number" then
-            spellName = VB:GetSpellName(actionValue) or "Sort inconnu"
+            spellName = VB:GetSpellName(actionValue) or VB.L["DISPLAY_UNKNOWN_SPELL"]
         end
-        return "|cFF00FF00" .. (spellName or "Sort") .. "|r"
+        return "|cFF00FF00" .. (spellName or "Spell") .. "|r"
     elseif actionType == "macro" then
         local preview = actionValue or ""
         if #preview > 20 then preview = preview:sub(1, 20) .. "..." end
         return "|cFFFFFF00Macro:|r " .. preview
     elseif actionType == "target" then
-        return "|cFFFFFFFFCibler|r"
+        return "|cFFFFFFFF" .. VB.L["DISPLAY_TARGET"] .. "|r"
     elseif actionType == "focus" then
-        return "|cFFFF8800Focus|r"
+        return "|cFFFF8800" .. VB.L["DISPLAY_FOCUS"] .. "|r"
     elseif actionType == "togglemenu" then
-        return "|cFF888888Menu|r"
+        return "|cFF888888" .. VB.L["DISPLAY_MENU"] .. "|r"
     elseif actionType == "assist" then
-        return "|cFFFF00FFAssister|r"
+        return "|cFFFF00FF" .. VB.L["DISPLAY_ASSIST"] .. "|r"
     end
     return actionType or "?"
 end
 
 function VB:HandleSpellDrop(modifier, mouseButton)
     if InCombatLockdown() then
-        VB:Print("Impossible de modifier les bindings en combat!")
+        VB:Print(VB.L["CANNOT_BIND_COMBAT"])
         ClearCursor()
         return false
     end
@@ -217,7 +217,7 @@ function VB:HandleSpellDrop(modifier, mouseButton)
     local spellID, spellName = VB:GetCursorSpell()
     if spellID and spellName then
         VB:AddClickCasting(modifier, mouseButton, "spell", spellID)
-        VB:Print("Binding ajouté: " .. VB:GetBindingDisplayText(VB:GetAttributeKey(modifier, mouseButton)) .. " -> " .. spellName)
+        VB:Print(VB.L["BINDING_ADDED"] .. " " .. VB:GetBindingDisplayText(VB:GetAttributeKey(modifier, mouseButton)) .. " -> " .. spellName)
         ClearCursor()
         return true
     end

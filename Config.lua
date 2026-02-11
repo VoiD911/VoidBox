@@ -14,7 +14,7 @@ local bindingSlots = {}
 -------------------------------------------------
 function VB:ShowConfig()
     if InCombatLockdown() then
-        VB:Print("Impossible d'ouvrir la config en combat!")
+        VB:Print(VB.L["CANNOT_CONFIG_COMBAT"])
         return
     end
     
@@ -57,7 +57,7 @@ function VB:CreateConfigFrame()
     -- Title
     local title = configFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOP", 0, -10)
-    title:SetText("|cFF9966FFVoidBox|r - Configuration")
+    title:SetText("|cFF9966FFVoidBox|r - " .. VB.L["CONFIG_TITLE"])
     
     -- Close button
     local closeBtn = CreateFrame("Button", nil, configFrame, "UIPanelCloseButton")
@@ -89,8 +89,8 @@ local tabs = {}
 
 function VB:CreateConfigTabs()
     local tabData = {
-        { id = "bindings", text = "Click-Castings" },
-        { id = "appearance", text = "Apparence" },
+        { id = "bindings", text = VB.L["TAB_BINDINGS"] },
+        { id = "appearance", text = VB.L["TAB_APPEARANCE"] },
     }
     
     local lastTab = nil
@@ -168,11 +168,11 @@ function VB:CreateBindingsTab()
     instructions:SetPoint("TOPLEFT", 5, -5)
     instructions:SetWidth(460)
     instructions:SetJustifyH("LEFT")
-    instructions:SetText("|cFFFFFF00Instructions:|r Glissez un sort depuis le grimoire sur un slot, ou cliquez '+' pour ajouter")
+    instructions:SetText("|cFFFFFF00Instructions:|r " .. VB.L["INSTRUCTIONS"])
     
     local header = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     header:SetPoint("TOPLEFT", 5, -30)
-    header:SetText("Combinaison          Action")
+    header:SetText(VB.L["HEADER_COMBO"] .. "          " .. VB.L["HEADER_ACTION"])
     
     local scrollFrame = CreateFrame("ScrollFrame", nil, content, "UIPanelScrollFrameTemplate")
     scrollFrame:SetPoint("TOPLEFT", 5, -50)
@@ -196,7 +196,7 @@ function VB:CreateBindingsTab()
     
     local addText = addBtn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     addText:SetPoint("CENTER")
-    addText:SetText("+ Ajouter un binding")
+    addText:SetText(VB.L["ADD_BINDING"])
     
     addBtn:SetScript("OnClick", function() VB:ShowAddBindingDialog() end)
     addBtn:SetScript("OnEnter", function(self) self:SetBackdropColor(0.3, 0.3, 0.5, 1) end)
@@ -305,7 +305,7 @@ local addDialog = nil
 
 function VB:ShowAddBindingDialog()
     if InCombatLockdown() then
-        VB:Print("Impossible d'ajouter des bindings en combat!")
+        VB:Print(VB.L["CANNOT_BIND_COMBAT"])
         return
     end
     if not addDialog then VB:CreateAddBindingDialog() end
@@ -447,14 +447,14 @@ function VB:CreateAddBindingDialog()
     
     local title = addDialog:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOP", 0, -10)
-    title:SetText("Nouveau Binding")
+    title:SetText(VB.L["NEW_BINDING"])
     
     local closeBtn = CreateFrame("Button", nil, addDialog, "UIPanelCloseButton")
     closeBtn:SetPoint("TOPRIGHT", -5, -5)
     
     local modLabel = addDialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     modLabel:SetPoint("TOPLEFT", 15, -40)
-    modLabel:SetText("Modificateurs:")
+    modLabel:SetText(VB.L["MODIFIERS"])
     
     local shiftCB = CreateFrame("CheckButton", nil, addDialog, "UICheckButtonTemplate")
     shiftCB:SetPoint("TOPLEFT", 15, -60)
@@ -473,30 +473,30 @@ function VB:CreateAddBindingDialog()
     
     local mouseLabel = addDialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     mouseLabel:SetPoint("TOPLEFT", 15, -95)
-    mouseLabel:SetText("Bouton souris:")
+    mouseLabel:SetText(VB.L["MOUSE_BUTTON"])
     
     local mouseDropdown = CreateSimpleDropdown(addDialog, 180, {
-        { text = "Gauche", value = "Left" },
-        { text = "Droit", value = "Right" },
-        { text = "Milieu", value = "Middle" },
-        { text = "Bouton 4", value = "Button4" },
-        { text = "Bouton 5", value = "Button5" },
-    }, "Gauche")
+        { text = VB.L["BTN_LEFT"], value = "Left" },
+        { text = VB.L["BTN_RIGHT"], value = "Right" },
+        { text = VB.L["BTN_MIDDLE"], value = "Middle" },
+        { text = VB.L["BTN_4"], value = "Button4" },
+        { text = VB.L["BTN_5"], value = "Button5" },
+    }, VB.L["BTN_LEFT"])
     mouseDropdown:SetPoint("TOPLEFT", 15, -112)
     addDialog.mouseDropdown = mouseDropdown
     
     -- Action type selector
     local actionLabel = addDialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     actionLabel:SetPoint("TOPLEFT", 15, -145)
-    actionLabel:SetText("Type d'action:")
+    actionLabel:SetText(VB.L["ACTION_TYPE"])
     
     local actionDropdown = CreateSimpleDropdown(addDialog, 180, {
-        { text = "Sort (drag & drop)", value = "spell" },
-        { text = "Cibler", value = "target" },
-        { text = "Focus", value = "focus" },
-        { text = "Menu", value = "togglemenu" },
-        { text = "Assister", value = "assist" },
-    }, "Sort (drag & drop)")
+        { text = VB.L["ACTION_SPELL"], value = "spell" },
+        { text = VB.L["ACTION_TARGET"], value = "target" },
+        { text = VB.L["ACTION_FOCUS"], value = "focus" },
+        { text = VB.L["ACTION_MENU"], value = "togglemenu" },
+        { text = VB.L["ACTION_ASSIST"], value = "assist" },
+    }, VB.L["ACTION_SPELL"])
     actionDropdown:SetPoint("TOPLEFT", 15, -162)
     addDialog.actionDropdown = actionDropdown
     
@@ -514,7 +514,7 @@ function VB:CreateAddBindingDialog()
     
     local dropText = dropZone:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     dropText:SetPoint("CENTER")
-    dropText:SetText("|cFFAAAAFFGlissez un sort ici|r")
+    dropText:SetText("|cFFAAAAFF" .. VB.L["DROP_SPELL_HERE"] .. "|r")
     addDialog.dropText = dropText
     addDialog.dropZone = dropZone
     addDialog.selectedSpell = nil
@@ -524,7 +524,7 @@ function VB:CreateAddBindingDialog()
         if spellID and spellName then
             addDialog.selectedSpell = spellID
             addDialog.actionDropdown.selectedValue = "spell"
-            addDialog.actionDropdown.text:SetText("Sort (drag & drop)")
+            addDialog.actionDropdown.text:SetText(VB.L["ACTION_SPELL"])
             local iconStr = spellIcon and ("|T" .. spellIcon .. ":20|t ") or ""
             dropText:SetText(iconStr .. spellName)
             ClearCursor()
@@ -533,7 +533,7 @@ function VB:CreateAddBindingDialog()
     
     dropZone:SetScript("OnClick", function()
         addDialog.selectedSpell = nil
-        dropText:SetText("|cFFAAAAFFGlissez un sort ici|r")
+        dropText:SetText("|cFFAAAAFF" .. VB.L["DROP_SPELL_HERE"] .. "|r")
     end)
     
     local confirmBtn = CreateFrame("Button", nil, addDialog, "BackdropTemplate")
@@ -549,7 +549,7 @@ function VB:CreateAddBindingDialog()
     
     local confirmText = confirmBtn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     confirmText:SetPoint("CENTER")
-    confirmText:SetText("Confirmer")
+    confirmText:SetText(VB.L["CONFIRM"])
     
     confirmBtn:SetScript("OnClick", function() VB:ConfirmAddBinding() end)
     confirmBtn:SetScript("OnEnter", function(self) self:SetBackdropColor(0.3, 0.3, 0.6, 1) end)
@@ -562,7 +562,7 @@ function VB:ConfirmAddBinding()
     local actionType = addDialog.actionDropdown.selectedValue or "spell"
     
     if actionType == "spell" and not addDialog.selectedSpell then
-        VB:Print("Veuillez d'abord glisser un sort!")
+        VB:Print(VB.L["DRAG_SPELL_FIRST"])
         return
     end
     
@@ -587,9 +587,9 @@ function VB:ConfirmAddBinding()
         addDialog.ctrlCB:SetChecked(false)
         addDialog.altCB:SetChecked(false)
         addDialog.selectedSpell = nil
-        addDialog.dropText:SetText("|cFFAAAAFFGlissez un sort ici|r")
+        addDialog.dropText:SetText("|cFFAAAAFF" .. VB.L["DROP_SPELL_HERE"] .. "|r")
         addDialog.actionDropdown.selectedValue = "spell"
-        addDialog.actionDropdown.text:SetText("Sort (drag & drop)")
+        addDialog.actionDropdown.text:SetText(VB.L["ACTION_SPELL"])
     end
 end
 
@@ -606,17 +606,17 @@ function VB:CreateAppearanceTab()
     
     local sizeLabel = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     sizeLabel:SetPoint("TOPLEFT", 10, yOffset)
-    sizeLabel:SetText("Taille des frames:")
+    sizeLabel:SetText(VB.L["FRAME_SIZE"])
     yOffset = yOffset - 20
     
-    local widthSlider = CreateSimpleSlider(content, "Largeur", 40, 150, 5, VB.config.frameWidth, function(value)
+    local widthSlider = CreateSimpleSlider(content, VB.L["WIDTH"], 40, 150, 5, VB.config.frameWidth, function(value)
         VB.config.frameWidth = value
         if not InCombatLockdown() then VB:UpdateAllFrames() end
     end)
     widthSlider:SetPoint("TOPLEFT", 10, yOffset)
     yOffset = yOffset - 50
     
-    local heightSlider = CreateSimpleSlider(content, "Hauteur", 20, 80, 5, VB.config.frameHeight, function(value)
+    local heightSlider = CreateSimpleSlider(content, VB.L["HEIGHT"], 20, 80, 5, VB.config.frameHeight, function(value)
         VB.config.frameHeight = value
         if not InCombatLockdown() then VB:UpdateAllFrames() end
     end)
@@ -625,7 +625,7 @@ function VB:CreateAppearanceTab()
     
     local classColorsCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
     classColorsCB:SetPoint("TOPLEFT", 10, yOffset)
-    classColorsCB.text:SetText("Couleurs de classe")
+    classColorsCB.text:SetText(VB.L["CLASS_COLORS"])
     classColorsCB:SetChecked(VB.config.classColors)
     classColorsCB:SetScript("OnClick", function(self)
         VB.config.classColors = self:GetChecked()
@@ -637,11 +637,11 @@ function VB:CreateAppearanceTab()
     
     local powerBarCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
     powerBarCB:SetPoint("TOPLEFT", 10, yOffset)
-    powerBarCB.text:SetText("Afficher la barre de mana")
+    powerBarCB.text:SetText(VB.L["SHOW_POWER_BAR"])
     powerBarCB:SetChecked(VB.config.showPowerBar)
     powerBarCB:SetScript("OnClick", function(self)
         VB.config.showPowerBar = self:GetChecked()
-        VB:Print("Rechargez l'UI (/reload) pour appliquer ce changement")
+        VB:Print(VB.L["RELOAD_REQUIRED"])
     end)
     yOffset = yOffset - 40
     
@@ -661,10 +661,10 @@ function VB:CreateAppearanceTab()
     local function UpdateLockButton()
         if VB.config.locked then
             lockBtn:SetBackdropColor(0.5, 0.2, 0.2, 1)
-            lockBtn.text:SetText("Deverrouiller")
+            lockBtn.text:SetText(VB.L["BTN_UNLOCK"])
         else
             lockBtn:SetBackdropColor(0.2, 0.2, 0.5, 1)
-            lockBtn.text:SetText("Verrouiller")
+            lockBtn.text:SetText(VB.L["BTN_LOCK"])
         end
     end
     UpdateLockButton()

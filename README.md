@@ -1,61 +1,61 @@
 # VoidBox
 
-Raid frames minimalistes pour healers avec click-casting — Style Cell/VuhDo.
+Minimalist healer raid frames with click-casting — Cell/VuhDo style.
 
-Compatible **WoW 12.0 Midnight** (secret values, nouvelles APIs).
+Compatible with **WoW 12.0 Midnight** (secret values, new APIs).
 
-## Fonctionnalités
+## Features
 
-- **Raid frames compacts** avec barres de vie et mana
-- **Click-casting** via SecureUnitButtonTemplate (fonctionne en combat)
-- **Pourcentage de vie** affiché via `UnitHealthPercent` + `C_CurveUtil` (contourne les secret values 12.0)
-- **Bindings par classe** — tous vos prêtres partagent les mêmes bindings
-- **Drag & drop** depuis le grimoire pour assigner les sorts
-- **Indicateurs** :
-  - Rôle (tank/heal/dps) — carré coloré en haut à gauche
-  - HOTs/boucliers actifs — carré vert en bas à droite
-  - Debuffs dispellables — icônes en bas à gauche (max 3)
-  - Menace (bordure rouge/jaune)
-  - Portée (opacité réduite hors portée)
-  - Mort / Déconnecté / Résurrection en cours
+- **Compact raid frames** with health and mana bars
+- **Click-casting** via SecureUnitButtonTemplate (works in combat)
+- **Health percentage** displayed using `UnitHealthPercent` + `C_CurveUtil` (bypasses 12.0 secret values)
+- **Per-class bindings** — all your priests share the same bindings
+- **Drag & drop** from the spellbook to assign spells
+- **Indicators**:
+  - Role (tank/heal/dps) — colored square, top-left
+  - Active HOTs/shields — green square, bottom-right
+  - Dispellable debuffs — icons, bottom-left (max 3)
+  - Threat (red/yellow border)
+  - Range (reduced opacity when out of range)
+  - Dead / Disconnected / Incoming resurrection
   - Ready check
-- **Tri par rôle** : Tank > DPS > Healer
-- **Configuration UI** : taille des frames, couleurs de classe, verrouillage
-- **Couleur thème** : violet (`#9966FF`)
+- **Role sorting**: Tank > DPS > Healer
+- **Config UI**: frame size, class colors, lock/unlock
+- **Theme color**: purple (`#9966FF`)
+- **Fully localized**: enUS, frFR, deDE, esES, esMX, ptBR, itIT, ruRU, koKR, zhCN, zhTW
 
-## Commandes
+## Commands
 
-| Commande | Description |
-|----------|-------------|
-| `/vb` | Affiche l'aide |
-| `/vb config` | Ouvre la configuration |
-| `/vb lock` | Verrouille les frames |
-| `/vb unlock` | Déverrouille les frames |
-| `/vb reset` | Réinitialise la position |
-| `/vb debug` | Toggle le mode debug |
-| `/vb debughealth` | Debug des valeurs de vie (secret values) |
+| Command | Description |
+|---------|-------------|
+| `/vb` | Show help |
+| `/vb config` | Open configuration |
+| `/vb lock` | Lock frames |
+| `/vb unlock` | Unlock frames |
+| `/vb reset` | Reset position |
+| `/vb debug` | Toggle debug mode |
+| `/vb debughealth` | Debug health values (secret values) |
 
-## Utilisation
+## Usage
 
-1. Le petit carré violet à gauche des frames permet de **glisser** pour déplacer
-2. **Clic droit** sur le carré violet pour ouvrir la **configuration**
-3. Dans la config, onglet **Click-Castings** : glissez un sort depuis le grimoire sur un slot
-4. Les bindings sont sauvegardés **par classe** (pas par personnage)
+1. The small purple square to the left of the frames lets you **drag** to reposition
+2. **Right-click** the purple square to open **configuration**
+3. In config, **Click-Castings** tab: drag a spell from the spellbook onto a slot
+4. Bindings are saved **per class** (not per character)
 
 ## Installation
 
-1. Téléchargez la dernière release
-2. Extrayez le dossier `VoidBox/` dans `World of Warcraft/_retail_/Interface/AddOns/`
-3. Relancez WoW ou faites `/reload`
+1. Download the latest release
+2. Extract the `VoidBox/` folder into `World of Warcraft/_retail_/Interface/AddOns/`
+3. Restart WoW or `/reload`
 
 ## Secret Values (WoW 12.0)
 
-Cet addon implémente une solution pour le problème des "secret values" introduit en 12.0 Midnight.
-Les valeurs de vie retournées par `UnitHealth()` sont protégées et aucune opération mathématique n'est possible dessus.
+This addon implements a workaround for the "secret values" system introduced in 12.0 Midnight.
+Health values returned by `UnitHealth()` are protected — no arithmetic, comparison, or conversion is possible on them.
 
-La solution utilise `UnitHealthPercent()` combiné avec `C_CurveUtil.CreateCurve()` pour obtenir
-le pourcentage de vie affichable via `string.format()`.
+The solution uses `UnitHealthPercent()` combined with `C_CurveUtil.CreateCurve()` (scalar curve mapping 0→0, 1→100) to get a displayable health percentage via `string.format()`.
 
-## Licence
+## License
 
-MIT License — voir [LICENSE](LICENSE)
+MIT License — see [LICENSE](LICENSE)
