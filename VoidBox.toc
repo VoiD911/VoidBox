@@ -1,0 +1,14 @@
+## Interface: 120000
+## Title: VoidBox
+## Notes: Raid frames pour healers avec click-casting - Style Cell/VuhDo
+## Author: Kiro
+## Version: 1.0.0
+## SavedVariables: VoidBoxDB
+## IconTexture: Interface\Icons\Spell_Holy_Heal
+
+Compat.lua
+Core.lua
+HealthBar.lua
+UnitFrames.lua
+ClickCasting.lua
+Config.lua
