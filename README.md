@@ -40,7 +40,6 @@ Compatible with **WoW 12.0 Midnight** (secret values, new APIs).
 | `/vb lock` | Lock frames |
 | `/vb unlock` | Unlock frames |
 | `/vb reset` | Reset position |
-| `/vb debug` | Toggle debug mode |
 
 
 ## License
