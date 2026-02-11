@@ -1,0 +1,7 @@
+package-as: VoidBox
+
+ignore:
+  - .github
+  - .gitignore
+  - README.md
+  - CHANGELOG.md

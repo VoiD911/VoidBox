@@ -14,6 +14,7 @@
 ## Version: 1.0.0
 ## SavedVariables: VoidBoxDB
 ## IconTexture: Interface\Icons\Spell_Holy_Heal
+## X-Curse-Project-ID: CHANGE_ME
 
 Compat.lua
 Locales.lua
