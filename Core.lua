@@ -22,7 +22,7 @@ VB.defaults = {
     frameWidth = 80,
     frameHeight = 40,
     frameSpacing = 2,
-    maxColumns = 8,
+    maxColumns = 5,
     orientation = "HORIZONTAL", -- HORIZONTAL or VERTICAL
     roleOrder = "TDH", -- TDH, THD, HDT, HTD, DTH, DHT
     growthDirection = "DOWN", -- DOWN, UP, RIGHT, LEFT
@@ -358,36 +358,51 @@ function VB:UpdateAllFrames()
     local units = VB:GetUnitsToDisplay()
     
     local col, row = 0, 0
-    local maxCols = VB.config.maxColumns or 8
+    local groupSize = VB.config.maxColumns or 5
     local width = VB.config.frameWidth or 80
     local height = VB.config.frameHeight or 40
     local spacing = VB.config.frameSpacing or 2
     local vertical = VB.config.orientation == "VERTICAL"
     
-    -- In vertical mode, we stack in a single column (or limited rows)
-    if vertical then maxCols = 1 end
-    
     for i, unit in ipairs(units) do
         local button = VB:GetOrCreateUnitButton(unit, i)
         button:SetSize(width, height)
         
-        local x = col * (width + spacing)
-        local y = -row * (height + spacing)
+        local x, y
+        if vertical then
+            -- Vertical: stack rows down, new column every groupSize
+            x = col * (width + spacing)
+            y = -row * (height + spacing)
+            row = row + 1
+            if row >= groupSize then
+                row = 0
+                col = col + 1
+            end
+        else
+            -- Horizontal: stack columns right, new row every groupSize
+            x = col * (width + spacing)
+            y = -row * (height + spacing)
+            col = col + 1
+            if col >= groupSize then
+                col = 0
+                row = row + 1
+            end
+        end
         
         button:ClearAllPoints()
         button:SetPoint("TOPLEFT", VB.frames.container, "TOPLEFT", x, y)
         button:Show()
         VB:UpdateUnitButton(button)
-        
-        col = col + 1
-        if col >= maxCols then
-            col = 0
-            row = row + 1
-        end
     end
     
-    local totalCols = math.max(1, math.min(#units, maxCols))
-    local totalRows = math.max(1, math.ceil(#units / maxCols))
+    local totalCols, totalRows
+    if vertical then
+        totalRows = math.min(#units, groupSize)
+        totalCols = math.max(1, math.ceil(#units / groupSize))
+    else
+        totalCols = math.min(#units, groupSize)
+        totalRows = math.max(1, math.ceil(#units / groupSize))
+    end
     VB.frames.main:SetSize(
         totalCols * (width + spacing) - spacing,
         totalRows * (height + spacing) - spacing
