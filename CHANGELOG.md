@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.1 (2026-02-14)
+
+- Fix: complete localization for all languages (ptBR, itIT, ruRU, koKR, zhCN, zhTW)
+- Fix: Interface version back to 120000 (12.0.0)
+
 ## v1.1.0 (2026-02-14)
 
 - Fix: per-class bindings were leaking between classes (druid bindings showing on paladin/monk)
