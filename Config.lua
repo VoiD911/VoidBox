@@ -36,7 +36,7 @@ end
 -------------------------------------------------
 function VB:CreateConfigFrame()
     configFrame = CreateFrame("Frame", "VoidBoxConfig", UIParent, "BackdropTemplate")
-    configFrame:SetSize(500, 450)
+    configFrame:SetSize(500, 550)
     configFrame:SetPoint("CENTER")
     configFrame:SetBackdrop({
         bgFile = "Interface\\Buttons\\WHITE8x8",
@@ -622,6 +622,67 @@ function VB:CreateAppearanceTab()
     end)
     heightSlider:SetPoint("TOPLEFT", 10, yOffset)
     yOffset = yOffset - 55
+    
+    -- Orientation dropdown (Horizontal / Vertical)
+    local orientLabel = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    orientLabel:SetPoint("TOPLEFT", 10, yOffset)
+    orientLabel:SetText(VB.L["ORIENTATION"])
+    
+    local orientDropdown = CreateSimpleDropdown(content, 180, {
+        { text = VB.L["ORIENTATION_H"], value = "HORIZONTAL" },
+        { text = VB.L["ORIENTATION_V"], value = "VERTICAL" },
+    }, VB.config.orientation == "VERTICAL" and VB.L["ORIENTATION_V"] or VB.L["ORIENTATION_H"])
+    orientDropdown:SetPoint("TOPLEFT", 10, yOffset - 18)
+    
+    -- Store original OnClick to chain
+    local origOrientItems = orientDropdown.menu
+    for i = 1, select("#", origOrientItems:GetChildren()) do
+        local btn = select(i, origOrientItems:GetChildren())
+        local origOnClick = btn:GetScript("OnClick")
+        btn:SetScript("OnClick", function(self)
+            if origOnClick then origOnClick(self) end
+            VB.config.orientation = orientDropdown.selectedValue
+            if not InCombatLockdown() then VB:UpdateAllFrames() end
+        end)
+    end
+    yOffset = yOffset - 50
+    
+    -- Role order dropdown
+    local roleLabel = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    roleLabel:SetPoint("TOPLEFT", 10, yOffset)
+    roleLabel:SetText(VB.L["ROLE_ORDER"])
+    
+    local roleOrderItems = {
+        { text = "Tank > DPS > Healer", value = "TDH" },
+        { text = "Tank > Healer > DPS", value = "THD" },
+        { text = "Healer > DPS > Tank", value = "HDT" },
+        { text = "Healer > Tank > DPS", value = "HTD" },
+        { text = "DPS > Tank > Healer", value = "DTH" },
+        { text = "DPS > Healer > Tank", value = "DHT" },
+    }
+    
+    local currentRoleText = "Tank > DPS > Healer"
+    for _, item in ipairs(roleOrderItems) do
+        if item.value == (VB.config.roleOrder or "TDH") then
+            currentRoleText = item.text
+            break
+        end
+    end
+    
+    local roleDropdown = CreateSimpleDropdown(content, 220, roleOrderItems, currentRoleText)
+    roleDropdown:SetPoint("TOPLEFT", 10, yOffset - 18)
+    
+    local roleMenu = roleDropdown.menu
+    for i = 1, select("#", roleMenu:GetChildren()) do
+        local btn = select(i, roleMenu:GetChildren())
+        local origOnClick = btn:GetScript("OnClick")
+        btn:SetScript("OnClick", function(self)
+            if origOnClick then origOnClick(self) end
+            VB.config.roleOrder = roleDropdown.selectedValue
+            if not InCombatLockdown() then VB:UpdateAllFrames() end
+        end)
+    end
+    yOffset = yOffset - 50
     
     local classColorsCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
     classColorsCB:SetPoint("TOPLEFT", 10, yOffset)

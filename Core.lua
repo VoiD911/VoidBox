@@ -23,6 +23,8 @@ VB.defaults = {
     frameHeight = 40,
     frameSpacing = 2,
     maxColumns = 8,
+    orientation = "HORIZONTAL", -- HORIZONTAL or VERTICAL
+    roleOrder = "TDH", -- TDH, THD, HDT, HTD, DTH, DHT
     growthDirection = "DOWN", -- DOWN, UP, RIGHT, LEFT
     showPowerBar = true,
     powerBarHeight = 4,
@@ -360,6 +362,10 @@ function VB:UpdateAllFrames()
     local width = VB.config.frameWidth or 80
     local height = VB.config.frameHeight or 40
     local spacing = VB.config.frameSpacing or 2
+    local vertical = VB.config.orientation == "VERTICAL"
+    
+    -- In vertical mode, we stack in a single column (or limited rows)
+    if vertical then maxCols = 1 end
     
     for i, unit in ipairs(units) do
         local button = VB:GetOrCreateUnitButton(unit, i)
@@ -367,16 +373,6 @@ function VB:UpdateAllFrames()
         
         local x = col * (width + spacing)
         local y = -row * (height + spacing)
-        
-        if VB.config.growthDirection == "UP" then
-            y = row * (height + spacing)
-        elseif VB.config.growthDirection == "RIGHT" then
-            x = row * (width + spacing)
-            y = -col * (height + spacing)
-        elseif VB.config.growthDirection == "LEFT" then
-            x = -row * (width + spacing)
-            y = -col * (height + spacing)
-        end
         
         button:ClearAllPoints()
         button:SetPoint("TOPLEFT", VB.frames.container, "TOPLEFT", x, y)
@@ -398,7 +394,14 @@ function VB:UpdateAllFrames()
     )
 end
 
-local rolePriority = { TANK = 1, DAMAGER = 2, HEALER = 3, NONE = 2 }
+local roleOrders = {
+    ["TDH"] = { TANK = 1, DAMAGER = 2, HEALER = 3 },
+    ["THD"] = { TANK = 1, HEALER = 2, DAMAGER = 3 },
+    ["HDT"] = { HEALER = 1, DAMAGER = 2, TANK = 3 },
+    ["HTD"] = { HEALER = 1, TANK = 2, DAMAGER = 3 },
+    ["DTH"] = { DAMAGER = 1, TANK = 2, HEALER = 3 },
+    ["DHT"] = { DAMAGER = 1, HEALER = 2, TANK = 3 },
+}
 
 function VB:GetUnitsToDisplay()
     local units = {}
@@ -416,7 +419,8 @@ function VB:GetUnitsToDisplay()
         table.insert(units, "player")
     end
     
-    -- Trier par rôle: Tank > DPS > Healer
+    local rolePriority = roleOrders[VB.config.roleOrder or "TDH"] or roleOrders["TDH"]
+    
     table.sort(units, function(a, b)
         local roleA = UnitGroupRolesAssigned(a) or "NONE"
         local roleB = UnitGroupRolesAssigned(b) or "NONE"
