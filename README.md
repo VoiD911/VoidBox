@@ -1,6 +1,6 @@
 # VoidBox
 
-Minimalist healer raid frames with click-casting — Cell/VuhDo style.
+Minimalist solo/party/raid unit frames with click-casting — Cell/Healbot-Click/Grid/VuhDo style.
 
 Compatible with **WoW 12.0 Midnight** (secret values, new APIs).
 
@@ -11,15 +11,14 @@ Compatible with **WoW 12.0 Midnight** (secret values, new APIs).
 3. In config, **Click-Castings** tab: drag a spell from the spellbook onto a slot
 4. Bindings are saved **per class** (not per character)
 
-   
 ## Features
 
-- **Compact raid frames** with health and mana bars
-- **Click-casting** via SecureUnitButtonTemplate (works in combat)
-- **Health percentage** 
-- **Per-class bindings** — all your priests share the same bindings
-- **Drag & drop** from the spellbook to assign spells
-- **Indicators**:
+- Compact raid frames with health and mana bars
+- Click-casting
+- Health percentage
+- Per-class bindings — all your priests share the same bindings
+- Drag & drop from the spellbook to assign spells
+- Indicators:
   - Role (tank/heal/dps) — colored square, top-left
   - Active HOTs/shields — green square, bottom-right
   - Dispellable debuffs — icons, bottom-left (max 3)
@@ -27,10 +26,10 @@ Compatible with **WoW 12.0 Midnight** (secret values, new APIs).
   - Range (reduced opacity when out of range)
   - Dead / Disconnected / Incoming resurrection
   - Ready check
-- **Role sorting**: Tank > DPS > Healer
-- **Config UI**: frame size, class colors, lock/unlock
-- **Theme color**: purple (`#9966FF`)
-- **Fully localized**: enUS, frFR, deDE, esES, esMX, ptBR, itIT, ruRU, koKR, zhCN, zhTW
+- Role sorting: Tank > DPS > Healer
+- Config UI: frame size, class colors, lock/unlock
+- Theme color: purple (#9966FF)
+- Fully localized: enUS, frFR, deDE, esES, esMX, ptBR, itIT, ruRU, koKR, zhCN, zhTW
 
 ## Commands
 
@@ -40,7 +39,6 @@ Compatible with **WoW 12.0 Midnight** (secret values, new APIs).
 | `/vb lock` | Lock frames |
 | `/vb unlock` | Unlock frames |
 | `/vb reset` | Reset position |
-
 
 ## License
 
