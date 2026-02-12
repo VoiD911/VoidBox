@@ -1,4 +1,4 @@
-## Interface: 120000
+## Interface: 120100
 ## Title: VoidBox
 ## Notes: Minimalist healer raid frames with click-casting - Cell/VuhDo style
 ## Notes-frFR: Raid frames minimalistes pour healers avec click-casting - Style Cell/VuhDo
