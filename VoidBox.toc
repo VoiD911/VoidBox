@@ -11,7 +11,7 @@
 ## Notes-koKR: 미니멀리스트 힐러 레이드 프레임 - Cell/VuhDo 스타일
 ## Notes-itIT: Raid frame minimalisti per healer con click-casting - Stile Cell/VuhDo
 ## Author: VoiD911
-## Version: 1.0.0
+## Version: 1.1.0
 ## SavedVariables: VoidBoxDB
 ## IconTexture: Interface\Icons\Spell_Holy_Heal
 ## X-Curse-Project-ID: 1459481

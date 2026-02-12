@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.1.0 (2026-02-14)
+
+- Fix: per-class bindings were leaking between classes (druid bindings showing on paladin/monk)
+- New: orientation option (Horizontal / Vertical) in Appearance tab
+- New: role order selector (6 presets: TDH, THD, HDT, HTD, DTH, DHT)
+- New: frames per row slider (1-10, default 5) — VuhDo-style grouping
+- Layout: 5 frames per row/column by default, wraps to next row/column
+- Updated README for international audience
+
 ## v1.0.0 (2026-02-10)
 
 - Initial release
