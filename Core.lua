@@ -181,7 +181,11 @@ function VB:OnAddonLoaded()
     end
     
     VB.config = VoidBoxDB
-    VB.config.clickCastings = VoidBoxDB.classBindings[VB.playerClass]
+    -- Always clean up stale clickCastings key from VoidBoxDB root
+    -- (was written by previous versions via VB.config.clickCastings)
+    VoidBoxDB.clickCastings = nil
+    -- Runtime reference to class-specific bindings
+    VB.clickCastings = VoidBoxDB.classBindings[VB.playerClass]
     
     VB:Print(VB.L["LOADED"] .. " (" .. VB.playerClass .. ") - /vb " .. VB.L["OPTIONS"])
 end

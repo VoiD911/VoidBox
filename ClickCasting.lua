@@ -31,10 +31,14 @@ local modifiers = {
 -- Initialize Click Castings
 -------------------------------------------------
 function VB:InitClickCastings()
-    if not VB.config.clickCastings then
-        VB.config.clickCastings = VB:CopyTable(VB.defaults.clickCastings)
+    -- VB.clickCastings is set in Core.lua OnAddonLoaded
+    -- pointing to VoidBoxDB.classBindings[playerClass]
+    if not VB.clickCastings or #VB.clickCastings == 0 then
+        VB.clickCastings = VB:CopyTable(VB.defaults.clickCastings)
+        if VoidBoxDB and VoidBoxDB.classBindings and VB.playerClass then
+            VoidBoxDB.classBindings[VB.playerClass] = VB.clickCastings
+        end
     end
-    VB.clickCastings = VB.config.clickCastings
 end
 
 function VB:GetAttributeKey(modifier, mouseButton)
