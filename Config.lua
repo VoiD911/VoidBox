@@ -36,7 +36,7 @@ end
 -------------------------------------------------
 function VB:CreateConfigFrame()
     configFrame = CreateFrame("Frame", "VoidBoxConfig", UIParent, "BackdropTemplate")
-    configFrame:SetSize(500, 550)
+    configFrame:SetSize(500, 600)
     configFrame:SetPoint("CENTER")
     configFrame:SetBackdrop({
         bgFile = "Interface\\Buttons\\WHITE8x8",
@@ -621,6 +621,14 @@ function VB:CreateAppearanceTab()
         if not InCombatLockdown() then VB:UpdateAllFrames() end
     end)
     heightSlider:SetPoint("TOPLEFT", 10, yOffset)
+    yOffset = yOffset - 55
+    
+    -- Group size slider
+    local groupSlider = CreateSimpleSlider(content, VB.L["GROUP_SIZE"], 1, 10, 1, VB.config.maxColumns or 5, function(value)
+        VB.config.maxColumns = value
+        if not InCombatLockdown() then VB:UpdateAllFrames() end
+    end)
+    groupSlider:SetPoint("TOPLEFT", 10, yOffset)
     yOffset = yOffset - 55
     
     -- Orientation dropdown (Horizontal / Vertical)
