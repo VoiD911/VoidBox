@@ -3,7 +3,10 @@
 ## v1.1.3 (2026-02-12)
 
 - Fix: secret value spellId crash ("table index is secret") when checking heal buffs in 12.0+
-- Fix: isStealable is a secret boolean in 12.0+ — wrapped in pcall to prevent crash
+- Fix: isStealable secret boolean crash — now converted at storage time via SafeBool helper
+- Fix: PowerBarColor[powerType] table lookup protected against secret powerType
+- Fix: UnitHasIncomingResurrection protected against secret boolean return
+- Added VB:SafeBool() helper for safe boolean evaluation of secret values
 
 ## v1.1.1 (2026-02-14)
 
