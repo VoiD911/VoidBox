@@ -8,6 +8,17 @@
 local addonName, VB = ...
 
 -------------------------------------------------
+-- Safe Boolean (WoW 12.0+ secret booleans)
+-- "if secretBool then" crashes, so we pcall it
+-------------------------------------------------
+function VB:SafeBool(value)
+    if value == nil then return false end
+    local ok, result = pcall(function() return value and true or false end)
+    if ok then return result end
+    return false
+end
+
+-------------------------------------------------
 -- Spell Info Wrapper
 -- GetSpellInfo() deprecated since 11.0, removed in 12.0
 -- Replaced by C_Spell.GetSpellInfo() which returns a table
@@ -95,7 +106,7 @@ function VB:GetUnitDebuffs(unit, maxCount)
                 duration = aura.duration,
                 expirationTime = aura.expirationTime,
                 spellID = aura.spellId,
-                isStealable = aura.isStealable,
+                isStealable = VB:SafeBool(aura.isStealable),
             })
         end
     elseif UnitDebuff then

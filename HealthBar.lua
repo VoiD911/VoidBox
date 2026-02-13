@@ -232,16 +232,24 @@ function VB:UpdatePowerBar(button)
     local powerBar = button.powerBar
     if not powerBar then return end
     
-    local powerType = UnitPowerType(unit)
     local powerRaw = UnitPower(unit)
     local maxPowerRaw = UnitPowerMax(unit)
     
     powerBar:SetMinMaxValues(0, maxPowerRaw)
     powerBar:SetValue(powerRaw)
     
-    local powerColor = PowerBarColor[powerType]
-    if powerColor then
-        powerBar:SetStatusBarColor(powerColor.r, powerColor.g, powerColor.b)
+    -- UnitPowerType may return a secret value in 12.0+
+    -- Using it as table key (PowerBarColor[powerType]) would crash
+    local ok, r, g, b = pcall(function()
+        local powerType = UnitPowerType(unit)
+        local powerColor = PowerBarColor[powerType]
+        if powerColor then
+            return powerColor.r, powerColor.g, powerColor.b
+        end
+        return 0.5, 0.5, 0.5
+    end)
+    if ok then
+        powerBar:SetStatusBarColor(r, g, b)
     else
         powerBar:SetStatusBarColor(0.5, 0.5, 0.5)
     end

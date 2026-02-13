@@ -341,7 +341,7 @@ function VB:UpdateResurrect(button)
     if not unit or not UnitExists(unit) then return end
     
     local statusIcon = button.statusIcon
-    if UnitHasIncomingResurrection(unit) then
+    if VB:SafeBool(UnitHasIncomingResurrection(unit)) then
         statusIcon:SetTexture("Interface\\RaidFrame\\Raid-Icon-Rez")
         statusIcon:Show()
     elseif UnitIsDeadOrGhost(unit) then
@@ -368,12 +368,7 @@ function VB:UpdateAuras(button)
     local debuffIndex = 1
     
     for _, debuff in ipairs(debuffs) do
-        local showDebuff = debuff.dispelType
-        if not showDebuff then
-            local ok, val = pcall(function() return debuff.isStealable and true or false end)
-            if ok and val then showDebuff = true end
-        end
-        if showDebuff then
+        if debuff.dispelType or debuff.isStealable then
             local icon = button.debuffIcons[debuffIndex]
             if icon then
                 icon:SetTexture(debuff.icon)
