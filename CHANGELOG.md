@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.2 (2026-02-12)
+
+- Fix: secret value spellId crash ("table index is secret") when checking heal buffs in 12.0+
+
 ## v1.1.1 (2026-02-14)
 
 - Fix: complete localization for all languages (ptBR, itIT, ruRU, koKR, zhCN, zhTW)
