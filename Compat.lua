@@ -292,8 +292,14 @@ function VB:UnitHasHealBuff(unit)
         for i = 1, 40 do
             local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
             if not aura then break end
-            if aura.spellId and healBuffSpellIDs[aura.spellId] then
-                return true
+            if aura.spellId then
+                -- spellId may be a secret value in 12.0+, convert to real number
+                local ok, id = pcall(function()
+                    return tonumber(string.format("%d", aura.spellId))
+                end)
+                if ok and id and healBuffSpellIDs[id] then
+                    return true
+                end
             end
         end
     elseif UnitBuff then
