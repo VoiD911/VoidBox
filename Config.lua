@@ -481,6 +481,8 @@ function VB:CreateAddBindingDialog()
         { text = VB.L["BTN_MIDDLE"], value = "Middle" },
         { text = VB.L["BTN_4"], value = "Button4" },
         { text = VB.L["BTN_5"], value = "Button5" },
+        { text = VB.L["BTN_SCROLLUP"], value = "ScrollUp" },
+        { text = VB.L["BTN_SCROLLDOWN"], value = "ScrollDown" },
     }, VB.L["BTN_LEFT"])
     mouseDropdown:SetPoint("TOPLEFT", 15, -112)
     addDialog.mouseDropdown = mouseDropdown

@@ -14,6 +14,8 @@ local mouseKeyIDs = {
     ["Middle"] = 3,
     ["Button4"] = 4,
     ["Button5"] = 5,
+    ["ScrollUp"] = 6,
+    ["ScrollDown"] = 7,
 }
 
 local modifiers = {
@@ -41,6 +43,30 @@ function VB:InitClickCastings()
     end
 end
 
+-------------------------------------------------
+-- Mousewheel Secure Handler
+-- Converts OnMouseWheel delta into virtual Click("Button6"/"Button7")
+-- so they flow through the SecureActionButton attribute system.
+-- Button6 = ScrollUp, Button7 = ScrollDown (convention used by Clique/VuhDo)
+-------------------------------------------------
+function VB:SetupMouseWheel(button)
+    if button._vbMouseWheelSetup then return end
+    button._vbMouseWheelSetup = true
+    
+    button:EnableMouseWheel(true)
+    
+    -- Secure snippet: convert mousewheel delta to a virtual button click
+    -- self:Click("Button6") / self:Click("Button7") triggers the attribute
+    -- system with type6/spell6 or type7/spell7 respectively
+    SecureHandlerWrapScript(button, "OnMouseWheel", button, [[
+        if ... > 0 then
+            self:Click("Button6")
+        else
+            self:Click("Button7")
+        end
+    ]])
+end
+
 function VB:GetAttributeKey(modifier, mouseButton)
     local prefix = modifiers[modifier] or ""
     local buttonID = mouseKeyIDs[mouseButton]
@@ -61,6 +87,7 @@ function VB:ApplyClickCastings(button)
     if not button then return false end
     
     VB:ClearClickCastings(button)
+    VB:SetupMouseWheel(button)
     
     for _, binding in ipairs(VB.clickCastings) do
         local attrKey = binding[1]
@@ -179,12 +206,12 @@ function VB:GetBindingDisplayText(attrKey)
     if attrKey:find("alt") then modifier = modifier .. "Alt+" end
     
     local buttonName = "?"
-    for name, id in pairs(mouseKeyIDs) do
-        if tostring(id) == buttonNum then
-            buttonName = name
-            break
-        end
-    end
+    local displayNames = {
+        ["1"] = "Left", ["2"] = "Right", ["3"] = "Middle",
+        ["4"] = "Button 4", ["5"] = "Button 5",
+        ["6"] = "Scroll Up", ["7"] = "Scroll Down",
+    }
+    buttonName = displayNames[buttonNum] or "?"
     return modifier .. buttonName
 end
 
