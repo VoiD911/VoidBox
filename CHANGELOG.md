@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.2.0 (2026-02-15)
+
+- New: mousewheel scroll up/down binding support (via SecureHandlerEnterLeaveTemplate)
+- New: macro drag & drop from the macro UI to binding slots
+- New: profile system — create, copy, delete, switch layout/appearance profiles
+- New: `/vb profile` and `/vb profile <name>` slash commands
+- Fix: comprehensive secret value audit (SafeBool helper, PowerBarColor, UnitHasIncomingResurrection)
+
 ## v1.1.3 (2026-02-12)
 
 - Fix: secret value spellId crash ("table index is secret") when checking heal buffs in 12.0+

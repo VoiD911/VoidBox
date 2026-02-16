@@ -17,7 +17,9 @@ Compatible with **WoW 12.0 Midnight** (secret values, new APIs).
 - Click-casting
 - Health percentage
 - Per-class bindings — all your priests share the same bindings
-- Drag & drop from the spellbook to assign spells
+- Drag & drop from the spellbook or macro UI to assign spells/macros
+- Mousewheel scroll bindings (with modifier support)
+- Profile system (layout/appearance profiles)
 - Indicators:
   - Role (tank/heal/dps) — colored square, top-left
   - Active HOTs/shields — green square, bottom-right
@@ -39,6 +41,8 @@ Compatible with **WoW 12.0 Midnight** (secret values, new APIs).
 | `/vb lock` | Lock frames |
 | `/vb unlock` | Unlock frames |
 | `/vb reset` | Reset position |
+| `/vb profile` | List profiles |
+| `/vb profile <name>` | Switch profile |
 
 ## License
 
