@@ -75,6 +75,7 @@ function VB:CreateConfigFrame()
     -- Create tab contents
     VB:CreateBindingsTab()
     VB:CreateAppearanceTab()
+    VB:CreateProfilesTab()
     
     -- Show bindings tab by default
     VB:ShowConfigTab("bindings")
@@ -91,6 +92,7 @@ function VB:CreateConfigTabs()
     local tabData = {
         { id = "bindings", text = VB.L["TAB_BINDINGS"] },
         { id = "appearance", text = VB.L["TAB_APPEARANCE"] },
+        { id = "profiles", text = VB.L["TAB_PROFILES"] },
     }
     
     local lastTab = nil
@@ -153,6 +155,12 @@ function VB:ShowConfigTab(tabId)
     end
     if configFrame.appearanceContent then
         configFrame.appearanceContent:SetShown(tabId == "appearance")
+    end
+    if configFrame.profilesContent then
+        configFrame.profilesContent:SetShown(tabId == "profiles")
+        if tabId == "profiles" then
+            VB:RefreshProfilesTab()
+        end
     end
 end
 
@@ -792,4 +800,285 @@ function VB:CreateAppearanceTab()
         end
         UpdateLockButton()
     end)
+end
+
+-------------------------------------------------
+-- Profiles Tab
+-------------------------------------------------
+function VB:CreateProfilesTab()
+    local content = CreateFrame("Frame", nil, configFrame.content)
+    content:SetAllPoints()
+    content:Hide()
+    configFrame.profilesContent = content
+    
+    local yOffset = -10
+    
+    -- Active profile label
+    local activeLabel = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    activeLabel:SetPoint("TOPLEFT", 10, yOffset)
+    activeLabel:SetText(VB.L["ACTIVE_PROFILE"] .. ":")
+    content.activeLabel = activeLabel
+    
+    local activeName = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    activeName:SetPoint("LEFT", activeLabel, "RIGHT", 8, 0)
+    activeName:SetText("|cFF9966FF" .. VB:GetActiveProfileName() .. "|r")
+    content.activeName = activeName
+    yOffset = yOffset - 35
+    
+    -- Profile list
+    local listLabel = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    listLabel:SetPoint("TOPLEFT", 10, yOffset)
+    listLabel:SetText(VB.L["PROFILES"] .. ":")
+    yOffset = yOffset - 20
+    
+    -- Scroll frame for profile list
+    local listFrame = CreateFrame("Frame", nil, content, "BackdropTemplate")
+    listFrame:SetPoint("TOPLEFT", 10, yOffset)
+    listFrame:SetSize(300, 200)
+    listFrame:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+    })
+    listFrame:SetBackdropColor(0.12, 0.12, 0.12, 1)
+    listFrame:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
+    content.listFrame = listFrame
+    content.profileButtons = {}
+    yOffset = yOffset - 210
+    
+    -- Buttons row
+    local btnWidth = 90
+    local btnSpacing = 5
+    local btnY = yOffset - 5
+    
+    local function MakeProfileBtn(text, xOff, onClick)
+        local btn = CreateFrame("Button", nil, content, "BackdropTemplate")
+        btn:SetSize(btnWidth, 25)
+        btn:SetPoint("TOPLEFT", 10 + xOff, btnY)
+        btn:SetBackdrop({
+            bgFile = "Interface\\Buttons\\WHITE8x8",
+            edgeFile = "Interface\\Buttons\\WHITE8x8",
+            edgeSize = 1,
+        })
+        btn:SetBackdropColor(0.2, 0.2, 0.4, 1)
+        btn:SetBackdropBorderColor(0.4, 0.4, 0.6, 1)
+        local t = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        t:SetPoint("CENTER")
+        t:SetText(text)
+        btn:SetScript("OnClick", onClick)
+        btn:SetScript("OnEnter", function(self) self:SetBackdropColor(0.3, 0.3, 0.5, 1) end)
+        btn:SetScript("OnLeave", function(self) self:SetBackdropColor(0.2, 0.2, 0.4, 1) end)
+        return btn
+    end
+    
+    -- New button
+    MakeProfileBtn(VB.L["PROFILE_NEW"], 0, function()
+        VB:ShowProfileNameDialog("new")
+    end)
+    
+    -- Copy button
+    MakeProfileBtn(VB.L["PROFILE_COPY"], btnWidth + btnSpacing, function()
+        VB:ShowProfileNameDialog("copy")
+    end)
+    
+    -- Delete button
+    local deleteBtn = MakeProfileBtn(VB.L["PROFILE_DELETE"], (btnWidth + btnSpacing) * 2, function()
+        if content.selectedProfile and content.selectedProfile ~= "Default" then
+            VB:DeleteProfile(content.selectedProfile)
+            content.selectedProfile = nil
+            VB:RefreshProfilesTab()
+        else
+            VB:Print(VB.L["PROFILE_CANNOT_DELETE_DEFAULT"])
+        end
+    end)
+    deleteBtn:SetBackdropColor(0.4, 0.15, 0.15, 1)
+    deleteBtn:SetBackdropBorderColor(0.6, 0.3, 0.3, 1)
+    deleteBtn:SetScript("OnEnter", function(self) self:SetBackdropColor(0.5, 0.2, 0.2, 1) end)
+    deleteBtn:SetScript("OnLeave", function(self) self:SetBackdropColor(0.4, 0.15, 0.15, 1) end)
+    
+    content.selectedProfile = nil
+end
+
+function VB:RefreshProfilesTab()
+    if not configFrame or not configFrame.profilesContent then return end
+    local content = configFrame.profilesContent
+    
+    -- Update active name
+    content.activeName:SetText("|cFF9966FF" .. VB:GetActiveProfileName() .. "|r")
+    
+    -- Clear old buttons
+    for _, btn in ipairs(content.profileButtons) do
+        btn:Hide()
+    end
+    
+    local profiles = VB:GetProfileList()
+    local activeName = VB:GetActiveProfileName()
+    
+    for i, name in ipairs(profiles) do
+        local btn = content.profileButtons[i]
+        if not btn then
+            btn = CreateFrame("Button", nil, content.listFrame, "BackdropTemplate")
+            btn:SetSize(296, 24)
+            btn:SetBackdrop({
+                bgFile = "Interface\\Buttons\\WHITE8x8",
+            })
+            local t = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            t:SetPoint("LEFT", 8, 0)
+            btn.text = t
+            
+            local activeTag = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            activeTag:SetPoint("RIGHT", -8, 0)
+            btn.activeTag = activeTag
+            
+            content.profileButtons[i] = btn
+        end
+        
+        btn:SetPoint("TOPLEFT", 2, -(i-1) * 26 - 2)
+        btn.profileName = name
+        btn.text:SetText(name)
+        
+        local isActive = (name == activeName)
+        local isSelected = (name == content.selectedProfile)
+        
+        if isActive then
+            btn.activeTag:SetText("|cFF00FF00" .. VB.L["PROFILE_ACTIVE"] .. "|r")
+        else
+            btn.activeTag:SetText("")
+        end
+        
+        if isSelected then
+            btn:SetBackdropColor(0.3, 0.3, 0.5, 1)
+        elseif isActive then
+            btn:SetBackdropColor(0.2, 0.2, 0.3, 1)
+        else
+            btn:SetBackdropColor(0.15, 0.15, 0.15, 1)
+        end
+        
+        btn:SetScript("OnClick", function(self)
+            content.selectedProfile = self.profileName
+            VB:RefreshProfilesTab()
+        end)
+        btn:SetScript("OnDoubleClick", function(self)
+            VB:SwitchProfile(self.profileName)
+            VB:RefreshProfilesTab()
+        end)
+        btn:SetScript("OnEnter", function(self)
+            self:SetBackdropColor(0.25, 0.25, 0.35, 1)
+        end)
+        btn:SetScript("OnLeave", function(self)
+            local sel = (self.profileName == content.selectedProfile)
+            local act = (self.profileName == VB:GetActiveProfileName())
+            if sel then
+                self:SetBackdropColor(0.3, 0.3, 0.5, 1)
+            elseif act then
+                self:SetBackdropColor(0.2, 0.2, 0.3, 1)
+            else
+                self:SetBackdropColor(0.15, 0.15, 0.15, 1)
+            end
+        end)
+        
+        btn:Show()
+    end
+end
+
+-------------------------------------------------
+-- Profile Name Input Dialog
+-------------------------------------------------
+local profileDialog = nil
+
+function VB:ShowProfileNameDialog(mode)
+    if not profileDialog then
+        profileDialog = CreateFrame("Frame", "VoidBoxProfileDialog", UIParent, "BackdropTemplate")
+        profileDialog:SetSize(280, 120)
+        profileDialog:SetPoint("CENTER")
+        profileDialog:SetBackdrop({
+            bgFile = "Interface\\Buttons\\WHITE8x8",
+            edgeFile = "Interface\\Buttons\\WHITE8x8",
+            edgeSize = 2,
+        })
+        profileDialog:SetBackdropColor(0.1, 0.1, 0.1, 0.98)
+        profileDialog:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+        profileDialog:SetFrameStrata("FULLSCREEN_DIALOG")
+        profileDialog:SetMovable(true)
+        profileDialog:EnableMouse(true)
+        profileDialog:RegisterForDrag("LeftButton")
+        profileDialog:SetScript("OnDragStart", profileDialog.StartMoving)
+        profileDialog:SetScript("OnDragStop", profileDialog.StopMovingOrSizing)
+        profileDialog:Hide()
+        
+        local title = profileDialog:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        title:SetPoint("TOP", 0, -10)
+        profileDialog.title = title
+        
+        local closeBtn = CreateFrame("Button", nil, profileDialog, "UIPanelCloseButton")
+        closeBtn:SetPoint("TOPRIGHT", -5, -5)
+        
+        local editBox = CreateFrame("EditBox", nil, profileDialog, "BackdropTemplate")
+        editBox:SetSize(240, 25)
+        editBox:SetPoint("CENTER", 0, 0)
+        editBox:SetBackdrop({
+            bgFile = "Interface\\Buttons\\WHITE8x8",
+            edgeFile = "Interface\\Buttons\\WHITE8x8",
+            edgeSize = 1,
+        })
+        editBox:SetBackdropColor(0.15, 0.15, 0.15, 1)
+        editBox:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+        editBox:SetFontObject(GameFontNormal)
+        editBox:SetAutoFocus(true)
+        editBox:SetMaxLetters(30)
+        editBox:SetTextInsets(6, 6, 0, 0)
+        profileDialog.editBox = editBox
+        
+        local okBtn = CreateFrame("Button", nil, profileDialog, "BackdropTemplate")
+        okBtn:SetSize(80, 25)
+        okBtn:SetPoint("BOTTOM", 0, 10)
+        okBtn:SetBackdrop({
+            bgFile = "Interface\\Buttons\\WHITE8x8",
+            edgeFile = "Interface\\Buttons\\WHITE8x8",
+            edgeSize = 1,
+        })
+        okBtn:SetBackdropColor(0.2, 0.2, 0.5, 1)
+        okBtn:SetBackdropBorderColor(0.4, 0.4, 0.7, 1)
+        local okText = okBtn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        okText:SetPoint("CENTER")
+        okText:SetText(VB.L["CONFIRM"])
+        profileDialog.okBtn = okBtn
+        
+        editBox:SetScript("OnEnterPressed", function() okBtn:Click() end)
+        editBox:SetScript("OnEscapePressed", function() profileDialog:Hide() end)
+        
+        tinsert(UISpecialFrames, "VoidBoxProfileDialog")
+    end
+    
+    profileDialog.mode = mode
+    profileDialog.editBox:SetText("")
+    
+    if mode == "new" then
+        profileDialog.title:SetText(VB.L["PROFILE_NEW"])
+    elseif mode == "copy" then
+        profileDialog.title:SetText(VB.L["PROFILE_COPY"])
+    end
+    
+    profileDialog.okBtn:SetScript("OnClick", function()
+        local name = profileDialog.editBox:GetText():trim()
+        if name == "" then return end
+        
+        if VoidBoxDB.profiles[name] then
+            VB:Print(VB.L["PROFILE_EXISTS"])
+            return
+        end
+        
+        if profileDialog.mode == "new" then
+            VB:CreateProfile(name)
+        elseif profileDialog.mode == "copy" then
+            local src = configFrame.profilesContent.selectedProfile or VB:GetActiveProfileName()
+            VB:CopyProfile(src, name)
+        end
+        
+        profileDialog:Hide()
+        VB:RefreshProfilesTab()
+    end)
+    
+    profileDialog:Show()
+    profileDialog.editBox:SetFocus()
 end

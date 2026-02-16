@@ -145,19 +145,70 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
     end
 end)
 
+-- Profile keys (appearance/layout settings that belong in a profile)
+VB.profileKeys = {
+    "frameWidth", "frameHeight", "frameSpacing", "maxColumns",
+    "orientation", "roleOrder", "growthDirection",
+    "showPowerBar", "powerBarHeight",
+    "texture", "font", "fontSize",
+    "showName", "showHealth", "healthFormat",
+    "classColors", "locked", "position",
+}
+
 -------------------------------------------------
 -- Initialization
 -------------------------------------------------
 function VB:OnAddonLoaded()
     if not VoidBoxDB then
-        VoidBoxDB = VB:CopyTable(VB.defaults)
-    else
-        VB:MergeDefaults(VoidBoxDB, VB.defaults)
+        VoidBoxDB = {}
     end
     
     VB.playerClass = select(2, UnitClass("player"))
     
-    -- Click-castings par classe
+    -- === Profile system migration ===
+    -- If no profiles table exists, migrate existing flat config into "Default" profile
+    if not VoidBoxDB.profiles then
+        VoidBoxDB.profiles = {}
+        local defaultProfile = {}
+        for _, key in ipairs(VB.profileKeys) do
+            if VoidBoxDB[key] ~= nil then
+                defaultProfile[key] = VoidBoxDB[key]
+                VoidBoxDB[key] = nil  -- clean up root level
+            end
+        end
+        -- Merge defaults for any missing keys
+        for _, key in ipairs(VB.profileKeys) do
+            if defaultProfile[key] == nil and VB.defaults[key] ~= nil then
+                defaultProfile[key] = VB:CopyTable(VB.defaults[key])
+            end
+        end
+        VoidBoxDB.profiles["Default"] = defaultProfile
+        VoidBoxDB.activeProfile = "Default"
+    end
+    
+    if not VoidBoxDB.activeProfile or not VoidBoxDB.profiles[VoidBoxDB.activeProfile] then
+        VoidBoxDB.activeProfile = "Default"
+    end
+    if not VoidBoxDB.profiles["Default"] then
+        local defaultProfile = {}
+        for _, key in ipairs(VB.profileKeys) do
+            defaultProfile[key] = VB:CopyTable(VB.defaults[key])
+        end
+        VoidBoxDB.profiles["Default"] = defaultProfile
+    end
+    
+    -- Merge defaults into active profile for any missing keys
+    local activeProfile = VoidBoxDB.profiles[VoidBoxDB.activeProfile]
+    for _, key in ipairs(VB.profileKeys) do
+        if activeProfile[key] == nil and VB.defaults[key] ~= nil then
+            activeProfile[key] = VB:CopyTable(VB.defaults[key])
+        end
+    end
+    
+    -- VB.config points to the active profile
+    VB.config = activeProfile
+    
+    -- === Click-castings per class (global, not per profile) ===
     if not VoidBoxDB.classBindings then
         VoidBoxDB.classBindings = {}
     end
@@ -182,10 +233,6 @@ function VB:OnAddonLoaded()
         VoidBoxDB.classBindings[VB.playerClass] = VB:CopyTable(VB.defaults.clickCastings)
     end
     
-    VB.config = VoidBoxDB
-    -- Always clean up stale clickCastings key from VoidBoxDB root
-    -- (was written by previous versions via VB.config.clickCastings)
-    VoidBoxDB.clickCastings = nil
     -- Runtime reference to class-specific bindings
     VB.clickCastings = VoidBoxDB.classBindings[VB.playerClass]
     
@@ -202,6 +249,95 @@ function VB:MergeDefaults(saved, defaults)
             end
         end
     end
+end
+
+-------------------------------------------------
+-- Profile Management
+-------------------------------------------------
+function VB:GetProfileList()
+    local list = {}
+    if VoidBoxDB and VoidBoxDB.profiles then
+        for name in pairs(VoidBoxDB.profiles) do
+            table.insert(list, name)
+        end
+    end
+    table.sort(list)
+    return list
+end
+
+function VB:GetActiveProfileName()
+    return VoidBoxDB and VoidBoxDB.activeProfile or "Default"
+end
+
+function VB:SwitchProfile(name)
+    if not VoidBoxDB.profiles[name] then return false end
+    if InCombatLockdown() then
+        VB:Print(VB.L["CANNOT_CONFIG_COMBAT"])
+        return false
+    end
+    
+    VoidBoxDB.activeProfile = name
+    VB.config = VoidBoxDB.profiles[name]
+    
+    -- Merge defaults for any missing keys
+    for _, key in ipairs(VB.profileKeys) do
+        if VB.config[key] == nil and VB.defaults[key] ~= nil then
+            VB.config[key] = VB:CopyTable(VB.defaults[key])
+        end
+    end
+    
+    -- Refresh UI
+    if VB.frames.main then
+        local pos = VB.config.position
+        if pos and pos.point then
+            VB.frames.main:ClearAllPoints()
+            VB.frames.main:SetPoint(pos.point, UIParent, pos.relPoint or pos.point, pos.x or 0, pos.y or 0)
+        end
+        VB.frames.main:EnableMouse(not VB.config.locked)
+        if VB.frames.handle then
+            VB.frames.handle:SetShown(not VB.config.locked)
+        end
+    end
+    VB:UpdateAllFrames()
+    VB:ApplyClickCastingsToAllFrames()
+    
+    VB:Print(VB.L["PROFILE_SWITCHED"] .. " " .. name)
+    return true
+end
+
+function VB:CreateProfile(name)
+    if not name or name == "" then return false end
+    if VoidBoxDB.profiles[name] then return false end
+    
+    -- New profile from defaults
+    local profile = {}
+    for _, key in ipairs(VB.profileKeys) do
+        profile[key] = VB:CopyTable(VB.defaults[key])
+    end
+    VoidBoxDB.profiles[name] = profile
+    return true
+end
+
+function VB:CopyProfile(srcName, destName)
+    if not destName or destName == "" then return false end
+    if not VoidBoxDB.profiles[srcName] then return false end
+    if VoidBoxDB.profiles[destName] then return false end
+    
+    VoidBoxDB.profiles[destName] = VB:CopyTable(VoidBoxDB.profiles[srcName])
+    return true
+end
+
+function VB:DeleteProfile(name)
+    if name == "Default" then return false end  -- Can't delete Default
+    if not VoidBoxDB.profiles[name] then return false end
+    
+    VoidBoxDB.profiles[name] = nil
+    
+    -- If we deleted the active profile, switch to Default
+    if VoidBoxDB.activeProfile == name then
+        VB:SwitchProfile("Default")
+    end
+    return true
 end
 
 function VB:OnPlayerLogin()
@@ -473,6 +609,19 @@ SlashCmdList["VOIDBOX"] = function(msg)
         VB:Print(VB.L["POS_RESET"])
     elseif msg == "config" or msg == "options" then
         VB:ShowConfig()
+    elseif msg:find("^profile%s+") then
+        local profileName = msg:match("^profile%s+(.+)")
+        if profileName then
+            profileName = profileName:trim()
+            if VoidBoxDB.profiles[profileName] then
+                VB:SwitchProfile(profileName)
+            else
+                VB:Print(VB.L["PROFILES"] .. ": " .. table.concat(VB:GetProfileList(), ", "))
+            end
+        end
+    elseif msg == "profile" or msg == "profiles" then
+        VB:Print(VB.L["ACTIVE_PROFILE"] .. ": |cFF9966FF" .. VB:GetActiveProfileName() .. "|r")
+        VB:Print(VB.L["PROFILES"] .. ": " .. table.concat(VB:GetProfileList(), ", "))
     elseif msg == "debughealth" then
         VB:Print("=== Debug Health Values ===")
         local units = VB:GetUnitsToDisplay()
