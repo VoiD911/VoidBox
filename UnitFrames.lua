@@ -252,6 +252,16 @@ function VB:UpdateRole(button)
     local roleIcon = button.roleIcon
     local role = UnitGroupRolesAssigned(unit)
     
+    -- Fallback: use spec role when solo or role not assigned
+    if (not role or role == "NONE") and UnitIsUnit(unit, "player") then
+        if GetSpecialization and GetSpecializationRole then
+            local spec = GetSpecialization()
+            if spec then
+                role = GetSpecializationRole(spec)
+            end
+        end
+    end
+    
     if role == "TANK" then
         roleIcon:SetAtlas("roleicon-tank")
         roleIcon:SetVertexColor(1, 1, 1, 1)
