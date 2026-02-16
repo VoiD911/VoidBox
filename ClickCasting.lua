@@ -45,9 +45,9 @@ end
 
 -------------------------------------------------
 -- Mousewheel Support
--- Uses SetBindingClick via OnEnter/OnLeave to bind MOUSEWHEELUP/DOWN
--- to virtual Button6/Button7 clicks on the hovered unit button.
--- This is the standard approach used by Clique and similar addons.
+-- Wraps the button's own OnEnter/OnLeave with secure snippets that
+-- set/clear MOUSEWHEELUP/DOWN override bindings.
+-- No overlay frame needed — clicks pass through normally.
 -------------------------------------------------
 function VB:SetupMouseWheel(button)
     -- Check if any scroll binding exists
@@ -59,38 +59,31 @@ function VB:SetupMouseWheel(button)
         end
     end
     
-    -- Already set up — just toggle visibility of the header
-    if button._vbWheelHeader then
-        button._vbWheelHeader:SetShown(hasScroll)
-        if hasScroll then button:EnableMouseWheel(true) end
+    if button._vbWheelSetup then
+        -- Already wrapped — just toggle mousewheel
+        button:EnableMouseWheel(hasScroll)
         return
     end
     
     if not hasScroll then return end
     
-    button:EnableMouseWheel(true)
-    
     local btnName = button:GetName()
     if not btnName then return end
     
-    -- Use a secure header to set/clear override bindings on enter/leave
-    -- EnableMouse(false) so it doesn't intercept clicks meant for the button
-    local header = CreateFrame("Frame", nil, button, "SecureHandlerEnterLeaveTemplate")
-    header:SetAllPoints(button)
-    header:EnableMouse(false)
+    button:EnableMouseWheel(true)
+    button._vbWheelSetup = true
     
-    header:SetAttribute("_onenter", [[
-        local btn = self:GetParent():GetName()
+    -- Wrap the button's own OnEnter/OnLeave with secure binding overrides
+    SecureHandlerWrapScript(button, "OnEnter", button, [[
+        local btn = self:GetName()
         if btn then
             self:SetBindingClick(true, "MOUSEWHEELUP", btn, "Button6")
             self:SetBindingClick(true, "MOUSEWHEELDOWN", btn, "Button7")
         end
     ]])
-    header:SetAttribute("_onleave", [[
+    SecureHandlerWrapScript(button, "OnLeave", button, [[
         self:ClearBindings()
     ]])
-    
-    button._vbWheelHeader = header
 end
 
 function VB:GetAttributeKey(modifier, mouseButton)
