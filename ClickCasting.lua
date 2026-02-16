@@ -44,28 +44,51 @@ function VB:InitClickCastings()
 end
 
 -------------------------------------------------
--- Mousewheel Secure Handler
--- Converts OnMouseWheel delta into virtual Click("Button6"/"Button7")
--- so they flow through the SecureActionButton attribute system.
--- Button6 = ScrollUp, Button7 = ScrollDown (convention used by Clique/VuhDo)
+-- Mousewheel Support
+-- Uses SetBindingClick via OnEnter/OnLeave to bind MOUSEWHEELUP/DOWN
+-- to virtual Button6/Button7 clicks on the hovered unit button.
+-- This is the standard approach used by Clique and similar addons.
 -------------------------------------------------
 function VB:SetupMouseWheel(button)
-    if button._vbMouseWheelSetup then return end
-    button._vbMouseWheelSetup = true
+    -- Check if any scroll binding exists
+    local hasScroll = false
+    for _, binding in ipairs(VB.clickCastings) do
+        if binding[1] and (binding[1]:find("type6") or binding[1]:find("type7")) then
+            hasScroll = true
+            break
+        end
+    end
+    
+    -- Already set up — just toggle visibility of the header
+    if button._vbWheelHeader then
+        button._vbWheelHeader:SetShown(hasScroll)
+        if hasScroll then button:EnableMouseWheel(true) end
+        return
+    end
+    
+    if not hasScroll then return end
     
     button:EnableMouseWheel(true)
     
-    -- Secure snippet: convert mousewheel delta to a virtual button click
-    -- In SecureHandlerWrapScript, the delta is passed as 'message' (not '...')
-    -- self:Click("Button6") / self:Click("Button7") triggers the attribute
-    -- system with type6/spell6 or type7/spell7 respectively
-    SecureHandlerWrapScript(button, "OnMouseWheel", button, [[
-        if message > 0 then
-            self:Click("Button6")
-        else
-            self:Click("Button7")
+    local btnName = button:GetName()
+    if not btnName then return end
+    
+    -- Use a secure header to set/clear override bindings on enter/leave
+    local header = CreateFrame("Frame", nil, button, "SecureHandlerEnterLeaveTemplate")
+    header:SetAllPoints(button)
+    
+    header:SetAttribute("_onenter", [[
+        local btn = self:GetParent():GetName()
+        if btn then
+            self:SetBindingClick(true, "MOUSEWHEELUP", btn, "Button6")
+            self:SetBindingClick(true, "MOUSEWHEELDOWN", btn, "Button7")
         end
     ]])
+    header:SetAttribute("_onleave", [[
+        self:ClearBindings()
+    ]])
+    
+    button._vbWheelHeader = header
 end
 
 function VB:GetAttributeKey(modifier, mouseButton)
