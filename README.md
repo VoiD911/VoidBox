@@ -21,7 +21,7 @@ Compatible with **WoW 12.0 Midnight** (secret values, new APIs).
 - Mousewheel scroll bindings (with modifier support)
 - Profile system (layout/appearance profiles)
 - Indicators:
-  - Role (tank/heal/dps) — colored square, top-left
+  - Role (tank/heal/dps) — atlas icon, centered
   - Active HOTs/shields — green square, bottom-right
   - Dispellable debuffs — icons, bottom-left (max 3)
   - Threat (red/yellow border)

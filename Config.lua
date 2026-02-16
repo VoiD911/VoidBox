@@ -668,7 +668,7 @@ function VB:CreateAppearanceTab()
     widthSlider:SetPoint("TOPLEFT", 10, yOffset)
     yOffset = yOffset - 50
     
-    local heightSlider = CreateSimpleSlider(content, VB.L["HEIGHT"], 20, 80, 5, VB.config.frameHeight, function(value)
+    local heightSlider = CreateSimpleSlider(content, VB.L["HEIGHT"], 45, 80, 5, VB.config.frameHeight, function(value)
         VB.config.frameHeight = value
         if not InCombatLockdown() then VB:UpdateAllFrames() end
     end)

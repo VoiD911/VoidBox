@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.2.2 (2026-02-16)
+
+- New: real role icons (shield/cross/sword) instead of colored squares, centered on health bar
+- New: role icon updates automatically on spec change (no reload needed)
+- New: role icon visible even when solo (uses current spec)
+- Fix: name text now truncates dynamically based on frame width (no more overflow)
+- Change: default frame height raised to 45, minimum height set to 45
+- Change: role icon size increased to 12x12
+
 ## v1.2.1 (2026-02-16)
 
 - Fix: mousewheel bindings were blocking normal click-casting (overlay frame removed, now uses WrapScript on button OnEnter/OnLeave)

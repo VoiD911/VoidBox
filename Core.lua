@@ -20,7 +20,7 @@ VB.groupType = "solo" -- solo, party, raid
 -- Defaults
 VB.defaults = {
     frameWidth = 80,
-    frameHeight = 40,
+    frameHeight = 45,
     frameSpacing = 2,
     maxColumns = 5,
     orientation = "HORIZONTAL", -- HORIZONTAL or VERTICAL
@@ -129,9 +129,14 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
     elseif event == "GROUP_ROSTER_UPDATE" then
         VB:OnGroupRosterUpdate()
     elseif event == "PLAYER_SPECIALIZATION_CHANGED" then
+        -- This event fires with no args or "player" depending on context
         local unit = ...
-        if unit == "player" then
+        if not unit or unit == "player" then
             VB:OnSpecChanged()
+            -- Refresh role icons (spec change = role change)
+            for _, button in pairs(VB.unitButtons) do
+                VB:UpdateRole(button)
+            end
         end
     elseif event == "PLAYER_REGEN_ENABLED" then
         if VB.pendingUpdate then
@@ -622,6 +627,25 @@ SlashCmdList["VOIDBOX"] = function(msg)
     elseif msg == "profile" or msg == "profiles" then
         VB:Print(VB.L["ACTIVE_PROFILE"] .. ": |cFF9966FF" .. VB:GetActiveProfileName() .. "|r")
         VB:Print(VB.L["PROFILES"] .. ": " .. table.concat(VB:GetProfileList(), ", "))
+    elseif msg == "debugrole" then
+        VB:Print("=== Debug Role Icons ===")
+        local units = VB:GetUnitsToDisplay()
+        for _, unit in ipairs(units) do
+            if UnitExists(unit) then
+                local name = UnitName(unit) or "?"
+                local role = UnitGroupRolesAssigned(unit) or "NONE"
+                local specRole = "N/A"
+                if UnitIsUnit(unit, "player") and GetSpecialization and GetSpecializationRole then
+                    local spec = GetSpecialization()
+                    if spec then specRole = GetSpecializationRole(spec) or "nil" end
+                end
+                local btn = VB.unitButtons[unit]
+                local iconShown = btn and btn.roleIcon and btn.roleIcon:IsShown() or false
+                local iconTex = btn and btn.roleIcon and btn.roleIcon:GetTexture() or "nil"
+                local iconAlpha = btn and btn.roleIcon and btn.roleIcon:GetAlpha() or 0
+                VB:Print("  " .. name .. " (" .. unit .. "): role=" .. role .. " specRole=" .. specRole .. " shown=" .. tostring(iconShown) .. " tex=" .. tostring(iconTex) .. " alpha=" .. tostring(iconAlpha))
+            end
+        end
     elseif msg == "debughealth" then
         VB:Print("=== Debug Health Values ===")
         local units = VB:GetUnitsToDisplay()

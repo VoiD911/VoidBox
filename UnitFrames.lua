@@ -92,7 +92,7 @@ function VB:CreateUnitButton(unit, index)
     
     -- Role indicator (atlas icon, centered between name and health text)
     local roleIcon = healthBar:CreateTexture(nil, "OVERLAY", nil, 7)
-    roleIcon:SetSize(10, 10)
+    roleIcon:SetSize(12, 12)
     roleIcon:SetPoint("CENTER", healthBar, "CENTER", 0, 0)
     roleIcon:Hide()
     button.roleIcon = roleIcon
@@ -218,8 +218,11 @@ function VB:UpdateName(button)
     end
     local name = UnitName(unit)
     if name then
-        if #name > 10 then
-            name = name:sub(1, 10) .. "..."
+        -- Truncate based on frame width: ~1 char per 7px, minus padding
+        local maxChars = math.floor((VB.config.frameWidth - 6) / 7)
+        if maxChars < 3 then maxChars = 3 end
+        if #name > maxChars then
+            name = name:sub(1, maxChars) .. ".."
         end
         button.nameText:SetText(name)
     end
@@ -245,6 +248,15 @@ function VB:UpdateStatus(button)
     end
 end
 
+-- Role icon atlas/texture data
+-- Primary: SetAtlas with standard role icon names
+-- Fallback: manual texture + texcoords from the LFG portrait roles sheet
+local roleAtlasNames = {
+    TANK    = "roleicon-tank",
+    HEALER  = "roleicon-healer",
+    DAMAGER = "roleicon-dps",
+}
+
 function VB:UpdateRole(button)
     local unit = button.unit
     if not unit or not UnitExists(unit) then return end
@@ -262,17 +274,25 @@ function VB:UpdateRole(button)
         end
     end
     
-    if role == "TANK" then
-        roleIcon:SetAtlas("roleicon-tank")
-        roleIcon:SetVertexColor(1, 1, 1, 1)
-        roleIcon:Show()
-    elseif role == "HEALER" then
-        roleIcon:SetAtlas("roleicon-healer")
-        roleIcon:SetVertexColor(1, 1, 1, 1)
-        roleIcon:Show()
-    elseif role == "DAMAGER" then
-        roleIcon:SetAtlas("roleicon-dps")
-        roleIcon:SetVertexColor(1, 1, 1, 1)
+    local atlas = roleAtlasNames[role]
+    if atlas then
+        -- Clear texture first to force atlas refresh (same fileID, different texcoords)
+        roleIcon:SetTexture(nil)
+        roleIcon:SetTexCoord(0, 1, 0, 1)
+        -- Try atlas first (most reliable in modern WoW)
+        local ok = pcall(function() roleIcon:SetAtlas(atlas, false) end)
+        if not ok or not roleIcon:GetTexture() then
+            -- Fallback: use the LFG role texture sheet with string path
+            roleIcon:SetTexture("Interface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES")
+            if role == "TANK" then
+                roleIcon:SetTexCoord(0, 19/64, 22/64, 41/64)
+            elseif role == "HEALER" then
+                roleIcon:SetTexCoord(20/64, 39/64, 1/64, 20/64)
+            elseif role == "DAMAGER" then
+                roleIcon:SetTexCoord(20/64, 39/64, 22/64, 41/64)
+            end
+        end
+        roleIcon:SetSize(12, 12)
         roleIcon:Show()
     else
         roleIcon:Hide()
