@@ -1,14 +1,18 @@
 # Changelog
 
+## v1.2.1 (2026-02-16)
+
+- Fix: mousewheel bindings were blocking normal click-casting (overlay frame removed, now uses WrapScript on button OnEnter/OnLeave)
+
 ## v1.2.0 (2026-02-15)
 
-- New: mousewheel scroll up/down binding support (via SecureHandlerEnterLeaveTemplate)
+- New: mousewheel scroll up/down binding support
 - New: macro drag & drop from the macro UI to binding slots
 - New: profile system — create, copy, delete, switch layout/appearance profiles
 - New: `/vb profile` and `/vb profile <name>` slash commands
 - Fix: comprehensive secret value audit (SafeBool helper, PowerBarColor, UnitHasIncomingResurrection)
 
-## v1.1.3 (2026-02-12)
+## v1.1.3 (2026-02-15)
 
 - Fix: secret value spellId crash ("table index is secret") when checking heal buffs in 12.0+
 - Fix: isStealable secret boolean crash — now converted at storage time via SafeBool helper
