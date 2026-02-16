@@ -56,10 +56,11 @@ function VB:SetupMouseWheel(button)
     button:EnableMouseWheel(true)
     
     -- Secure snippet: convert mousewheel delta to a virtual button click
+    -- In SecureHandlerWrapScript, the delta is passed as 'message' (not '...')
     -- self:Click("Button6") / self:Click("Button7") triggers the attribute
     -- system with type6/spell6 or type7/spell7 respectively
     SecureHandlerWrapScript(button, "OnMouseWheel", button, [[
-        if ... > 0 then
+        if message > 0 then
             self:Click("Button6")
         else
             self:Click("Button7")
