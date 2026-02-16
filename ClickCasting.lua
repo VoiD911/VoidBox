@@ -74,8 +74,10 @@ function VB:SetupMouseWheel(button)
     if not btnName then return end
     
     -- Use a secure header to set/clear override bindings on enter/leave
+    -- EnableMouse(false) so it doesn't intercept clicks meant for the button
     local header = CreateFrame("Frame", nil, button, "SecureHandlerEnterLeaveTemplate")
     header:SetAllPoints(button)
+    header:EnableMouse(false)
     
     header:SetAttribute("_onenter", [[
         local btn = self:GetParent():GetName()
