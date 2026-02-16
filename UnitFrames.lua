@@ -90,10 +90,10 @@ function VB:CreateUnitButton(unit, index)
     statusIcon:Hide()
     button.statusIcon = statusIcon
     
-    -- Role indicator (petit carré coloré en haut à gauche)
+    -- Role indicator (atlas icon, top-left)
     local roleIcon = healthBar:CreateTexture(nil, "OVERLAY", nil, 7)
-    roleIcon:SetSize(6, 6)
-    roleIcon:SetPoint("TOPLEFT", healthBar, "TOPLEFT", 2, -2)
+    roleIcon:SetSize(10, 10)
+    roleIcon:SetPoint("TOPLEFT", healthBar, "TOPLEFT", 1, -1)
     roleIcon:Hide()
     button.roleIcon = roleIcon
     
@@ -253,19 +253,16 @@ function VB:UpdateRole(button)
     local role = UnitGroupRolesAssigned(unit)
     
     if role == "TANK" then
-        -- Petit carré bleu
-        roleIcon:SetTexture("Interface\\Buttons\\WHITE8x8")
-        roleIcon:SetVertexColor(0.2, 0.6, 1, 1)
+        roleIcon:SetAtlas("roleicon-tank")
+        roleIcon:SetVertexColor(1, 1, 1, 1)
         roleIcon:Show()
     elseif role == "HEALER" then
-        -- Petit carré vert
-        roleIcon:SetTexture("Interface\\Buttons\\WHITE8x8")
-        roleIcon:SetVertexColor(0, 1, 0.4, 1)
+        roleIcon:SetAtlas("roleicon-healer")
+        roleIcon:SetVertexColor(1, 1, 1, 1)
         roleIcon:Show()
     elseif role == "DAMAGER" then
-        -- Petit carré rouge
-        roleIcon:SetTexture("Interface\\Buttons\\WHITE8x8")
-        roleIcon:SetVertexColor(1, 0.2, 0.2, 1)
+        roleIcon:SetAtlas("roleicon-dps")
+        roleIcon:SetVertexColor(1, 1, 1, 1)
         roleIcon:Show()
     else
         roleIcon:Hide()
