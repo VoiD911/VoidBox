@@ -221,7 +221,7 @@ function VB:RefreshBindingsList()
         slot:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset)
         
         slot.keyText:SetText(VB:GetBindingDisplayText(binding[1]))
-        slot.actionText:SetText(VB:GetActionDisplayText(binding[2], binding[3]))
+        slot.actionText:SetText(VB:GetActionDisplayText(binding[2], binding[3], binding[4]))
         slot.bindingIndex = i
         
         slot:Show()
@@ -278,16 +278,30 @@ function VB:GetOrCreateBindingSlot(index)
     
     slot:RegisterForDrag("LeftButton")
     slot:SetScript("OnReceiveDrag", function(self)
+        if not self.bindingIndex then return end
+        local binding = VB.clickCastings[self.bindingIndex]
+        if not binding then return end
+        
+        -- Try spell first
         local spellID, spellName = VB:GetCursorSpell()
-        if spellID and self.bindingIndex then
-            local binding = VB.clickCastings[self.bindingIndex]
-            if binding then
-                binding[2] = "spell"
-                binding[3] = spellID
-                VB:ApplyClickCastingsToAllFrames()
-                VB:RefreshBindingsList()
-                ClearCursor()
-            end
+        if spellID then
+            binding[2] = "spell"
+            binding[3] = spellID
+            VB:ApplyClickCastingsToAllFrames()
+            VB:RefreshBindingsList()
+            ClearCursor()
+            return
+        end
+        
+        -- Try macro
+        local macroName, macroIcon, macroBody = VB:GetCursorMacro()
+        if macroName and macroBody then
+            binding[2] = "macro"
+            binding[3] = macroBody
+            binding[4] = macroName  -- store name for display
+            VB:ApplyClickCastingsToAllFrames()
+            VB:RefreshBindingsList()
+            ClearCursor()
         end
     end)
     
@@ -494,6 +508,7 @@ function VB:CreateAddBindingDialog()
     
     local actionDropdown = CreateSimpleDropdown(addDialog, 180, {
         { text = VB.L["ACTION_SPELL"], value = "spell" },
+        { text = VB.L["ACTION_MACRO"], value = "macro" },
         { text = VB.L["ACTION_TARGET"], value = "target" },
         { text = VB.L["ACTION_FOCUS"], value = "focus" },
         { text = VB.L["ACTION_MENU"], value = "togglemenu" },
@@ -516,26 +531,43 @@ function VB:CreateAddBindingDialog()
     
     local dropText = dropZone:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     dropText:SetPoint("CENTER")
-    dropText:SetText("|cFFAAAAFF" .. VB.L["DROP_SPELL_HERE"] .. "|r")
+    dropText:SetText("|cFFAAAAFF" .. VB.L["DROP_SPELL_MACRO"] .. "|r")
     addDialog.dropText = dropText
     addDialog.dropZone = dropZone
     addDialog.selectedSpell = nil
+    addDialog.selectedMacro = nil
     
     dropZone:SetScript("OnReceiveDrag", function()
+        -- Try spell first
         local spellID, spellName, spellIcon = VB:GetCursorSpell()
         if spellID and spellName then
             addDialog.selectedSpell = spellID
+            addDialog.selectedMacro = nil
             addDialog.actionDropdown.selectedValue = "spell"
             addDialog.actionDropdown.text:SetText(VB.L["ACTION_SPELL"])
             local iconStr = spellIcon and ("|T" .. spellIcon .. ":20|t ") or ""
             dropText:SetText(iconStr .. spellName)
+            ClearCursor()
+            return
+        end
+        
+        -- Try macro
+        local macroName, macroIcon, macroBody = VB:GetCursorMacro()
+        if macroName and macroBody then
+            addDialog.selectedSpell = nil
+            addDialog.selectedMacro = { name = macroName, body = macroBody }
+            addDialog.actionDropdown.selectedValue = "macro"
+            addDialog.actionDropdown.text:SetText(VB.L["ACTION_MACRO"])
+            local iconStr = macroIcon and ("|T" .. macroIcon .. ":20|t ") or ""
+            dropText:SetText(iconStr .. macroName)
             ClearCursor()
         end
     end)
     
     dropZone:SetScript("OnClick", function()
         addDialog.selectedSpell = nil
-        dropText:SetText("|cFFAAAAFF" .. VB.L["DROP_SPELL_HERE"] .. "|r")
+        addDialog.selectedMacro = nil
+        dropText:SetText("|cFFAAAAFF" .. VB.L["DROP_SPELL_MACRO"] .. "|r")
     end)
     
     local confirmBtn = CreateFrame("Button", nil, addDialog, "BackdropTemplate")
@@ -568,6 +600,11 @@ function VB:ConfirmAddBinding()
         return
     end
     
+    if actionType == "macro" and not addDialog.selectedMacro then
+        VB:Print(VB.L["DRAG_MACRO_FIRST"])
+        return
+    end
+    
     local parts = {}
     if addDialog.shiftCB:GetChecked() then table.insert(parts, "shift") end
     if addDialog.ctrlCB:GetChecked() then table.insert(parts, "ctrl") end
@@ -577,11 +614,15 @@ function VB:ConfirmAddBinding()
     local mouseButton = addDialog.mouseDropdown.selectedValue or "Left"
     
     local actionValue = nil
+    local macroName = nil
     if actionType == "spell" then
         actionValue = addDialog.selectedSpell
+    elseif actionType == "macro" then
+        actionValue = addDialog.selectedMacro.body
+        macroName = addDialog.selectedMacro.name
     end
     
-    if VB:AddClickCasting(modifier, mouseButton, actionType, actionValue) then
+    if VB:AddClickCasting(modifier, mouseButton, actionType, actionValue, macroName) then
         VB:RefreshBindingsList()
         addDialog:Hide()
         
@@ -589,7 +630,8 @@ function VB:ConfirmAddBinding()
         addDialog.ctrlCB:SetChecked(false)
         addDialog.altCB:SetChecked(false)
         addDialog.selectedSpell = nil
-        addDialog.dropText:SetText("|cFFAAAAFF" .. VB.L["DROP_SPELL_HERE"] .. "|r")
+        addDialog.selectedMacro = nil
+        addDialog.dropText:SetText("|cFFAAAAFF" .. VB.L["DROP_SPELL_MACRO"] .. "|r")
         addDialog.actionDropdown.selectedValue = "spell"
         addDialog.actionDropdown.text:SetText(VB.L["ACTION_SPELL"])
     end

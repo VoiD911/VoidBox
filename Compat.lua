@@ -86,6 +86,24 @@ function VB:GetCursorSpell()
 end
 
 -------------------------------------------------
+-- Cursor Info Wrapper for Macros
+-- GetCursorInfo for macros returns: "macro", macroIndex
+-- We retrieve the macro body (macrotext) for SecureActionButton
+-------------------------------------------------
+function VB:GetCursorMacro()
+    local cursorType, id1 = GetCursorInfo()
+    
+    if cursorType == "macro" then
+        local macroName, macroIcon, macroBody = GetMacroInfo(id1)
+        if macroName then
+            return macroName, macroIcon, macroBody
+        end
+    end
+    
+    return nil
+end
+
+-------------------------------------------------
 -- Aura Wrapper
 -- UnitDebuff/UnitBuff deprecated since 11.0
 -- Use C_UnitAuras in 12.0+

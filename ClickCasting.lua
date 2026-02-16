@@ -156,7 +156,7 @@ function VB:ApplyClickCastingsToAllFrames()
     VB:Debug("Click castings applied to all frames")
 end
 
-function VB:AddClickCasting(modifier, mouseButton, actionType, actionValue)
+function VB:AddClickCasting(modifier, mouseButton, actionType, actionValue, displayName)
     if InCombatLockdown() then
         VB:Print(VB.L["CANNOT_BIND_COMBAT"])
         return false
@@ -170,13 +170,13 @@ function VB:AddClickCasting(modifier, mouseButton, actionType, actionValue)
     
     for i, binding in ipairs(VB.clickCastings) do
         if binding[1] == attrKey then
-            VB.clickCastings[i] = { attrKey, actionType, actionValue }
+            VB.clickCastings[i] = { attrKey, actionType, actionValue, displayName }
             VB:ApplyClickCastingsToAllFrames()
             return true
         end
     end
     
-    table.insert(VB.clickCastings, { attrKey, actionType, actionValue })
+    table.insert(VB.clickCastings, { attrKey, actionType, actionValue, displayName })
     VB:ApplyClickCastingsToAllFrames()
     return true
 end
@@ -215,7 +215,7 @@ function VB:GetBindingDisplayText(attrKey)
     return modifier .. buttonName
 end
 
-function VB:GetActionDisplayText(actionType, actionValue)
+function VB:GetActionDisplayText(actionType, actionValue, displayName)
     if actionType == "spell" then
         local spellName = actionValue
         if type(actionValue) == "number" then
@@ -223,6 +223,10 @@ function VB:GetActionDisplayText(actionType, actionValue)
         end
         return "|cFF00FF00" .. (spellName or "Spell") .. "|r"
     elseif actionType == "macro" then
+        local name = displayName or ""
+        if name ~= "" then
+            return "|cFFFFFF00Macro:|r " .. name
+        end
         local preview = actionValue or ""
         if #preview > 20 then preview = preview:sub(1, 20) .. "..." end
         return "|cFFFFFF00Macro:|r " .. preview
