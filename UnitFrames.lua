@@ -90,10 +90,10 @@ function VB:CreateUnitButton(unit, index)
     statusIcon:Hide()
     button.statusIcon = statusIcon
     
-    -- Role indicator (atlas icon, top-left)
+    -- Role indicator (atlas icon, centered between name and health text)
     local roleIcon = healthBar:CreateTexture(nil, "OVERLAY", nil, 7)
     roleIcon:SetSize(10, 10)
-    roleIcon:SetPoint("TOPLEFT", healthBar, "TOPLEFT", 1, -1)
+    roleIcon:SetPoint("CENTER", healthBar, "CENTER", 0, 0)
     roleIcon:Hide()
     button.roleIcon = roleIcon
     
