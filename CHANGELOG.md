@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.3.0 (2026-02-17)
+
+- New: percentage-based scaling system replacing fixed pixel width/height sliders
+  - Base frame 80×55px at 100%, scales from 50% to 150% (step 10%)
+  - Independent width and height scale sliders
+  - Live resizing — no /reload needed, frames update in real-time
+- New: debuff icons row (HARMFUL auras, max 4) with stack count badges
+  - Dark background badge overlapping bottom-right of icon
+  - Gold text, turns red at 5+ stacks
+  - Dynamically centered row (only visible icons count)
+- New: HOT/shield icons row (player-cast only, max 4) with stack badges
+  - Filters to known heal spell IDs (all healer classes supported)
+  - "+N" indicator bottom-right showing other healers' active HOTs/shields
+  - In-combat mode uses RAID_IN_COMBAT PLAYER filter
+- New: tooltip repositioned to bottom-right of screen (non-intrusive near raid frames)
+- Change: compact layout — Row1 (10px name+%), Row2 (21px debuffs), Row3 (12px HOTs), Row4 (4px power bar)
+- Change: all internal sizes (fonts, icons, badges, power bar) scale proportionally with height %
+
 ## v1.2.2 (2026-02-16)
 
 - New: real role icons (shield/cross/sword) instead of colored squares, centered on health bar

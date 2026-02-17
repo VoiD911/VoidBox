@@ -19,8 +19,10 @@ VB.groupType = "solo" -- solo, party, raid
 
 -- Defaults
 VB.defaults = {
-    frameWidth = 80,
-    frameHeight = 45,
+    frameWidth = 130,
+    frameHeight = 65,
+    scaleWidth = 100,
+    scaleHeight = 100,
     frameSpacing = 2,
     maxColumns = 5,
     orientation = "HORIZONTAL", -- HORIZONTAL or VERTICAL
@@ -153,6 +155,7 @@ end)
 -- Profile keys (appearance/layout settings that belong in a profile)
 VB.profileKeys = {
     "frameWidth", "frameHeight", "frameSpacing", "maxColumns",
+    "scaleWidth", "scaleHeight",
     "orientation", "roleOrder", "growthDirection",
     "showPowerBar", "powerBarHeight",
     "texture", "font", "fontSize",
@@ -500,14 +503,17 @@ function VB:UpdateAllFrames()
     
     local col, row = 0, 0
     local groupSize = VB.config.maxColumns or 5
-    local width = VB.config.frameWidth or 80
-    local height = VB.config.frameHeight or 40
+    -- Compute scaled frame size
+    local sw = (VB.config.scaleWidth or 100) / 100
+    local sh = (VB.config.scaleHeight or 100) / 100
+    local width = math.floor(80 * sw)
+    local height = math.floor(55 * sh)
     local spacing = VB.config.frameSpacing or 2
     local vertical = VB.config.orientation == "VERTICAL"
     
     for i, unit in ipairs(units) do
         local button = VB:GetOrCreateUnitButton(unit, i)
-        button:SetSize(width, height)
+        VB:ResizeUnitButton(button)
         
         local x, y
         if vertical then

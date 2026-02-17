@@ -14,22 +14,26 @@ Compatible with **WoW 12.0 Midnight** (secret values, new APIs).
 ## Features
 
 - Compact raid frames with health and mana bars
-- Click-casting
-- Health percentage
+- Click-casting with drag & drop from spellbook or macro UI
+- Health percentage display (secret-value safe)
 - Per-class bindings — all your priests share the same bindings
-- Drag & drop from the spellbook or macro UI to assign spells/macros
 - Mousewheel scroll bindings (with modifier support)
 - Profile system (layout/appearance profiles)
-- Indicators:
-  - Role (tank/heal/dps) — atlas icon, centered
-  - Active HOTs/shields — green square, bottom-right
-  - Dispellable debuffs — icons, bottom-left (max 3)
-  - Threat (red/yellow border)
-  - Range (reduced opacity when out of range)
-  - Dead / Disconnected / Incoming resurrection
-  - Ready check
-- Role sorting: Tank > DPS > Healer
-- Config UI: frame size, class colors, lock/unlock
+- Percentage-based scaling system (50%-150%, live preview, no reload)
+  - Base frame: 80×55px at 100% scale
+  - Independent width/height scale sliders (step 10%)
+- Aura indicators:
+  - Debuffs (HARMFUL): up to 4 icons with stack count badges, centered row
+  - HOTs/shields (player-cast only): up to 4 icons with stack badges, centered row
+  - "+N" indicator for other healers' HOTs/shields on the target
+  - Stack badges: dark background, gold text, red at 5+ stacks
+- Role icons (tank/heal/dps) — real atlas icons
+- Threat border (red/yellow)
+- Range check (reduced opacity when out of range)
+- Dead / Disconnected / Incoming resurrection / Ready check icons
+- Role sorting: Tank > DPS > Healer (6 presets)
+- Tooltip anchored to bottom-right of screen (non-intrusive)
+- Config UI: scaling, class colors, orientation, role order, lock/unlock
 - Theme color: purple (#9966FF)
 - Fully localized: enUS, frFR, deDE, esES, esMX, ptBR, itIT, ruRU, koKR, zhCN, zhTW
 

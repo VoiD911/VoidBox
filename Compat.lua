@@ -245,7 +245,7 @@ end
 -- Spell IDs de tous les HOTs et boucliers de heal connus
 -- Toutes classes confondues, toutes sources
 -------------------------------------------------
-local healBuffSpellIDs = {
+VB.healBuffSpellIDs = {
     -- Druide (Restoration / all specs)
     [774]    = true,  -- Rejuvenation / Récupération
     [155777] = true,  -- Rejuvenation (Germination)
@@ -326,7 +326,7 @@ function VB:UnitHasHealBuff(unit)
                 local ok, id = pcall(function()
                     return tonumber(string.format("%d", aura.spellId))
                 end)
-                if ok and id and healBuffSpellIDs[id] then
+                if ok and id and VB.healBuffSpellIDs[id] then
                     return true
                 end
             end
@@ -335,7 +335,7 @@ function VB:UnitHasHealBuff(unit)
         for i = 1, 40 do
             local name, _, _, _, _, _, _, _, _, spellID = UnitBuff(unit, i)
             if not name then break end
-            if spellID and healBuffSpellIDs[spellID] then
+            if spellID and VB.healBuffSpellIDs[spellID] then
                 return true
             end
         end

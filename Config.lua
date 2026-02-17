@@ -661,18 +661,18 @@ function VB:CreateAppearanceTab()
     sizeLabel:SetText(VB.L["FRAME_SIZE"])
     yOffset = yOffset - 20
     
-    local widthSlider = CreateSimpleSlider(content, VB.L["WIDTH"], 40, 150, 5, VB.config.frameWidth, function(value)
-        VB.config.frameWidth = value
+    local scaleWSlider = CreateSimpleSlider(content, VB.L["SCALE_WIDTH"], 50, 150, 10, VB.config.scaleWidth or 100, function(value)
+        VB.config.scaleWidth = value
         if not InCombatLockdown() then VB:UpdateAllFrames() end
     end)
-    widthSlider:SetPoint("TOPLEFT", 10, yOffset)
+    scaleWSlider:SetPoint("TOPLEFT", 10, yOffset)
     yOffset = yOffset - 50
     
-    local heightSlider = CreateSimpleSlider(content, VB.L["HEIGHT"], 45, 80, 5, VB.config.frameHeight, function(value)
-        VB.config.frameHeight = value
+    local scaleHSlider = CreateSimpleSlider(content, VB.L["SCALE_HEIGHT"], 50, 150, 10, VB.config.scaleHeight or 100, function(value)
+        VB.config.scaleHeight = value
         if not InCombatLockdown() then VB:UpdateAllFrames() end
     end)
-    heightSlider:SetPoint("TOPLEFT", 10, yOffset)
+    scaleHSlider:SetPoint("TOPLEFT", 10, yOffset)
     yOffset = yOffset - 55
     
     -- Group size slider

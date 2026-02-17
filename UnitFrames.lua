@@ -2,47 +2,120 @@
     VoidBox - Unit Frames Module
     Création des frames sécurisés pour le click-casting (compatible 12.0+)
     
-    Utilise SecureUnitButtonTemplate pour permettre le cast de sorts en combat
+    Layout at 100% scale (base 80x55):
+      Row 1 (11px): [RoleIcon] Name (left) + Health % (right)
+      Row 2 (20px): Debuff icons (HARMFUL, max 5) + stacks
+      Row 3 (12px): HOT/shield icons from PLAYER only (max 5) + other healer indicator
+      Row 4 (4px):  Power bar (mana, rage, etc.)
+      Padding: remaining pixels distributed as gaps
+    
+    Scaling: scaleW% and scaleH% multiply the base dimensions.
+    All internal sizes (fonts, icons, power bar) scale with scaleH.
 ]]
 
 local addonName, VB = ...
 
+-- Base dimensions at 100%
+local BASE_WIDTH = 80
+local BASE_HEIGHT = 55
+
+-- Base layout sizes at 100% (total = 11+2+20+1+12+1+4+2+2 = 55)
+local BASE_ROW1_FONT = 10
+local BASE_DEBUFF_SIZE = 21
+local BASE_BUFF_SIZE = 12
+local BASE_POWERBAR_H = 4
+
+local MAX_DEBUFF_ICONS = 4
+local MAX_BUFF_ICONS = 4
+local AURA_ICON_SPACING = 1
+
+-- Compute scaled dimensions from config
+local function GetScaledSizes()
+    local sw = (VB.config.scaleWidth or 100) / 100
+    local sh = (VB.config.scaleHeight or 100) / 100
+    return {
+        frameW     = math.floor(BASE_WIDTH * sw),
+        frameH     = math.floor(BASE_HEIGHT * sh),
+        row1Font   = math.max(7, math.floor(BASE_ROW1_FONT * sh)),
+        debuffSize = math.max(8, math.floor(BASE_DEBUFF_SIZE * sh)),
+        buffSize   = math.max(6, math.floor(BASE_BUFF_SIZE * sh)),
+        powerBarH  = math.max(2, math.floor(BASE_POWERBAR_H * sh)),
+    }
+end
+
 -------------------------------------------------
 -- Unit Button Pool
 -------------------------------------------------
-local buttonPool = {}
 local buttonCount = 0
 
 function VB:GetOrCreateUnitButton(unit, index)
     local key = unit
-    
     if VB.unitButtons[key] then
         VB.unitButtons[key].unit = unit
         VB.unitButtons[key]:SetAttribute("unit", unit)
         return VB.unitButtons[key]
     end
-    
     buttonCount = buttonCount + 1
     local button = VB:CreateUnitButton(unit, buttonCount)
     VB.unitButtons[key] = button
-    
     return button
 end
 
 -------------------------------------------------
--- Create Unit Button (Secure Frame)
+-- Create aura icon frames
+-------------------------------------------------
+local function CreateAuraIcons(parent, count, iconSize)
+    local icons = {}
+    for i = 1, count do
+        local f = CreateFrame("Frame", nil, parent)
+        f:SetSize(iconSize, iconSize)
+        f._iconSize = iconSize
+        local tex = f:CreateTexture(nil, "OVERLAY", nil, 6)
+        tex:SetAllPoints()
+        f.icon = tex
+
+        -- Stack badge: dark bg overlapping bottom-right
+        local badgeSize = math.max(9, math.floor(iconSize * 0.55))
+        local badge = CreateFrame("Frame", nil, f, "BackdropTemplate")
+        badge:SetSize(badgeSize, badgeSize)
+        badge:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 3, -3)
+        badge:SetBackdrop({
+            bgFile = "Interface\\Buttons\\WHITE8x8",
+            edgeFile = "Interface\\Buttons\\WHITE8x8",
+            edgeSize = 1,
+        })
+        badge:SetBackdropColor(0, 0, 0, 0.85)
+        badge:SetBackdropBorderColor(0, 0, 0, 1)
+        badge:SetFrameLevel(f:GetFrameLevel() + 2)
+        badge:Hide()
+        f.badge = badge
+
+        local stkFont = math.max(7, math.floor(iconSize * 0.45))
+        local stk = badge:CreateFontString(nil, "OVERLAY")
+        stk:SetFont(VB.config.font, stkFont, "OUTLINE")
+        stk:SetPoint("CENTER", badge, "CENTER", 0, 0)
+        stk:SetTextColor(1, 0.85, 0)
+        f.stacks = stk
+
+        f:Hide()
+        icons[i] = f
+    end
+    return icons
+end
+
+-------------------------------------------------
+-- Create Unit Button
 -------------------------------------------------
 function VB:CreateUnitButton(unit, index)
-    local button = CreateFrame("Button", "VoidBoxButton"..index, VB.frames.container, 
+    local S = GetScaledSizes()
+
+    local button = CreateFrame("Button", "VoidBoxButton"..index, VB.frames.container,
         "SecureUnitButtonTemplate,BackdropTemplate")
-    
-    button:SetSize(VB.config.frameWidth, VB.config.frameHeight)
+    button:SetSize(S.frameW, S.frameH)
     button.unit = unit
-    
     button:SetAttribute("unit", unit)
     button:SetAttribute("toggleForVehicle", true)
     button:RegisterForClicks("AnyUp")
-    
     button:SetBackdrop({
         bgFile = "Interface\\Buttons\\WHITE8x8",
         edgeFile = "Interface\\Buttons\\WHITE8x8",
@@ -50,90 +123,160 @@ function VB:CreateUnitButton(unit, index)
     })
     button:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
     button:SetBackdropBorderColor(0, 0, 0, 1)
-    
-    -- Create health bar
+
+    local powerBarH = VB.config.showPowerBar and (S.powerBarH + 2) or 1
+    local row1H = S.row1Font + 2
+
+    -- Health bar (fills button minus power bar)
     local healthBar = VB:CreateHealthBar(button)
     healthBar:SetPoint("TOPLEFT", button, "TOPLEFT", 1, -1)
-    healthBar:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 
-        VB.config.showPowerBar and (VB.config.powerBarHeight + 2) or 1)
+    healthBar:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, powerBarH)
     button.healthBar = healthBar
-    
-    -- Create power bar (optional)
+
+    -- Power bar
     if VB.config.showPowerBar then
         local powerBar = VB:CreatePowerBar(button)
         powerBar:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", 1, 1)
         powerBar:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 1)
-        powerBar:SetHeight(VB.config.powerBarHeight)
+        powerBar:SetHeight(S.powerBarH)
         button.powerBar = powerBar
     end
-    
-    -- Name text (ligne du haut, centré)
-    local nameText = healthBar:CreateFontString(nil, "OVERLAY")
-    nameText:SetFont(VB.config.font, VB.config.fontSize, "OUTLINE")
-    nameText:SetPoint("TOP", healthBar, "TOP", 0, -2)
-    nameText:SetJustifyH("CENTER")
-    nameText:SetTextColor(1, 1, 1)
-    button.nameText = nameText
-    
-    -- Health text (ligne du bas, centré - affiche vie)
+
+    -- === Row 1: Role icon + Name (left) + Health % (right) ===
+    local roleIcon = healthBar:CreateTexture(nil, "OVERLAY", nil, 7)
+    roleIcon:SetSize(S.row1Font, S.row1Font)
+    roleIcon:SetPoint("TOPLEFT", healthBar, "TOPLEFT", 2, -1)
+    roleIcon:Hide()
+    button.roleIcon = roleIcon
+
     local healthText = healthBar:CreateFontString(nil, "OVERLAY")
-    healthText:SetFont(VB.config.font, VB.config.fontSize - 2, "OUTLINE")
-    healthText:SetPoint("BOTTOM", healthBar, "BOTTOM", 0, 1)
-    healthText:SetJustifyH("CENTER")
+    healthText:SetFont(VB.config.font, S.row1Font, "OUTLINE")
+    healthText:SetPoint("TOPRIGHT", healthBar, "TOPRIGHT", -2, -1)
+    healthText:SetHeight(row1H)
+    healthText:SetJustifyH("RIGHT")
+    healthText:SetJustifyV("TOP")
     healthText:SetTextColor(0.9, 0.9, 0.9)
+    healthText:SetWordWrap(false)
     button.healthText = healthText
-    
-    -- Status icon (dead, offline, etc.)
-    local statusIcon = healthBar:CreateTexture(nil, "OVERLAY")
+
+    local nameText = healthBar:CreateFontString(nil, "OVERLAY")
+    nameText:SetFont(VB.config.font, S.row1Font, "OUTLINE")
+    nameText:SetPoint("TOPLEFT", roleIcon, "TOPRIGHT", 1, 0)
+    nameText:SetPoint("RIGHT", healthText, "LEFT", -2, 0)
+    nameText:SetHeight(row1H)
+    nameText:SetJustifyH("LEFT")
+    nameText:SetJustifyV("TOP")
+    nameText:SetTextColor(1, 1, 1)
+    nameText:SetWordWrap(false)
+    button.nameText = nameText
+
+    -- Status icon (dead, offline)
+    local statusIcon = healthBar:CreateTexture(nil, "OVERLAY", nil, 7)
     statusIcon:SetSize(16, 16)
     statusIcon:SetPoint("CENTER", healthBar, "CENTER", 0, 0)
     statusIcon:Hide()
     button.statusIcon = statusIcon
-    
-    -- Role indicator (atlas icon, centered between name and health text)
-    local roleIcon = healthBar:CreateTexture(nil, "OVERLAY", nil, 7)
-    roleIcon:SetSize(12, 12)
-    roleIcon:SetPoint("CENTER", healthBar, "CENTER", 0, 0)
-    roleIcon:Hide()
-    button.roleIcon = roleIcon
-    
-    -- Debuff indicators
-    button.debuffIcons = {}
-    for i = 1, 3 do
-        local debuff = button:CreateTexture(nil, "OVERLAY")
-        debuff:SetSize(14, 14)
-        debuff:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", 2 + (i-1) * 15, 
-            VB.config.showPowerBar and (VB.config.powerBarHeight + 3) or 2)
-        debuff:Hide()
-        button.debuffIcons[i] = debuff
-    end
-    
-    -- My buff/HOT indicator (petit carré en bas à droite)
-    local myBuffIcon = healthBar:CreateTexture(nil, "OVERLAY", nil, 7)
-    myBuffIcon:SetSize(6, 6)
-    myBuffIcon:SetPoint("BOTTOMRIGHT", healthBar, "BOTTOMRIGHT", -2, 2)
-    myBuffIcon:SetTexture("Interface\\Buttons\\WHITE8x8")
-    myBuffIcon:SetVertexColor(0.2, 1, 0.4, 1) -- vert clair
-    myBuffIcon:Hide()
-    button.myBuffIcon = myBuffIcon
-    
-    -- Highlight on mouseover
+
+    -- === Row 2: Debuff icons, positioned dynamically in UpdateAuras ===
+    local row2Top = row1H + 2
+    button._row2Top = row2Top
+    button.debuffIcons = CreateAuraIcons(healthBar, MAX_DEBUFF_ICONS, S.debuffSize)
+
+    -- === Row 3: HOT/buff icons, positioned dynamically in UpdateAuras ===
+    local row3Top = row2Top + S.debuffSize + 1
+    button._row3Top = row3Top
+    button.buffIcons = CreateAuraIcons(healthBar, MAX_BUFF_ICONS, S.buffSize)
+
+    -- "Others healing" indicator: small + icon bottom-right of healthBar
+    local othersIndicator = healthBar:CreateFontString(nil, "OVERLAY")
+    othersIndicator:SetFont(VB.config.font, math.max(7, S.buffSize - 2), "OUTLINE")
+    othersIndicator:SetPoint("BOTTOMRIGHT", healthBar, "BOTTOMRIGHT", -1, 1)
+    othersIndicator:SetTextColor(0.5, 1, 0.5, 0.8)
+    othersIndicator:SetText("")
+    button.othersIndicator = othersIndicator
+
+    -- Highlight
     local highlight = button:CreateTexture(nil, "HIGHLIGHT")
     highlight:SetAllPoints()
     highlight:SetColorTexture(1, 1, 1, 0.1)
-    button.highlight = highlight
-    
+
     button.inRange = true
-    
     VB:RegisterUnitButtonEvents(button)
     VB:ApplyClickCastings(button)
     VB:UpdateUnitButton(button)
-    
     return button
 end
 
 -------------------------------------------------
--- Unit Button Events
+-- Resize an existing button to match current scale
+-- Called from UpdateAllFrames when scale changes
+-------------------------------------------------
+function VB:ResizeUnitButton(button)
+    local S = GetScaledSizes()
+    local powerBarH = VB.config.showPowerBar and (S.powerBarH + 2) or 1
+    local row1H = S.row1Font + 2
+
+    -- Resize button
+    button:SetSize(S.frameW, S.frameH)
+
+    -- Resize health bar anchors (already anchored to button edges, just update bottom)
+    button.healthBar:ClearAllPoints()
+    button.healthBar:SetPoint("TOPLEFT", button, "TOPLEFT", 1, -1)
+    button.healthBar:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, powerBarH)
+
+    -- Power bar
+    if button.powerBar then
+        button.powerBar:ClearAllPoints()
+        button.powerBar:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", 1, 1)
+        button.powerBar:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 1)
+        button.powerBar:SetHeight(S.powerBarH)
+    end
+
+    -- Row 1: role icon
+    button.roleIcon:SetSize(S.row1Font, S.row1Font)
+
+    -- Row 1: fonts
+    button.healthText:SetFont(VB.config.font, S.row1Font, "OUTLINE")
+    button.healthText:SetHeight(row1H)
+    button.nameText:SetFont(VB.config.font, S.row1Font, "OUTLINE")
+    button.nameText:SetHeight(row1H)
+
+    -- Row 2: debuff icons (positions set dynamically in UpdateAuras)
+    local row2Top = row1H + 2
+    button._row2Top = row2Top
+    for i, f in ipairs(button.debuffIcons) do
+        f:SetSize(S.debuffSize, S.debuffSize)
+        f._iconSize = S.debuffSize
+        if f.badge then
+            local badgeSize = math.max(9, math.floor(S.debuffSize * 0.55))
+            f.badge:SetSize(badgeSize, badgeSize)
+            local stkFont = math.max(7, math.floor(S.debuffSize * 0.45))
+            f.stacks:SetFont(VB.config.font, stkFont, "OUTLINE")
+        end
+    end
+
+    -- Row 3: buff/HOT icons (positions set dynamically in UpdateAuras)
+    local row3Top = row2Top + S.debuffSize + 1
+    button._row3Top = row3Top
+    for i, f in ipairs(button.buffIcons) do
+        f:SetSize(S.buffSize, S.buffSize)
+        f._iconSize = S.buffSize
+        if f.badge then
+            local badgeSize = math.max(9, math.floor(S.buffSize * 0.55))
+            f.badge:SetSize(badgeSize, badgeSize)
+            local stkFont = math.max(7, math.floor(S.buffSize * 0.45))
+            f.stacks:SetFont(VB.config.font, stkFont, "OUTLINE")
+        end
+    end
+
+    -- Others indicator
+    if button.othersIndicator then
+        button.othersIndicator:SetFont(VB.config.font, math.max(7, S.buffSize - 2), "OUTLINE")
+    end
+end
+
+-------------------------------------------------
+-- Events
 -------------------------------------------------
 function VB:RegisterUnitButtonEvents(button)
     button:RegisterEvent("UNIT_HEALTH")
@@ -149,13 +292,11 @@ function VB:RegisterUnitButtonEvents(button)
     button:RegisterEvent("READY_CHECK_CONFIRM")
     button:RegisterEvent("READY_CHECK_FINISHED")
     button:RegisterEvent("INCOMING_RESURRECT_CHANGED")
-    
     button.rangeCheckTimer = 0
-    
+
     button:SetScript("OnEvent", function(self, event, ...)
         local unit = ...
         if unit and unit ~= self.unit then return end
-        
         if event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then
             VB:UpdateHealthBar(self)
         elseif event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" then
@@ -176,7 +317,7 @@ function VB:RegisterUnitButtonEvents(button)
             VB:UpdateResurrect(self)
         end
     end)
-    
+
     button:SetScript("OnUpdate", function(self, elapsed)
         self.rangeCheckTimer = self.rangeCheckTimer + elapsed
         if self.rangeCheckTimer >= 0.2 then
@@ -184,16 +325,14 @@ function VB:RegisterUnitButtonEvents(button)
             VB:UpdateRange(self)
         end
     end)
-    
+
     button:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+        GameTooltip:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -20, 20)
         GameTooltip:SetUnit(self.unit)
         GameTooltip:Show()
     end)
-    
-    button:SetScript("OnLeave", function(self)
-        GameTooltip:Hide()
-    end)
+    button:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
 end
 
 -------------------------------------------------
@@ -212,14 +351,18 @@ end
 
 function VB:UpdateName(button)
     local unit = button.unit
-    if not unit or not UnitExists(unit) then 
+    if not unit or not UnitExists(unit) then
         button.nameText:SetText("")
-        return 
+        return
     end
     local name = UnitName(unit)
     if name then
-        -- Truncate based on frame width: ~1 char per 7px, minus padding
-        local maxChars = math.floor((VB.config.frameWidth - 6) / 7)
+        local S = GetScaledSizes()
+        local iconWidth = button.roleIcon:IsShown() and (S.row1Font + 3) or 0
+        local pctWidth = S.row1Font * 3  -- reserve space for "100%"
+        local availWidth = S.frameW - 6 - iconWidth - pctWidth
+        local charWidth = math.max(4, math.floor(S.row1Font * 0.65))
+        local maxChars = math.floor(availWidth / charWidth)
         if maxChars < 3 then maxChars = 3 end
         if #name > maxChars then
             name = name:sub(1, maxChars) .. ".."
@@ -231,10 +374,8 @@ end
 function VB:UpdateStatus(button)
     local unit = button.unit
     if not unit or not UnitExists(unit) then return end
-    
     local statusIcon = button.statusIcon
     local healthBar = button.healthBar
-    
     if UnitIsDeadOrGhost(unit) then
         statusIcon:SetTexture("Interface\\TargetingFrame\\UI-TargetingFrame-Skull")
         statusIcon:Show()
@@ -248,9 +389,6 @@ function VB:UpdateStatus(button)
     end
 end
 
--- Role icon atlas/texture data
--- Primary: SetAtlas with standard role icon names
--- Fallback: manual texture + texcoords from the LFG portrait roles sheet
 local roleAtlasNames = {
     TANK    = "roleicon-tank",
     HEALER  = "roleicon-healer",
@@ -260,29 +398,20 @@ local roleAtlasNames = {
 function VB:UpdateRole(button)
     local unit = button.unit
     if not unit or not UnitExists(unit) then return end
-    
     local roleIcon = button.roleIcon
     local role = UnitGroupRolesAssigned(unit)
-    
-    -- Fallback: use spec role when solo or role not assigned
     if (not role or role == "NONE") and UnitIsUnit(unit, "player") then
         if GetSpecialization and GetSpecializationRole then
             local spec = GetSpecialization()
-            if spec then
-                role = GetSpecializationRole(spec)
-            end
+            if spec then role = GetSpecializationRole(spec) end
         end
     end
-    
     local atlas = roleAtlasNames[role]
     if atlas then
-        -- Clear texture first to force atlas refresh (same fileID, different texcoords)
         roleIcon:SetTexture(nil)
         roleIcon:SetTexCoord(0, 1, 0, 1)
-        -- Try atlas first (most reliable in modern WoW)
         local ok = pcall(function() roleIcon:SetAtlas(atlas, false) end)
         if not ok or not roleIcon:GetTexture() then
-            -- Fallback: use the LFG role texture sheet with string path
             roleIcon:SetTexture("Interface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES")
             if role == "TANK" then
                 roleIcon:SetTexCoord(0, 19/64, 22/64, 41/64)
@@ -292,29 +421,24 @@ function VB:UpdateRole(button)
                 roleIcon:SetTexCoord(20/64, 39/64, 22/64, 41/64)
             end
         end
-        roleIcon:SetSize(12, 12)
         roleIcon:Show()
     else
         roleIcon:Hide()
     end
+    VB:UpdateName(button)
 end
 
 function VB:UpdateRange(button)
     local unit = button.unit
     if not unit or not UnitExists(unit) then return end
-    
     local inRange = true
-    if unit == "player" then
-        inRange = true
-    else
-        -- UnitInRange can return secret values in 12.0
+    if unit ~= "player" then
         local ok, result = pcall(function()
             local r = UnitInRange(unit)
             if r then return true else return false end
         end)
         if ok then inRange = result else inRange = true end
     end
-    
     if inRange ~= button.inRange then
         button.inRange = inRange
         button:SetAlpha(inRange and 1 or 0.4)
@@ -324,8 +448,7 @@ end
 function VB:UpdateThreat(button)
     local unit = button.unit
     if not unit or not UnitExists(unit) then return end
-    
-    local ok, _ = pcall(function()
+    local ok = pcall(function()
         local status = UnitThreatSituation(unit)
         if status and status >= 2 then
             button:SetBackdropBorderColor(1, 0, 0, 1)
@@ -335,18 +458,14 @@ function VB:UpdateThreat(button)
             button:SetBackdropBorderColor(0, 0, 0, 1)
         end
     end)
-    if not ok then
-        button:SetBackdropBorderColor(0, 0, 0, 1)
-    end
+    if not ok then button:SetBackdropBorderColor(0, 0, 0, 1) end
 end
 
 function VB:UpdateReadyCheck(button)
     local unit = button.unit
     if not unit or not UnitExists(unit) then return end
-    
     local statusIcon = button.statusIcon
     local status = GetReadyCheckStatus(unit)
-    
     if status == "ready" then
         statusIcon:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready")
         statusIcon:Show()
@@ -366,7 +485,6 @@ end
 function VB:UpdateResurrect(button)
     local unit = button.unit
     if not unit or not UnitExists(unit) then return end
-    
     local statusIcon = button.statusIcon
     if VB:SafeBool(UnitHasIncomingResurrection(unit)) then
         statusIcon:SetTexture("Interface\\RaidFrame\\Raid-Icon-Rez")
@@ -380,41 +498,136 @@ function VB:UpdateResurrect(button)
 end
 
 -------------------------------------------------
--- Aura Updates (using compat wrapper)
+-- Aura Updates (12.0+ compatible)
+-- Row 2: HARMFUL debuffs (icon + stacks, max 4)
+-- Row 3: Player-cast HOTs/shields only (max 4)
+--        + "others healing" indicator bottom-right
 -------------------------------------------------
+
+-- Center N visible icons on a row
+local function CenterAuraRow(icons, visibleCount, iconSize, parent, yOffset)
+    -- Hide all first
+    for _, f in ipairs(icons) do f:ClearAllPoints(); f:Hide(); if f.badge then f.badge:Hide() end end
+    if visibleCount <= 0 then return end
+    local totalW = visibleCount * iconSize + (visibleCount - 1) * AURA_ICON_SPACING
+    for i = 1, visibleCount do
+        local f = icons[i]
+        local offset = (i - 1) * (iconSize + AURA_ICON_SPACING) - (totalW - iconSize) / 2
+        f:ClearAllPoints()
+        f:SetPoint("TOP", parent, "TOP", offset, -yOffset)
+    end
+end
+
+local function SetAuraFrame(frame, aura)
+    pcall(function() frame.icon:SetTexture(aura.icon) end)
+
+    local showBadge = false
+    local ok, realNum = pcall(function()
+        return tonumber(string.format("%d", aura.applications or 0))
+    end)
+
+    if ok and realNum then
+        if realNum > 1 then
+            frame.stacks:SetText(tostring(realNum))
+            if realNum >= 5 then
+                frame.stacks:SetTextColor(1, 0.2, 0.2)
+            else
+                frame.stacks:SetTextColor(1, 0.85, 0)
+            end
+            showBadge = true
+        end
+    else
+        local ok2 = pcall(function()
+            frame.stacks:SetText(string.format("%d", aura.applications or 0))
+        end)
+        if ok2 then
+            frame.stacks:SetTextColor(1, 0.85, 0)
+            showBadge = true
+        end
+    end
+
+    if frame.badge then
+        frame.badge:SetShown(showBadge)
+    end
+    frame:Show()
+end
+
 function VB:UpdateAuras(button)
     local unit = button.unit
     if not unit or not UnitExists(unit) then return end
-    
-    -- Debuffs dispellables (en bas à gauche)
-    for _, icon in ipairs(button.debuffIcons) do
-        icon:Hide()
+
+    for _, f in ipairs(button.debuffIcons) do f:Hide(); if f.badge then f.badge:Hide() end end
+    for _, f in ipairs(button.buffIcons) do f:Hide(); if f.badge then f.badge:Hide() end end
+    if button.othersIndicator then button.othersIndicator:SetText("") end
+
+    if not C_UnitAuras or not C_UnitAuras.GetAuraDataByIndex then return end
+
+    local S = GetScaledSizes()
+
+    -- === DEBUFFS ===
+    local debuffIdx = 0
+    for i = 1, 40 do
+        if debuffIdx >= MAX_DEBUFF_ICONS then break end
+        local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HARMFUL")
+        if not aura then break end
+        debuffIdx = debuffIdx + 1
+        SetAuraFrame(button.debuffIcons[debuffIdx], aura)
     end
-    
-    local debuffs = VB:GetUnitDebuffs(unit, 40)
-    local debuffIndex = 1
-    
-    for _, debuff in ipairs(debuffs) do
-        if debuff.dispelType or debuff.isStealable then
-            local icon = button.debuffIcons[debuffIndex]
-            if icon then
-                icon:SetTexture(debuff.icon)
-                icon:Show()
-                debuffIndex = debuffIndex + 1
-                if debuffIndex > 3 then break end
+    -- Center only the visible debuff icons
+    CenterAuraRow(button.debuffIcons, debuffIdx, S.debuffSize, button.healthBar, button._row2Top or 14)
+    -- Re-show the ones that have data
+    for i = 1, debuffIdx do button.debuffIcons[i]:Show() end
+
+    -- === HOTs / Shields (player-cast only) ===
+    local buffIdx = 0
+    local othersCount = 0
+    local inCombat = InCombatLockdown()
+    local playerGUID = UnitGUID("player")
+
+    if not inCombat then
+        for i = 1, 40 do
+            local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
+            if not aura then break end
+            local ok, id = pcall(function()
+                return tonumber(string.format("%d", aura.spellId))
+            end)
+            if ok and id and VB.healBuffSpellIDs[id] then
+                local isPlayer = false
+                pcall(function()
+                    if aura.sourceUnit and UnitGUID(aura.sourceUnit) == playerGUID then
+                        isPlayer = true
+                    end
+                end)
+                if isPlayer then
+                    if buffIdx < MAX_BUFF_ICONS then
+                        buffIdx = buffIdx + 1
+                        SetAuraFrame(button.buffIcons[buffIdx], aura)
+                    end
+                else
+                    othersCount = othersCount + 1
+                end
             end
         end
-    end
-    
-    -- My HOTs/shields indicator — petit carré vert en bas à droite
-    -- Vérifie si le joueur a au moins un HOT ou bouclier de heal actif
-    -- (de n'importe quel healer, pas juste le joueur)
-    if button.myBuffIcon then
-        local hasHealBuff = VB:UnitHasHealBuff(unit)
-        if hasHealBuff then
-            button.myBuffIcon:Show()
-        else
-            button.myBuffIcon:Hide()
+    else
+        for i = 1, 40 do
+            if buffIdx >= MAX_BUFF_ICONS then break end
+            local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL RAID_IN_COMBAT PLAYER")
+            if not aura then break end
+            buffIdx = buffIdx + 1
+            SetAuraFrame(button.buffIcons[buffIdx], aura)
         end
+        for i = 1, 40 do
+            local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL RAID_IN_COMBAT")
+            if not aura then break end
+            othersCount = othersCount + 1
+        end
+        othersCount = math.max(0, othersCount - buffIdx)
+    end
+    -- Center only the visible buff icons
+    CenterAuraRow(button.buffIcons, buffIdx, S.buffSize, button.healthBar, button._row3Top or 36)
+    for i = 1, buffIdx do button.buffIcons[i]:Show() end
+
+    if button.othersIndicator and othersCount > 0 then
+        button.othersIndicator:SetText("+" .. othersCount)
     end
 end
