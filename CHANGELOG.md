@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.3.1 (2026-02-17)
+
+- Fix: stack count badge not displaying on debuff/HOT icons (secret string from string.format broke tonumber — now extracts digits via string.byte)
+
 ## v1.3.0 (2026-02-17)
 
 - New: percentage-based scaling system replacing fixed pixel width/height sliders
