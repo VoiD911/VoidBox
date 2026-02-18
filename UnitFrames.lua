@@ -522,25 +522,47 @@ local function SetAuraFrame(frame, aura)
     pcall(function() frame.icon:SetTexture(aura.icon) end)
 
     local showBadge = false
-    local ok, realNum = pcall(function()
-        return tonumber(string.format("%d", aura.applications or 0))
+
+    -- aura.applications is a secret value in 12.0+
+    -- tonumber(string.format("%d", secret)) returns nil (secret string)
+    -- Strategy: format to secret string, SetText displays it fine,
+    -- then try to extract a real number to decide color/visibility
+    local formatted = nil
+    local ok1 = pcall(function()
+        formatted = string.format("%d", aura.applications or 0)
     end)
 
-    if ok and realNum then
-        if realNum > 1 then
-            frame.stacks:SetText(tostring(realNum))
+    if ok1 and formatted then
+        -- Try to get a real number for comparison
+        -- In 12.0+: tonumber(secretString) = nil, so we use string.byte extraction
+        local realNum = tonumber(formatted)  -- works outside secret context
+        if not realNum then
+            -- Secret string: extract digits via string.byte
+            local ok2, extracted = pcall(function()
+                local n = 0
+                for pos = 1, 10 do
+                    local b = string.byte(formatted, pos)
+                    if not b then break end
+                    if b >= 48 and b <= 57 then
+                        n = n * 10 + (b - 48)
+                    end
+                end
+                return n
+            end)
+            if ok2 then realNum = extracted end
+        end
+
+        if realNum and realNum > 1 then
+            frame.stacks:SetText(formatted)
             if realNum >= 5 then
                 frame.stacks:SetTextColor(1, 0.2, 0.2)
             else
                 frame.stacks:SetTextColor(1, 0.85, 0)
             end
             showBadge = true
-        end
-    else
-        local ok2 = pcall(function()
-            frame.stacks:SetText(string.format("%d", aura.applications or 0))
-        end)
-        if ok2 then
+        elseif not realNum then
+            -- Could not extract number at all — show badge as safety
+            frame.stacks:SetText(formatted)
             frame.stacks:SetTextColor(1, 0.85, 0)
             showBadge = true
         end
