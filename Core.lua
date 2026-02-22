@@ -39,10 +39,7 @@ VB.defaults = {
     classColors = true,
     locked = false,
     position = { point = "CENTER", x = 0, y = 0 },
-    clickCastings = {
-        { "type1", "target", nil },           -- Left click = target
-        { "type2", "togglemenu", nil },       -- Right click = menu
-    },
+    clickCastings = {},
 }
 
 -------------------------------------------------

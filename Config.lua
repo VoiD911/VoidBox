@@ -1,6 +1,6 @@
 --[[
     VoidBox - Configuration UI
-    Interface de configuration avec drag & drop depuis le grimoire
+    Interface de configuration avec "Press to Bind" universal capture
     Compatible 12.0+ : pas de UIDropDownMenu, pas de OptionsSliderTemplate
 ]]
 
@@ -8,6 +8,105 @@ local addonName, VB = ...
 
 local configFrame = nil
 local bindingSlots = {}
+
+-------------------------------------------------
+-- UI Helpers (dropdown, slider) — must be defined
+-- before any function that uses them
+-------------------------------------------------
+local function CreateSimpleDropdown(parent, width, items, defaultText)
+    local dropdown = CreateFrame("Button", nil, parent, "BackdropTemplate")
+    dropdown:SetSize(width, 25)
+    dropdown:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+    })
+    dropdown:SetBackdropColor(0.15, 0.15, 0.15, 1)
+    dropdown:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+    local text = dropdown:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    text:SetPoint("LEFT", 8, 0)
+    text:SetText(defaultText or "")
+    dropdown.text = text
+    local arrow = dropdown:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    arrow:SetPoint("RIGHT", -8, 0)
+    arrow:SetText("v")
+    dropdown.selectedValue = items[1] and items[1].value or nil
+    dropdown.isOpen = false
+    local menu = CreateFrame("Frame", nil, dropdown, "BackdropTemplate")
+    menu:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+    })
+    menu:SetBackdropColor(0.12, 0.12, 0.12, 0.98)
+    menu:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+    menu:SetPoint("TOPLEFT", dropdown, "BOTTOMLEFT", 0, -2)
+    menu:SetSize(width, #items * 22 + 4)
+    menu:SetFrameStrata("FULLSCREEN_DIALOG")
+    menu:Hide()
+    dropdown.menu = menu
+    for i, item in ipairs(items) do
+        local btn = CreateFrame("Button", nil, menu, "BackdropTemplate")
+        btn:SetSize(width - 4, 20)
+        btn:SetPoint("TOPLEFT", 2, -(i-1) * 22 - 2)
+        local btnText = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        btnText:SetPoint("LEFT", 6, 0)
+        btnText:SetText(item.text)
+        btn:SetScript("OnClick", function()
+            dropdown.selectedValue = item.value
+            text:SetText(item.text)
+            menu:Hide()
+            dropdown.isOpen = false
+        end)
+        btn:SetScript("OnEnter", function(self)
+            self:SetBackdrop({bgFile = "Interface\\Buttons\\WHITE8x8"})
+            self:SetBackdropColor(0.3, 0.3, 0.3, 1)
+        end)
+        btn:SetScript("OnLeave", function(self) self:SetBackdrop(nil) end)
+    end
+    dropdown:SetScript("OnClick", function()
+        dropdown.isOpen = not dropdown.isOpen
+        menu:SetShown(dropdown.isOpen)
+    end)
+    dropdown:SetScript("OnEnter", function(self) self:SetBackdropColor(0.2, 0.2, 0.2, 1) end)
+    dropdown:SetScript("OnLeave", function(self) self:SetBackdropColor(0.15, 0.15, 0.15, 1) end)
+    return dropdown
+end
+
+local function CreateSimpleSlider(parent, label, minVal, maxVal, step, currentVal, onChange)
+    local container = CreateFrame("Frame", nil, parent)
+    container:SetSize(220, 40)
+    local labelText = container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    labelText:SetPoint("TOPLEFT", 0, 0)
+    labelText:SetText(label .. ": " .. currentVal)
+    container.label = labelText
+    local template = nil
+    if C_XMLUtil and C_XMLUtil.GetTemplateInfo and C_XMLUtil.GetTemplateInfo("MinimalSliderTemplate") then
+        template = "MinimalSliderTemplate"
+    end
+    local slider = CreateFrame("Slider", nil, container, template)
+    slider:SetPoint("TOPLEFT", 0, -18)
+    slider:SetSize(200, 16)
+    slider:SetMinMaxValues(minVal, maxVal)
+    slider:SetValue(currentVal)
+    slider:SetValueStep(step)
+    slider:SetObeyStepOnDrag(true)
+    if not slider:GetThumbTexture() then
+        slider:SetThumbTexture("Interface\\Buttons\\UI-SliderBar-Button-Horizontal")
+    end
+    if not template then
+        local bg = slider:CreateTexture(nil, "BACKGROUND")
+        bg:SetAllPoints()
+        bg:SetColorTexture(0.3, 0.3, 0.3, 0.8)
+    end
+    slider:SetScript("OnValueChanged", function(self, value)
+        value = math.floor(value)
+        labelText:SetText(label .. ": " .. value)
+        if onChange then onChange(value) end
+    end)
+    container.slider = slider
+    return container
+end
 
 -------------------------------------------------
 -- Show Configuration
@@ -54,30 +153,23 @@ function VB:CreateConfigFrame()
     configFrame:SetClampedToScreen(true)
     configFrame:Hide()
     
-    -- Title
     local title = configFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOP", 0, -10)
     title:SetText("|cFF9966FFVoidBox|r - " .. VB.L["CONFIG_TITLE"])
     
-    -- Close button
     local closeBtn = CreateFrame("Button", nil, configFrame, "UIPanelCloseButton")
     closeBtn:SetPoint("TOPRIGHT", -5, -5)
     
-    -- Tab buttons
     VB:CreateConfigTabs()
     
-    -- Content area
     local content = CreateFrame("Frame", nil, configFrame)
     content:SetPoint("TOPLEFT", 10, -70)
     content:SetPoint("BOTTOMRIGHT", -10, 10)
     configFrame.content = content
     
-    -- Create tab contents
     VB:CreateBindingsTab()
     VB:CreateAppearanceTab()
     VB:CreateProfilesTab()
-    
-    -- Show bindings tab by default
     VB:ShowConfigTab("bindings")
     
     tinsert(UISpecialFrames, "VoidBoxConfig")
@@ -111,15 +203,10 @@ function VB:CreateConfigTabs()
         text:SetPoint("CENTER")
         text:SetText(data.text)
         tab.text = text
-        
         tab.id = data.id
-        tab:SetScript("OnClick", function()
-            VB:ShowConfigTab(data.id)
-        end)
         
-        tab:SetScript("OnEnter", function(self)
-            self:SetBackdropColor(0.3, 0.3, 0.3, 1)
-        end)
+        tab:SetScript("OnClick", function() VB:ShowConfigTab(data.id) end)
+        tab:SetScript("OnEnter", function(self) self:SetBackdropColor(0.3, 0.3, 0.3, 1) end)
         tab:SetScript("OnLeave", function(self)
             if self.selected then
                 self:SetBackdropColor(0.3, 0.3, 0.5, 1)
@@ -133,7 +220,6 @@ function VB:CreateConfigTabs()
         else
             tab:SetPoint("TOPLEFT", 10, -40)
         end
-        
         tabs[data.id] = tab
         lastTab = tab
     end
@@ -141,26 +227,14 @@ end
 
 function VB:ShowConfigTab(tabId)
     for id, tab in pairs(tabs) do
-        if id == tabId then
-            tab.selected = true
-            tab:SetBackdropColor(0.3, 0.3, 0.5, 1)
-        else
-            tab.selected = false
-            tab:SetBackdropColor(0.2, 0.2, 0.2, 1)
-        end
+        tab.selected = (id == tabId)
+        tab:SetBackdropColor(id == tabId and 0.3 or 0.2, id == tabId and 0.3 or 0.2, id == tabId and 0.5 or 0.2, 1)
     end
-    
-    if configFrame.bindingsContent then
-        configFrame.bindingsContent:SetShown(tabId == "bindings")
-    end
-    if configFrame.appearanceContent then
-        configFrame.appearanceContent:SetShown(tabId == "appearance")
-    end
+    if configFrame.bindingsContent then configFrame.bindingsContent:SetShown(tabId == "bindings") end
+    if configFrame.appearanceContent then configFrame.appearanceContent:SetShown(tabId == "appearance") end
     if configFrame.profilesContent then
         configFrame.profilesContent:SetShown(tabId == "profiles")
-        if tabId == "profiles" then
-            VB:RefreshProfilesTab()
-        end
+        if tabId == "profiles" then VB:RefreshProfilesTab() end
     end
 end
 
@@ -176,11 +250,11 @@ function VB:CreateBindingsTab()
     instructions:SetPoint("TOPLEFT", 5, -5)
     instructions:SetWidth(460)
     instructions:SetJustifyH("LEFT")
-    instructions:SetText("|cFFFFFF00Instructions:|r " .. VB.L["INSTRUCTIONS"])
+    instructions:SetText("|cFFFFFF00" .. VB.L["INSTRUCTIONS_V2"] .. "|r")
     
     local header = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     header:SetPoint("TOPLEFT", 5, -30)
-    header:SetText(VB.L["HEADER_COMBO"] .. "          " .. VB.L["HEADER_ACTION"])
+    header:SetText(VB.L["HEADER_COMBO"] .. "              " .. VB.L["HEADER_ACTION"])
     
     local scrollFrame = CreateFrame("ScrollFrame", nil, content, "UIPanelScrollFrameTemplate")
     scrollFrame:SetPoint("TOPLEFT", 5, -50)
@@ -201,11 +275,9 @@ function VB:CreateBindingsTab()
     })
     addBtn:SetBackdropColor(0.2, 0.2, 0.4, 1)
     addBtn:SetBackdropBorderColor(0.4, 0.4, 0.6, 1)
-    
     local addText = addBtn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     addText:SetPoint("CENTER")
     addText:SetText(VB.L["ADD_BINDING"])
-    
     addBtn:SetScript("OnClick", function() VB:ShowAddBindingDialog() end)
     addBtn:SetScript("OnEnter", function(self) self:SetBackdropColor(0.3, 0.3, 0.5, 1) end)
     addBtn:SetScript("OnLeave", function(self) self:SetBackdropColor(0.2, 0.2, 0.4, 1) end)
@@ -216,22 +288,17 @@ end
 -------------------------------------------------
 function VB:RefreshBindingsList()
     if not configFrame or not configFrame.bindingsContent then return end
-    
     local scrollChild = configFrame.bindingsContent.scrollChild
     
-    for _, slot in ipairs(bindingSlots) do
-        slot:Hide()
-    end
+    for _, slot in ipairs(bindingSlots) do slot:Hide() end
     
     local yOffset = 0
     for i, binding in ipairs(VB.clickCastings) do
         local slot = VB:GetOrCreateBindingSlot(i)
         slot:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset)
-        
-        slot.keyText:SetText(VB:GetBindingDisplayText(binding[1]))
-        slot.actionText:SetText(VB:GetActionDisplayText(binding[2], binding[3], binding[4]))
+        slot.keyText:SetText(VB:GetBindingDisplayText(binding))
+        slot.actionText:SetText(VB:GetActionDisplayText(binding))
         slot.bindingIndex = i
-        
         slot:Show()
         yOffset = yOffset + 30
     end
@@ -240,12 +307,9 @@ function VB:RefreshBindingsList()
 end
 
 function VB:GetOrCreateBindingSlot(index)
-    if bindingSlots[index] then
-        return bindingSlots[index]
-    end
+    if bindingSlots[index] then return bindingSlots[index] end
     
     local scrollChild = configFrame.bindingsContent.scrollChild
-    
     local slot = CreateFrame("Button", nil, scrollChild, "BackdropTemplate")
     slot:SetSize(440, 28)
     slot:SetBackdrop({
@@ -258,13 +322,13 @@ function VB:GetOrCreateBindingSlot(index)
     
     local keyText = slot:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     keyText:SetPoint("LEFT", 10, 0)
-    keyText:SetWidth(120)
+    keyText:SetWidth(150)
     keyText:SetJustifyH("LEFT")
     slot.keyText = keyText
     
     local actionText = slot:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    actionText:SetPoint("LEFT", 140, 0)
-    actionText:SetWidth(220)
+    actionText:SetPoint("LEFT", 170, 0)
+    actionText:SetWidth(200)
     actionText:SetJustifyH("LEFT")
     slot.actionText = actionText
     
@@ -276,37 +340,34 @@ function VB:GetOrCreateBindingSlot(index)
     deleteBtn:GetHighlightTexture():SetVertexColor(1, 0, 0)
     deleteBtn:SetScript("OnClick", function()
         if slot.bindingIndex then
-            local binding = VB.clickCastings[slot.bindingIndex]
-            if binding then
-                VB:RemoveClickCasting(binding[1])
-                VB:RefreshBindingsList()
-            end
+            VB:RemoveBindingAt(slot.bindingIndex)
+            VB:RefreshBindingsList()
         end
     end)
     
+    -- Drag spell/macro onto existing slot to replace action
     slot:RegisterForDrag("LeftButton")
     slot:SetScript("OnReceiveDrag", function(self)
         if not self.bindingIndex then return end
         local binding = VB.clickCastings[self.bindingIndex]
         if not binding then return end
         
-        -- Try spell first
         local spellID, spellName = VB:GetCursorSpell()
         if spellID then
-            binding[2] = "spell"
-            binding[3] = spellID
+            binding.action = "spell"
+            binding.value = spellID
+            binding.name = spellName
             VB:ApplyClickCastingsToAllFrames()
             VB:RefreshBindingsList()
             ClearCursor()
             return
         end
         
-        -- Try macro
         local macroName, macroIcon, macroBody = VB:GetCursorMacro()
         if macroName and macroBody then
-            binding[2] = "macro"
-            binding[3] = macroBody
-            binding[4] = macroName  -- store name for display
+            binding.action = "macro"
+            binding.value = macroBody
+            binding.name = macroName
             VB:ApplyClickCastingsToAllFrames()
             VB:RefreshBindingsList()
             ClearCursor()
@@ -321,7 +382,7 @@ function VB:GetOrCreateBindingSlot(index)
 end
 
 -------------------------------------------------
--- Add Binding Dialog
+-- Add Binding Dialog ("Press to Bind")
 -------------------------------------------------
 local addDialog = nil
 
@@ -331,126 +392,44 @@ function VB:ShowAddBindingDialog()
         return
     end
     if not addDialog then VB:CreateAddBindingDialog() end
+    VB:ResetAddDialog()
     addDialog:Show()
 end
 
--- Simple custom dropdown (no UIDropDownMenu taint issues)
-local function CreateSimpleDropdown(parent, width, items, defaultText)
-    local dropdown = CreateFrame("Button", nil, parent, "BackdropTemplate")
-    dropdown:SetSize(width, 25)
-    dropdown:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-    })
-    dropdown:SetBackdropColor(0.15, 0.15, 0.15, 1)
-    dropdown:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
-    
-    local text = dropdown:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    text:SetPoint("LEFT", 8, 0)
-    text:SetText(defaultText or "")
-    dropdown.text = text
-    
-    local arrow = dropdown:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    arrow:SetPoint("RIGHT", -8, 0)
-    arrow:SetText("v")
-    
-    dropdown.selectedValue = items[1] and items[1].value or nil
-    dropdown.isOpen = false
-    
-    local menu = CreateFrame("Frame", nil, dropdown, "BackdropTemplate")
-    menu:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-    })
-    menu:SetBackdropColor(0.12, 0.12, 0.12, 0.98)
-    menu:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
-    menu:SetPoint("TOPLEFT", dropdown, "BOTTOMLEFT", 0, -2)
-    menu:SetSize(width, #items * 22 + 4)
-    menu:SetFrameStrata("FULLSCREEN_DIALOG")
-    menu:Hide()
-    dropdown.menu = menu
-    
-    for i, item in ipairs(items) do
-        local btn = CreateFrame("Button", nil, menu, "BackdropTemplate")
-        btn:SetSize(width - 4, 20)
-        btn:SetPoint("TOPLEFT", 2, -(i-1) * 22 - 2)
-        
-        local btnText = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        btnText:SetPoint("LEFT", 6, 0)
-        btnText:SetText(item.text)
-        
-        btn:SetScript("OnClick", function()
-            dropdown.selectedValue = item.value
-            text:SetText(item.text)
-            menu:Hide()
-            dropdown.isOpen = false
-        end)
-        btn:SetScript("OnEnter", function(self)
-            self:SetBackdrop({bgFile = "Interface\\Buttons\\WHITE8x8"})
-            self:SetBackdropColor(0.3, 0.3, 0.3, 1)
-        end)
-        btn:SetScript("OnLeave", function(self)
-            self:SetBackdrop(nil)
-        end)
-    end
-    
-    dropdown:SetScript("OnClick", function()
-        dropdown.isOpen = not dropdown.isOpen
-        menu:SetShown(dropdown.isOpen)
-    end)
-    dropdown:SetScript("OnEnter", function(self) self:SetBackdropColor(0.2, 0.2, 0.2, 1) end)
-    dropdown:SetScript("OnLeave", function(self) self:SetBackdropColor(0.15, 0.15, 0.15, 1) end)
-    
-    return dropdown
-end
+-- Mouse button display names
+local mouseDisplayNames = {
+    LeftButton   = "Left Click",
+    RightButton  = "Right Click",
+    MiddleButton = "Middle Click",
+    Button4      = "Button 4",
+    Button5      = "Button 5",
+}
 
--- Simple custom slider (compatible 12.0+)
-local function CreateSimpleSlider(parent, label, minVal, maxVal, step, currentVal, onChange)
-    local container = CreateFrame("Frame", nil, parent)
-    container:SetSize(220, 40)
-    
-    local labelText = container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    labelText:SetPoint("TOPLEFT", 0, 0)
-    labelText:SetText(label .. ": " .. currentVal)
-    container.label = labelText
-    
-    local template = nil
-    if C_XMLUtil and C_XMLUtil.GetTemplateInfo and C_XMLUtil.GetTemplateInfo("MinimalSliderTemplate") then
-        template = "MinimalSliderTemplate"
-    end
-    local slider = CreateFrame("Slider", nil, container, template)
-    slider:SetPoint("TOPLEFT", 0, -18)
-    slider:SetSize(200, 16)
-    slider:SetMinMaxValues(minVal, maxVal)
-    slider:SetValue(currentVal)
-    slider:SetValueStep(step)
-    slider:SetObeyStepOnDrag(true)
-    
-    if not slider:GetThumbTexture() then
-        slider:SetThumbTexture("Interface\\Buttons\\UI-SliderBar-Button-Horizontal")
-    end
-    
-    if not template then
-        local bg = slider:CreateTexture(nil, "BACKGROUND")
-        bg:SetAllPoints()
-        bg:SetColorTexture(0.3, 0.3, 0.3, 0.8)
-    end
-    
-    slider:SetScript("OnValueChanged", function(self, value)
-        value = math.floor(value)
-        labelText:SetText(label .. ": " .. value)
-        if onChange then onChange(value) end
-    end)
-    
-    container.slider = slider
-    return container
-end
+-- Mouse button → internal name for binding storage
+local mouseInternalNames = {
+    LeftButton   = "Left",
+    RightButton  = "Right",
+    MiddleButton = "Middle",
+    Button4      = "Button4",
+    Button5      = "Button5",
+}
+
+-- Key display overrides
+local keyDisplayNames = {
+    NUMPAD0 = "Numpad 0", NUMPAD1 = "Numpad 1", NUMPAD2 = "Numpad 2",
+    NUMPAD3 = "Numpad 3", NUMPAD4 = "Numpad 4", NUMPAD5 = "Numpad 5",
+    NUMPAD6 = "Numpad 6", NUMPAD7 = "Numpad 7", NUMPAD8 = "Numpad 8",
+    NUMPAD9 = "Numpad 9", NUMPADDECIMAL = "Numpad .",
+    NUMPADPLUS = "Numpad +", NUMPADMINUS = "Numpad -",
+    NUMPADMULTIPLY = "Numpad *", NUMPADDIVIDE = "Numpad /",
+    SPACE = "Space", TAB = "Tab", BACKSPACE = "Backspace",
+    DELETE = "Delete", INSERT = "Insert", HOME = "Home", END = "End",
+    PAGEUP = "Page Up", PAGEDOWN = "Page Down",
+}
 
 function VB:CreateAddBindingDialog()
     addDialog = CreateFrame("Frame", "VoidBoxAddBinding", UIParent, "BackdropTemplate")
-    addDialog:SetSize(300, 300)
+    addDialog:SetSize(320, 320)
     addDialog:SetPoint("CENTER")
     addDialog:SetBackdrop({
         bgFile = "Interface\\Buttons\\WHITE8x8",
@@ -474,47 +453,86 @@ function VB:CreateAddBindingDialog()
     local closeBtn = CreateFrame("Button", nil, addDialog, "UIPanelCloseButton")
     closeBtn:SetPoint("TOPRIGHT", -5, -5)
     
-    local modLabel = addDialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    modLabel:SetPoint("TOPLEFT", 15, -40)
-    modLabel:SetText(VB.L["MODIFIERS"])
+    -- === Step 1: Capture zone ===
+    local captureLabel = addDialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    captureLabel:SetPoint("TOPLEFT", 15, -40)
+    captureLabel:SetText(VB.L["STEP1_COMBO"])
     
-    local shiftCB = CreateFrame("CheckButton", nil, addDialog, "UICheckButtonTemplate")
-    shiftCB:SetPoint("TOPLEFT", 15, -60)
-    shiftCB.text:SetText("Shift")
-    addDialog.shiftCB = shiftCB
+    local captureBtn = CreateFrame("Button", nil, addDialog, "BackdropTemplate")
+    captureBtn:SetSize(280, 45)
+    captureBtn:SetPoint("TOP", 0, -60)
+    captureBtn:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 2,
+    })
+    captureBtn:SetBackdropColor(0.15, 0.15, 0.25, 1)
+    captureBtn:SetBackdropBorderColor(0.4, 0.4, 0.6, 1)
+    captureBtn:RegisterForClicks("AnyUp")
+    captureBtn:EnableMouseWheel(true)
+    addDialog.captureBtn = captureBtn
     
-    local ctrlCB = CreateFrame("CheckButton", nil, addDialog, "UICheckButtonTemplate")
-    ctrlCB:SetPoint("LEFT", shiftCB, "RIGHT", 50, 0)
-    ctrlCB.text:SetText("Ctrl")
-    addDialog.ctrlCB = ctrlCB
+    local captureText = captureBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    captureText:SetPoint("CENTER")
+    captureText:SetText("|cFF888888" .. VB.L["PRESS_ANY_COMBO"] .. "|r")
+    addDialog.captureText = captureText
     
-    local altCB = CreateFrame("CheckButton", nil, addDialog, "UICheckButtonTemplate")
-    altCB:SetPoint("LEFT", ctrlCB, "RIGHT", 50, 0)
-    altCB.text:SetText("Alt")
-    addDialog.altCB = altCB
+    -- Capture state
+    addDialog.captured = nil  -- { combo, mouse, mods, display, isKey }
     
-    local mouseLabel = addDialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    mouseLabel:SetPoint("TOPLEFT", 15, -95)
-    mouseLabel:SetText(VB.L["MOUSE_BUTTON"])
+    -- Mouse click capture
+    captureBtn:SetScript("OnClick", function(self, btn)
+        local mouseName = mouseInternalNames[btn]
+        if not mouseName then return end
+        local displayName = mouseDisplayNames[btn] or btn
+        local mods = VB:BuildModString(IsShiftKeyDown(), IsControlKeyDown(), IsAltKeyDown())
+        local display = VB:BuildDisplayString(mods, displayName)
+        
+        addDialog.captured = { mouse = mouseName, mods = mods, display = display }
+        captureText:SetText("|cFF9966FF" .. display .. "|r")
+        captureBtn:SetBackdropBorderColor(0.6, 0.4, 1, 1)
+    end)
     
-    local mouseDropdown = CreateSimpleDropdown(addDialog, 180, {
-        { text = VB.L["BTN_LEFT"], value = "Left" },
-        { text = VB.L["BTN_RIGHT"], value = "Right" },
-        { text = VB.L["BTN_MIDDLE"], value = "Middle" },
-        { text = VB.L["BTN_4"], value = "Button4" },
-        { text = VB.L["BTN_5"], value = "Button5" },
-        { text = VB.L["BTN_SCROLLUP"], value = "ScrollUp" },
-        { text = VB.L["BTN_SCROLLDOWN"], value = "ScrollDown" },
-    }, VB.L["BTN_LEFT"])
-    mouseDropdown:SetPoint("TOPLEFT", 15, -112)
-    addDialog.mouseDropdown = mouseDropdown
+    -- Scroll capture
+    captureBtn:SetScript("OnMouseWheel", function(self, delta)
+        local scrollName = delta > 0 and "ScrollUp" or "ScrollDown"
+        local displayName = delta > 0 and "Scroll Up" or "Scroll Down"
+        local mods = VB:BuildModString(IsShiftKeyDown(), IsControlKeyDown(), IsAltKeyDown())
+        local display = VB:BuildDisplayString(mods, displayName)
+        
+        addDialog.captured = { mouse = scrollName, mods = mods, display = display }
+        captureText:SetText("|cFF9966FF" .. display .. "|r")
+        captureBtn:SetBackdropBorderColor(0.6, 0.4, 1, 1)
+    end)
     
-    -- Action type selector
+    -- Keyboard capture
+    captureBtn:SetScript("OnKeyDown", function(self, key)
+        if VB:IsIgnoredKey(key) then return end
+        local displayName = keyDisplayNames[key] or key
+        local mods = VB:BuildModString(IsShiftKeyDown(), IsControlKeyDown(), IsAltKeyDown())
+        local combo = VB:BuildWoWBindingString(mods, key)
+        local display = VB:BuildDisplayString(mods, displayName)
+        
+        addDialog.captured = { combo = combo, mods = mods, display = display, isKey = true }
+        captureText:SetText("|cFF9966FF" .. display .. "|r")
+        captureBtn:SetBackdropBorderColor(0.6, 0.4, 1, 1)
+    end)
+    captureBtn:SetPropagateKeyboardInput(false)
+    
+    -- Focus management: enable keyboard capture on enter
+    captureBtn:SetScript("OnEnter", function(self)
+        self:SetBackdropColor(0.2, 0.2, 0.35, 1)
+    end)
+    captureBtn:SetScript("OnLeave", function(self)
+        self:SetBackdropColor(0.15, 0.15, 0.25, 1)
+    end)
+
+    -- === Step 2: Action type ===
     local actionLabel = addDialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    actionLabel:SetPoint("TOPLEFT", 15, -145)
-    actionLabel:SetText(VB.L["ACTION_TYPE"])
+    actionLabel:SetPoint("TOPLEFT", 15, -115)
+    actionLabel:SetText(VB.L["STEP2_ACTION"])
     
-    local actionDropdown = CreateSimpleDropdown(addDialog, 180, {
+    local actionDropdown = CreateSimpleDropdown(addDialog, 200, {
         { text = VB.L["ACTION_SPELL"], value = "spell" },
         { text = VB.L["ACTION_MACRO"], value = "macro" },
         { text = VB.L["ACTION_TARGET"], value = "target" },
@@ -522,13 +540,13 @@ function VB:CreateAddBindingDialog()
         { text = VB.L["ACTION_MENU"], value = "togglemenu" },
         { text = VB.L["ACTION_ASSIST"], value = "assist" },
     }, VB.L["ACTION_SPELL"])
-    actionDropdown:SetPoint("TOPLEFT", 15, -162)
+    actionDropdown:SetPoint("TOPLEFT", 15, -133)
     addDialog.actionDropdown = actionDropdown
     
-    -- Drop zone for spells (only visible when action = spell)
+    -- === Step 3: Drop zone for spell/macro ===
     local dropZone = CreateFrame("Button", nil, addDialog, "BackdropTemplate")
-    dropZone:SetSize(260, 50)
-    dropZone:SetPoint("TOP", 0, -200)
+    dropZone:SetSize(280, 50)
+    dropZone:SetPoint("TOP", 0, -175)
     dropZone:SetBackdrop({
         bgFile = "Interface\\Buttons\\WHITE8x8",
         edgeFile = "Interface\\Buttons\\WHITE8x8",
@@ -546,7 +564,6 @@ function VB:CreateAddBindingDialog()
     addDialog.selectedMacro = nil
     
     dropZone:SetScript("OnReceiveDrag", function()
-        -- Try spell first
         local spellID, spellName, spellIcon = VB:GetCursorSpell()
         if spellID and spellName then
             addDialog.selectedSpell = spellID
@@ -559,7 +576,6 @@ function VB:CreateAddBindingDialog()
             return
         end
         
-        -- Try macro
         local macroName, macroIcon, macroBody = VB:GetCursorMacro()
         if macroName and macroBody then
             addDialog.selectedSpell = nil
@@ -578,9 +594,10 @@ function VB:CreateAddBindingDialog()
         dropText:SetText("|cFFAAAAFF" .. VB.L["DROP_SPELL_MACRO"] .. "|r")
     end)
     
+    -- === Confirm button ===
     local confirmBtn = CreateFrame("Button", nil, addDialog, "BackdropTemplate")
-    confirmBtn:SetSize(100, 25)
-    confirmBtn:SetPoint("BOTTOM", 0, 10)
+    confirmBtn:SetSize(120, 28)
+    confirmBtn:SetPoint("BOTTOM", 0, 12)
     confirmBtn:SetBackdrop({
         bgFile = "Interface\\Buttons\\WHITE8x8",
         edgeFile = "Interface\\Buttons\\WHITE8x8",
@@ -588,11 +605,9 @@ function VB:CreateAddBindingDialog()
     })
     confirmBtn:SetBackdropColor(0.2, 0.2, 0.5, 1)
     confirmBtn:SetBackdropBorderColor(0.4, 0.4, 0.7, 1)
-    
     local confirmText = confirmBtn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     confirmText:SetPoint("CENTER")
     confirmText:SetText(VB.L["CONFIRM"])
-    
     confirmBtn:SetScript("OnClick", function() VB:ConfirmAddBinding() end)
     confirmBtn:SetScript("OnEnter", function(self) self:SetBackdropColor(0.3, 0.3, 0.6, 1) end)
     confirmBtn:SetScript("OnLeave", function(self) self:SetBackdropColor(0.2, 0.2, 0.5, 1) end)
@@ -600,53 +615,60 @@ function VB:CreateAddBindingDialog()
     tinsert(UISpecialFrames, "VoidBoxAddBinding")
 end
 
+function VB:ResetAddDialog()
+    if not addDialog then return end
+    addDialog.captured = nil
+    addDialog.selectedSpell = nil
+    addDialog.selectedMacro = nil
+    addDialog.captureText:SetText("|cFF888888" .. VB.L["PRESS_ANY_COMBO"] .. "|r")
+    addDialog.captureBtn:SetBackdropBorderColor(0.4, 0.4, 0.6, 1)
+    addDialog.dropText:SetText("|cFFAAAAFF" .. VB.L["DROP_SPELL_MACRO"] .. "|r")
+    addDialog.actionDropdown.selectedValue = "spell"
+    addDialog.actionDropdown.text:SetText(VB.L["ACTION_SPELL"])
+end
+
 function VB:ConfirmAddBinding()
+    if not addDialog.captured then
+        VB:Print(VB.L["PRESS_COMBO_FIRST"])
+        return
+    end
+    
     local actionType = addDialog.actionDropdown.selectedValue or "spell"
     
     if actionType == "spell" and not addDialog.selectedSpell then
         VB:Print(VB.L["DRAG_SPELL_FIRST"])
         return
     end
-    
     if actionType == "macro" and not addDialog.selectedMacro then
         VB:Print(VB.L["DRAG_MACRO_FIRST"])
         return
     end
     
-    local parts = {}
-    if addDialog.shiftCB:GetChecked() then table.insert(parts, "shift") end
-    if addDialog.ctrlCB:GetChecked() then table.insert(parts, "ctrl") end
-    if addDialog.altCB:GetChecked() then table.insert(parts, "alt") end
-    local modifier = table.concat(parts, "-")
+    local cap = addDialog.captured
+    local binding = {
+        combo   = cap.combo or nil,
+        mouse   = cap.mouse or nil,
+        mods    = cap.mods or "",
+        action  = actionType,
+        display = cap.display,
+    }
     
-    local mouseButton = addDialog.mouseDropdown.selectedValue or "Left"
-    
-    local actionValue = nil
-    local macroName = nil
     if actionType == "spell" then
-        actionValue = addDialog.selectedSpell
+        binding.value = addDialog.selectedSpell
+        binding.name = VB:GetSpellName(addDialog.selectedSpell)
     elseif actionType == "macro" then
-        actionValue = addDialog.selectedMacro.body
-        macroName = addDialog.selectedMacro.name
+        binding.value = addDialog.selectedMacro.body
+        binding.name = addDialog.selectedMacro.name
     end
     
-    if VB:AddClickCasting(modifier, mouseButton, actionType, actionValue, macroName) then
+    if VB:AddBinding(binding) then
         VB:RefreshBindingsList()
         addDialog:Hide()
-        
-        addDialog.shiftCB:SetChecked(false)
-        addDialog.ctrlCB:SetChecked(false)
-        addDialog.altCB:SetChecked(false)
-        addDialog.selectedSpell = nil
-        addDialog.selectedMacro = nil
-        addDialog.dropText:SetText("|cFFAAAAFF" .. VB.L["DROP_SPELL_MACRO"] .. "|r")
-        addDialog.actionDropdown.selectedValue = "spell"
-        addDialog.actionDropdown.text:SetText(VB.L["ACTION_SPELL"])
     end
 end
 
 -------------------------------------------------
--- Appearance Tab (using custom sliders)
+-- Appearance Tab
 -------------------------------------------------
 function VB:CreateAppearanceTab()
     local content = CreateFrame("Frame", nil, configFrame.content)
@@ -675,7 +697,6 @@ function VB:CreateAppearanceTab()
     scaleHSlider:SetPoint("TOPLEFT", 10, yOffset)
     yOffset = yOffset - 55
     
-    -- Group size slider
     local groupSlider = CreateSimpleSlider(content, VB.L["GROUP_SIZE"], 1, 10, 1, VB.config.maxColumns or 5, function(value)
         VB.config.maxColumns = value
         if not InCombatLockdown() then VB:UpdateAllFrames() end
@@ -683,7 +704,6 @@ function VB:CreateAppearanceTab()
     groupSlider:SetPoint("TOPLEFT", 10, yOffset)
     yOffset = yOffset - 55
     
-    -- Orientation dropdown (Horizontal / Vertical)
     local orientLabel = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     orientLabel:SetPoint("TOPLEFT", 10, yOffset)
     orientLabel:SetText(VB.L["ORIENTATION"])
@@ -694,7 +714,6 @@ function VB:CreateAppearanceTab()
     }, VB.config.orientation == "VERTICAL" and VB.L["ORIENTATION_V"] or VB.L["ORIENTATION_H"])
     orientDropdown:SetPoint("TOPLEFT", 10, yOffset - 18)
     
-    -- Store original OnClick to chain
     local origOrientItems = orientDropdown.menu
     for i = 1, select("#", origOrientItems:GetChildren()) do
         local btn = select(i, origOrientItems:GetChildren())
@@ -707,7 +726,6 @@ function VB:CreateAppearanceTab()
     end
     yOffset = yOffset - 50
     
-    -- Role order dropdown
     local roleLabel = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     roleLabel:SetPoint("TOPLEFT", 10, yOffset)
     roleLabel:SetText(VB.L["ROLE_ORDER"])
@@ -720,7 +738,6 @@ function VB:CreateAppearanceTab()
         { text = "DPS > Tank > Healer", value = "DTH" },
         { text = "DPS > Healer > Tank", value = "DHT" },
     }
-    
     local currentRoleText = "Tank > DPS > Healer"
     for _, item in ipairs(roleOrderItems) do
         if item.value == (VB.config.roleOrder or "TDH") then
@@ -731,7 +748,6 @@ function VB:CreateAppearanceTab()
     
     local roleDropdown = CreateSimpleDropdown(content, 220, roleOrderItems, currentRoleText)
     roleDropdown:SetPoint("TOPLEFT", 10, yOffset - 18)
-    
     local roleMenu = roleDropdown.menu
     for i = 1, select("#", roleMenu:GetChildren()) do
         local btn = select(i, roleMenu:GetChildren())
@@ -750,9 +766,7 @@ function VB:CreateAppearanceTab()
     classColorsCB:SetChecked(VB.config.classColors)
     classColorsCB:SetScript("OnClick", function(self)
         VB.config.classColors = self:GetChecked()
-        for _, button in pairs(VB.unitButtons) do
-            VB:UpdateHealthBar(button)
-        end
+        for _, button in pairs(VB.unitButtons) do VB:UpdateHealthBar(button) end
     end)
     yOffset = yOffset - 30
     
@@ -774,7 +788,6 @@ function VB:CreateAppearanceTab()
         edgeFile = "Interface\\Buttons\\WHITE8x8",
         edgeSize = 1,
     })
-    
     local lockText = lockBtn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     lockText:SetPoint("CENTER")
     lockBtn.text = lockText
@@ -792,12 +805,8 @@ function VB:CreateAppearanceTab()
     
     lockBtn:SetScript("OnClick", function()
         VB.config.locked = not VB.config.locked
-        if VB.frames.main then
-            VB.frames.main:EnableMouse(not VB.config.locked)
-        end
-        if VB.frames.handle then
-            VB.frames.handle:SetShown(not VB.config.locked)
-        end
+        if VB.frames.main then VB.frames.main:EnableMouse(not VB.config.locked) end
+        if VB.frames.handle then VB.frames.handle:SetShown(not VB.config.locked) end
         UpdateLockButton()
     end)
 end
@@ -813,7 +822,6 @@ function VB:CreateProfilesTab()
     
     local yOffset = -10
     
-    -- Active profile label
     local activeLabel = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     activeLabel:SetPoint("TOPLEFT", 10, yOffset)
     activeLabel:SetText(VB.L["ACTIVE_PROFILE"] .. ":")
@@ -825,13 +833,11 @@ function VB:CreateProfilesTab()
     content.activeName = activeName
     yOffset = yOffset - 35
     
-    -- Profile list
     local listLabel = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     listLabel:SetPoint("TOPLEFT", 10, yOffset)
     listLabel:SetText(VB.L["PROFILES"] .. ":")
     yOffset = yOffset - 20
     
-    -- Scroll frame for profile list
     local listFrame = CreateFrame("Frame", nil, content, "BackdropTemplate")
     listFrame:SetPoint("TOPLEFT", 10, yOffset)
     listFrame:SetSize(300, 200)
@@ -846,7 +852,6 @@ function VB:CreateProfilesTab()
     content.profileButtons = {}
     yOffset = yOffset - 210
     
-    -- Buttons row
     local btnWidth = 90
     local btnSpacing = 5
     local btnY = yOffset - 5
@@ -871,17 +876,9 @@ function VB:CreateProfilesTab()
         return btn
     end
     
-    -- New button
-    MakeProfileBtn(VB.L["PROFILE_NEW"], 0, function()
-        VB:ShowProfileNameDialog("new")
-    end)
+    MakeProfileBtn(VB.L["PROFILE_NEW"], 0, function() VB:ShowProfileNameDialog("new") end)
+    MakeProfileBtn(VB.L["PROFILE_COPY"], btnWidth + btnSpacing, function() VB:ShowProfileNameDialog("copy") end)
     
-    -- Copy button
-    MakeProfileBtn(VB.L["PROFILE_COPY"], btnWidth + btnSpacing, function()
-        VB:ShowProfileNameDialog("copy")
-    end)
-    
-    -- Delete button
     local deleteBtn = MakeProfileBtn(VB.L["PROFILE_DELETE"], (btnWidth + btnSpacing) * 2, function()
         if content.selectedProfile and content.selectedProfile ~= "Default" then
             VB:DeleteProfile(content.selectedProfile)
@@ -902,14 +899,9 @@ end
 function VB:RefreshProfilesTab()
     if not configFrame or not configFrame.profilesContent then return end
     local content = configFrame.profilesContent
-    
-    -- Update active name
     content.activeName:SetText("|cFF9966FF" .. VB:GetActiveProfileName() .. "|r")
     
-    -- Clear old buttons
-    for _, btn in ipairs(content.profileButtons) do
-        btn:Hide()
-    end
+    for _, btn in ipairs(content.profileButtons) do btn:Hide() end
     
     local profiles = VB:GetProfileList()
     local activeName = VB:GetActiveProfileName()
@@ -919,17 +911,13 @@ function VB:RefreshProfilesTab()
         if not btn then
             btn = CreateFrame("Button", nil, content.listFrame, "BackdropTemplate")
             btn:SetSize(296, 24)
-            btn:SetBackdrop({
-                bgFile = "Interface\\Buttons\\WHITE8x8",
-            })
+            btn:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
             local t = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
             t:SetPoint("LEFT", 8, 0)
             btn.text = t
-            
             local activeTag = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
             activeTag:SetPoint("RIGHT", -8, 0)
             btn.activeTag = activeTag
-            
             content.profileButtons[i] = btn
         end
         
@@ -939,20 +927,11 @@ function VB:RefreshProfilesTab()
         
         local isActive = (name == activeName)
         local isSelected = (name == content.selectedProfile)
+        btn.activeTag:SetText(isActive and ("|cFF00FF00" .. VB.L["PROFILE_ACTIVE"] .. "|r") or "")
         
-        if isActive then
-            btn.activeTag:SetText("|cFF00FF00" .. VB.L["PROFILE_ACTIVE"] .. "|r")
-        else
-            btn.activeTag:SetText("")
-        end
-        
-        if isSelected then
-            btn:SetBackdropColor(0.3, 0.3, 0.5, 1)
-        elseif isActive then
-            btn:SetBackdropColor(0.2, 0.2, 0.3, 1)
-        else
-            btn:SetBackdropColor(0.15, 0.15, 0.15, 1)
-        end
+        if isSelected then btn:SetBackdropColor(0.3, 0.3, 0.5, 1)
+        elseif isActive then btn:SetBackdropColor(0.2, 0.2, 0.3, 1)
+        else btn:SetBackdropColor(0.15, 0.15, 0.15, 1) end
         
         btn:SetScript("OnClick", function(self)
             content.selectedProfile = self.profileName
@@ -962,21 +941,14 @@ function VB:RefreshProfilesTab()
             VB:SwitchProfile(self.profileName)
             VB:RefreshProfilesTab()
         end)
-        btn:SetScript("OnEnter", function(self)
-            self:SetBackdropColor(0.25, 0.25, 0.35, 1)
-        end)
+        btn:SetScript("OnEnter", function(self) self:SetBackdropColor(0.25, 0.25, 0.35, 1) end)
         btn:SetScript("OnLeave", function(self)
             local sel = (self.profileName == content.selectedProfile)
             local act = (self.profileName == VB:GetActiveProfileName())
-            if sel then
-                self:SetBackdropColor(0.3, 0.3, 0.5, 1)
-            elseif act then
-                self:SetBackdropColor(0.2, 0.2, 0.3, 1)
-            else
-                self:SetBackdropColor(0.15, 0.15, 0.15, 1)
-            end
+            if sel then self:SetBackdropColor(0.3, 0.3, 0.5, 1)
+            elseif act then self:SetBackdropColor(0.2, 0.2, 0.3, 1)
+            else self:SetBackdropColor(0.15, 0.15, 0.15, 1) end
         end)
-        
         btn:Show()
     end
 end
@@ -1052,29 +1024,21 @@ function VB:ShowProfileNameDialog(mode)
     
     profileDialog.mode = mode
     profileDialog.editBox:SetText("")
-    
-    if mode == "new" then
-        profileDialog.title:SetText(VB.L["PROFILE_NEW"])
-    elseif mode == "copy" then
-        profileDialog.title:SetText(VB.L["PROFILE_COPY"])
-    end
+    profileDialog.title:SetText(mode == "new" and VB.L["PROFILE_NEW"] or VB.L["PROFILE_COPY"])
     
     profileDialog.okBtn:SetScript("OnClick", function()
         local name = profileDialog.editBox:GetText():trim()
         if name == "" then return end
-        
         if VoidBoxDB.profiles[name] then
             VB:Print(VB.L["PROFILE_EXISTS"])
             return
         end
-        
         if profileDialog.mode == "new" then
             VB:CreateProfile(name)
         elseif profileDialog.mode == "copy" then
             local src = configFrame.profilesContent.selectedProfile or VB:GetActiveProfileName()
             VB:CopyProfile(src, name)
         end
-        
         profileDialog:Hide()
         VB:RefreshProfilesTab()
     end)
