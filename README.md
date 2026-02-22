@@ -15,6 +15,10 @@ Compatible with **WoW 12.0 Midnight** (secret values, new APIs).
 
 - Compact raid frames with health and mana bars
 - Click-casting with drag & drop from spellbook or macro UI
+- Universal "Press to Bind" system: keyboard, mouse, scroll wheel, MMO mouse
+  - Capture any combo: Ctrl+F1, Shift+Numpad5, Alt+Right Click, etc.
+  - Keyboard bindings activate on hover (SecureHandlerWrapScript)
+  - Full modifier support (Shift, Ctrl, Alt) with any input
 - Health percentage display (secret-value safe)
 - Per-class bindings — all your priests share the same bindings
 - Mousewheel scroll bindings (with modifier support)

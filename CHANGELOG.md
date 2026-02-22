@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.4.0 (2026-02-22)
+
+- New: universal "Press to Bind" system — supports keyboard keys, mouse clicks, scroll wheel, and MMO mouse buttons
+  - Single capture button: click it, then press any combo (Ctrl+F1, Shift+Numpad5, Alt+Right Click, etc.)
+  - Keyboard bindings work on hover via SecureHandlerWrapScript (no taint)
+  - Full modifier support (Shift, Ctrl, Alt) with any input type
+  - Replaces the old checkbox + dropdown binding dialog
+- New: automatic migration from v1 binding format to v2 (no data loss on upgrade)
+- Change: binding list still shows all bindings with delete button and drag-to-replace spell/macro
+
 ## v1.3.1 (2026-02-17)
 
 - Fix: stack count badge not displaying on debuff/HOT icons (secret string from string.format broke tonumber — now extracts digits via string.byte)
