@@ -241,6 +241,8 @@ function VB:OnAddonLoaded()
     -- Runtime reference to class-specific bindings
     VB.clickCastings = VoidBoxDB.classBindings[VB.playerClass]
     
+    VB:InitMinimapButton()
+    
     VB:Print(VB.L["LOADED"] .. " (" .. VB.playerClass .. ") - /vb " .. VB.L["OPTIONS"])
 end
 
@@ -685,6 +687,12 @@ SlashCmdList["VOIDBOX"] = function(msg)
                 VB:Print("  PCT = " .. (ok3 and s3 or "FAIL: " .. tostring(s3)))
             end
         end
+    elseif msg == "minimap" then
+        if VB.IsMinimapButtonShown then
+            local shown = VB:IsMinimapButtonShown()
+            VB:SetMinimapButtonShown(not shown)
+            VB:Print(not shown and VB.L["MINIMAP_SHOWN"] or VB.L["MINIMAP_HIDDEN"])
+        end
     elseif msg == "debug" then
         VB.config.debug = not VB.config.debug
         VB:Print("Debug: " .. (VB.config.debug and "ON" or "OFF"))
@@ -709,5 +717,6 @@ SlashCmdList["VOIDBOX"] = function(msg)
         VB:Print("  /vb lock - " .. VB.L["LOCK"])
         VB:Print("  /vb unlock - " .. VB.L["UNLOCK"])
         VB:Print("  /vb reset - " .. VB.L["RESET_POS"])
+        VB:Print("  /vb minimap - " .. VB.L["MINIMAP_TOGGLE"])
     end
 end

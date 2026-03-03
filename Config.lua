@@ -778,6 +778,15 @@ function VB:CreateAppearanceTab()
         VB.config.showPowerBar = self:GetChecked()
         VB:Print(VB.L["RELOAD_REQUIRED"])
     end)
+    yOffset = yOffset - 30
+    
+    local minimapCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    minimapCB:SetPoint("TOPLEFT", 10, yOffset)
+    minimapCB.text:SetText(VB.L["SHOW_MINIMAP_BUTTON"])
+    minimapCB:SetChecked(VB:IsMinimapButtonShown())
+    minimapCB:SetScript("OnClick", function(self)
+        VB:SetMinimapButtonShown(self:GetChecked())
+    end)
     yOffset = yOffset - 40
     
     local lockBtn = CreateFrame("Button", nil, content, "BackdropTemplate")

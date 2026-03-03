@@ -128,6 +128,16 @@ SetDefault("PROFILE_CANNOT_DELETE_DEFAULT", "Cannot delete the Default profile")
 
 -- Debug
 SetDefault("DEBUG_HEALTH_TITLE", "=== Debug Health Values ===")
+
+-- Minimap button
+SetDefault("MINIMAP_LEFT_CLICK", "Left-click: toggle frames")
+SetDefault("MINIMAP_RIGHT_CLICK", "Right-click: config")
+SetDefault("MINIMAP_FRAMES_HIDDEN", "Frames hidden")
+SetDefault("MINIMAP_FRAMES_SHOWN", "Frames shown")
+SetDefault("MINIMAP_TOGGLE", "Toggle minimap button")
+SetDefault("MINIMAP_SHOWN", "Minimap button shown")
+SetDefault("MINIMAP_HIDDEN", "Minimap button hidden")
+SetDefault("SHOW_MINIMAP_BUTTON", "Show minimap button")
 SetDefault("GROUP_TYPE", "Group type")
 SetDefault("UNITS", "Units")
 SetDefault("BUTTONS_CREATED", "Buttons created")
@@ -225,6 +235,16 @@ SetLocale("frFR", "PROFILE_ACTIVE", "actif")
 SetLocale("frFR", "PROFILE_SWITCHED", "Profil activé:")
 SetLocale("frFR", "PROFILE_EXISTS", "Un profil avec ce nom existe déjà!")
 SetLocale("frFR", "PROFILE_CANNOT_DELETE_DEFAULT", "Impossible de supprimer le profil Default")
+
+-- Minimap button (frFR)
+SetLocale("frFR", "MINIMAP_LEFT_CLICK", "Clic gauche: afficher/masquer les frames")
+SetLocale("frFR", "MINIMAP_RIGHT_CLICK", "Clic droit: configuration")
+SetLocale("frFR", "MINIMAP_FRAMES_HIDDEN", "Frames masqués")
+SetLocale("frFR", "MINIMAP_FRAMES_SHOWN", "Frames affichés")
+SetLocale("frFR", "MINIMAP_TOGGLE", "Afficher/masquer le bouton minimap")
+SetLocale("frFR", "MINIMAP_SHOWN", "Bouton minimap affiché")
+SetLocale("frFR", "MINIMAP_HIDDEN", "Bouton minimap masqué")
+SetLocale("frFR", "SHOW_MINIMAP_BUTTON", "Afficher le bouton minimap")
 
 -------------------------------------------------
 -- German (deDE)

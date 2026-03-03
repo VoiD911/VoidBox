@@ -23,6 +23,7 @@ Compatible with **WoW 12.0 Midnight** (secret values, new APIs).
 - Per-class bindings — all your priests share the same bindings
 - Mousewheel scroll bindings (with modifier support)
 - Profile system (layout/appearance profiles)
+- Minimap button (LibDBIcon): left-click toggle frames, right-click config
 - Percentage-based scaling system (50%-150%, live preview, no reload)
   - Base frame: 80×55px at 100% scale
   - Independent width/height scale sliders (step 10%)
@@ -49,6 +50,7 @@ Compatible with **WoW 12.0 Midnight** (secret values, new APIs).
 | `/vb lock` | Lock frames |
 | `/vb unlock` | Unlock frames |
 | `/vb reset` | Reset position |
+| `/vb minimap` | Toggle minimap button |
 | `/vb profile` | List profiles |
 | `/vb profile <name>` | Switch profile |
 

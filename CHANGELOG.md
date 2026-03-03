@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.4.1 (2026-03-03)
+
+- New: minimap button (LibDBIcon) — left-click to toggle frames visibility, right-click to open config
+- New: tooltip on minimap icon with usage hints
+- New: `/vb minimap` slash command to show/hide the minimap button
+- New: "Show minimap button" checkbox in Appearance tab
+- Added: LibStub, CallbackHandler-1.0, LibDataBroker-1.1, LibDBIcon-1.0 embedded libraries
+
 ## v1.4.0 (2026-02-22)
 
 - New: universal "Press to Bind" system — supports keyboard keys, mouse clicks, scroll wheel, and MMO mouse buttons
