@@ -9,6 +9,7 @@ _G.VoidBox = VB
 -- Namespaces
 VB.frames = {}
 VB.unitButtons = {}
+VB.tankButtons = {}
 VB.config = {}
 VB.clickCastings = {}
 
@@ -38,6 +39,8 @@ VB.defaults = {
     healthFormat = "deficit", -- current, percent, deficit, none
     classColors = true,
     locked = false,
+    showTankFrame = false,
+    tankFramePosition = nil,
     position = { point = "CENTER", x = 0, y = 0 },
     clickCastings = {},
 }
@@ -158,6 +161,7 @@ VB.profileKeys = {
     "texture", "font", "fontSize",
     "showName", "showHealth", "healthFormat",
     "classColors", "locked", "position",
+    "showTankFrame", "tankFramePosition",
 }
 
 -------------------------------------------------
@@ -303,6 +307,13 @@ function VB:SwitchProfile(name)
         VB.frames.main:EnableMouse(not VB.config.locked)
         if VB.frames.handle then
             VB.frames.handle:SetShown(not VB.config.locked)
+        end
+    end
+    if VB.frames.tankFrame then
+        local tpos = VB.config.tankFramePosition
+        if tpos and tpos.point then
+            VB.frames.tankFrame:ClearAllPoints()
+            VB.frames.tankFrame:SetPoint(tpos.point, UIParent, tpos.relPoint or tpos.point, tpos.x or 0, tpos.y or 0)
         end
     end
     VB:UpdateAllFrames()
@@ -553,6 +564,9 @@ function VB:UpdateAllFrames()
         totalCols * (width + spacing) - spacing,
         totalRows * (height + spacing) - spacing
     )
+    
+    -- Update tank frame if enabled
+    VB:UpdateTankFrame()
 end
 
 local roleOrders = {
@@ -595,6 +609,178 @@ function VB:GetUnitsToDisplay()
 end
 
 -------------------------------------------------
+-- Tank Frame (separate panel for tanks only)
+-------------------------------------------------
+VB.tankButtonCount = 0
+
+function VB:CreateTankFrame()
+    if VB.frames.tankFrame then return end
+    
+    local tf = CreateFrame("Frame", "VoidBoxTankFrame", UIParent, "BackdropTemplate")
+    tf:SetSize(80, 55)
+    tf:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+    })
+    tf:SetBackdropColor(0.05, 0.05, 0.05, 0.6)
+    tf:SetBackdropBorderColor(0.4, 0.2, 0.6, 0.8)
+    tf:SetClampedToScreen(true)
+    tf:SetMovable(true)
+    tf:EnableMouse(true)
+    tf:RegisterForDrag("LeftButton")
+    
+    local pos = VB.config.tankFramePosition
+    if pos and pos.point then
+        tf:SetPoint(pos.point, UIParent, pos.relPoint or pos.point, pos.x or 0, pos.y or 0)
+    elseif VB.frames.main then
+        tf:SetPoint("BOTTOMLEFT", VB.frames.main, "TOPLEFT", 0, 20)
+    else
+        tf:SetPoint("CENTER", UIParent, "CENTER", -200, 0)
+    end
+    
+    tf:SetScript("OnDragStart", function(self)
+        if not VB.config.locked then self:StartMoving() end
+    end)
+    tf:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        local point, _, relPoint, x, y = self:GetPoint()
+        VB.config.tankFramePosition = { point = point, relPoint = relPoint, x = x, y = y }
+    end)
+    
+    -- Label
+    local label = tf:CreateFontString(nil, "OVERLAY")
+    label:SetFont(VB.config.font, 8, "OUTLINE")
+    label:SetPoint("BOTTOM", tf, "TOP", 0, 1)
+    label:SetText("|cFF9966FFTANK|r")
+    tf.label = label
+    
+    -- Drag handle (visible when unlocked)
+    local handle = CreateFrame("Frame", nil, tf, "BackdropTemplate")
+    handle:SetHeight(14)
+    handle:SetPoint("TOPLEFT", tf, "TOPLEFT", 0, 14)
+    handle:SetPoint("TOPRIGHT", tf, "TOPRIGHT", 0, 14)
+    handle:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+    })
+    handle:SetBackdropColor(0.6, 0.4, 1.0, 0.7)
+    handle:SetBackdropBorderColor(0.6, 0.4, 1.0, 0.9)
+    handle:EnableMouse(true)
+    handle:RegisterForDrag("LeftButton")
+    handle:SetScript("OnDragStart", function()
+        if not VB.config.locked then tf:StartMoving() end
+    end)
+    handle:SetScript("OnDragStop", function()
+        tf:StopMovingOrSizing()
+        local point, _, relPoint, x, y = tf:GetPoint()
+        VB.config.tankFramePosition = { point = point, relPoint = relPoint, x = x, y = y }
+    end)
+    handle:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine("|cFF9966FFVoidBox|r Tank")
+        GameTooltip:AddLine(VB.L["DRAG_TO_MOVE"], 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    handle:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    
+    local handleText = handle:CreateFontString(nil, "OVERLAY")
+    handleText:SetFont(VB.config.font, 8, "OUTLINE")
+    handleText:SetPoint("CENTER")
+    handleText:SetText("|cFF9966FFTANK|r")
+    
+    handle:SetShown(not VB.config.locked)
+    tf.handle = handle
+    
+    -- Container for tank buttons
+    local container = CreateFrame("Frame", nil, tf)
+    container:SetAllPoints()
+    tf.container = container
+    
+    tf:Hide()
+    VB.frames.tankFrame = tf
+end
+
+function VB:GetOrCreateTankButton(unit, index)
+    local key = "tank" .. index
+    if VB.tankButtons[key] then
+        VB.tankButtons[key].unit = unit
+        VB.tankButtons[key]:SetAttribute("unit", unit)
+        return VB.tankButtons[key]
+    end
+    VB.tankButtonCount = VB.tankButtonCount + 1
+    local button = VB:CreateUnitButton(unit, 1000 + VB.tankButtonCount)
+    -- Re-parent to tank container
+    button:SetParent(VB.frames.tankFrame.container)
+    VB.tankButtons[key] = button
+    return button
+end
+
+function VB:UpdateTankFrame()
+    if not VB.frames.tankFrame then
+        VB:CreateTankFrame()
+    end
+    
+    local tf = VB.frames.tankFrame
+    
+    -- Hide all tank buttons first
+    for _, btn in pairs(VB.tankButtons) do
+        btn:Hide()
+    end
+    
+    -- If disabled or solo, hide the frame
+    if not VB.config.showTankFrame or VB.groupType == "solo" then
+        tf:Hide()
+        return
+    end
+    
+    -- Find tank units
+    local tanks = {}
+    local allUnits = VB:GetUnitsToDisplay()
+    for _, unit in ipairs(allUnits) do
+        if UnitExists(unit) then
+            local role = UnitGroupRolesAssigned(unit) or "NONE"
+            if role == "TANK" then
+                table.insert(tanks, unit)
+            end
+        end
+    end
+    
+    if #tanks == 0 then
+        tf:Hide()
+        return
+    end
+    
+    -- Compute sizes
+    local sw = (VB.config.scaleWidth or 100) / 100
+    local sh = (VB.config.scaleHeight or 100) / 100
+    local width = math.floor(80 * sw)
+    local height = math.floor(55 * sh)
+    local spacing = VB.config.frameSpacing or 2
+    
+    -- Layout tanks vertically
+    for i, unit in ipairs(tanks) do
+        local button = VB:GetOrCreateTankButton(unit, i)
+        VB:ResizeUnitButton(button)
+        button:ClearAllPoints()
+        button:SetPoint("TOPLEFT", tf.container, "TOPLEFT", 0, -(i - 1) * (height + spacing))
+        button:Show()
+        VB:UpdateUnitButton(button)
+    end
+    
+    -- Resize tank frame to fit
+    local totalH = #tanks * (height + spacing) - spacing
+    tf:SetSize(width, totalH)
+    
+    -- Lock state
+    tf:EnableMouse(not VB.config.locked)
+    if tf.handle then tf.handle:SetShown(not VB.config.locked) end
+    
+    tf:Show()
+end
+
+-------------------------------------------------
 -- Slash Commands
 -------------------------------------------------
 SLASH_VOIDBOX1 = "/vb"
@@ -606,11 +792,15 @@ SlashCmdList["VOIDBOX"] = function(msg)
         VB.config.locked = true
         VB.frames.main:EnableMouse(false)
         if VB.frames.handle then VB.frames.handle:Hide() end
+        if VB.frames.tankFrame then VB.frames.tankFrame:EnableMouse(false) end
+        if VB.frames.tankFrame and VB.frames.tankFrame.handle then VB.frames.tankFrame.handle:Hide() end
         VB:Print(VB.L["FRAMES_LOCKED"])
     elseif msg == "unlock" then
         VB.config.locked = false
         VB.frames.main:EnableMouse(true)
         if VB.frames.handle then VB.frames.handle:Show() end
+        if VB.frames.tankFrame then VB.frames.tankFrame:EnableMouse(true) end
+        if VB.frames.tankFrame and VB.frames.tankFrame.handle then VB.frames.tankFrame.handle:Show() end
         VB:Print(VB.L["FRAMES_UNLOCKED"])
     elseif msg == "reset" then
         VB.config.position = { point = "CENTER", x = 0, y = 0 }

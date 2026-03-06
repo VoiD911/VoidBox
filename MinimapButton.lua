@@ -20,12 +20,14 @@ local vbBroker = LDB:NewDataObject("VoidBox", {
                 if VB.frames.main:IsShown() then
                     VB.frames.main:Hide()
                     if VB.frames.handle then VB.frames.handle:Hide() end
+                    if VB.frames.tankFrame then VB.frames.tankFrame:Hide() end
                     VB:Print(VB.L["MINIMAP_FRAMES_HIDDEN"])
                 else
                     VB.frames.main:Show()
                     if VB.frames.handle and not VB.config.locked then
                         VB.frames.handle:Show()
                     end
+                    if VB.config.showTankFrame then VB:UpdateTankFrame() end
                     VB:Print(VB.L["MINIMAP_FRAMES_SHOWN"])
                 end
             end

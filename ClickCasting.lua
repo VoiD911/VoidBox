@@ -368,6 +368,9 @@ function VB:ApplyClickCastingsToAllFrames()
     for _, button in pairs(VB.unitButtons) do
         VB:ApplyClickCastings(button)
     end
+    for _, button in pairs(VB.tankButtons) do
+        VB:ApplyClickCastings(button)
+    end
     VB:Debug("Click castings applied to all frames")
 end
 
