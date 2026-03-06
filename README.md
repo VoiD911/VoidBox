@@ -24,6 +24,7 @@ Compatible with **WoW 12.0 Midnight** (secret values, new APIs).
 - Mousewheel scroll bindings (with modifier support)
 - Profile system (layout/appearance profiles)
 - Minimap button (LibDBIcon): left-click toggle frames, right-click config
+- Separate tank frame (optional): dedicated movable panel for tanks only
 - Percentage-based scaling system (50%-150%, live preview, no reload)
   - Base frame: 80×55px at 100% scale
   - Independent width/height scale sliders (step 10%)
