@@ -119,7 +119,7 @@ function VB:GetUnitDebuffs(unit, maxCount)
             table.insert(debuffs, {
                 name = aura.name,
                 icon = aura.icon,
-                count = aura.applications or 0,
+                count = aura.applications,
                 dispelType = aura.dispelName,
                 duration = aura.duration,
                 expirationTime = aura.expirationTime,
@@ -162,7 +162,7 @@ function VB:GetUnitBuffsByPlayer(unit, maxCount)
                 table.insert(buffs, {
                     name = aura.name,
                     icon = aura.icon,
-                    count = aura.applications or 0,
+                    count = aura.applications,
                     duration = aura.duration,
                     expirationTime = aura.expirationTime,
                     spellID = aura.spellId,
