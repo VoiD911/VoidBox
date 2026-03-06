@@ -373,6 +373,9 @@ function VB:OnPlayerEnteringWorld()
         VB:CreateMainFrame()
         VB:InitClickCastings()
     end
+    if not VB._rangeSpellID then
+        VB:FindRangeCheckSpell()
+    end
     VB:UpdateGroupType()
     VB:UpdateAllFrames()
 end
@@ -387,6 +390,8 @@ function VB:OnSpecChanged()
         VB.playerSpecID = GetSpecializationInfo(GetSpecialization())
     end
     VB:ApplyClickCastingsToAllFrames()
+    -- Re-detect range check spell (talents may have changed)
+    VB:FindRangeCheckSpell()
 end
 
 -------------------------------------------------

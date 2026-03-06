@@ -428,17 +428,74 @@ function VB:UpdateRole(button)
     VB:UpdateName(button)
 end
 
+-- Range check: multiple spell candidates per class, ordered by likelihood
+-- ALL spells must be 40yd+ range (friendly) to match healer range
+-- We try each until one works (IsSpellInRange returns non-nil)
+-- The result is cached and invalidated on spec change
+local rangeCheckCandidates = {
+    DRUID       = { 8936, 774, 5185 },              -- Regrowth(40yd), Rejuvenation(40yd), Healing Touch(40yd)
+    PRIEST      = { 2061, 17, 139 },                 -- Flash Heal(40yd), PW:Shield(40yd), Renew(40yd)
+    PALADIN     = { 19750, 633, 4987 },              -- Flash of Light(40yd), Lay on Hands(40yd), Cleanse(40yd)
+    SHAMAN      = { 8004, 51886 },                   -- Healing Surge(40yd), Cleanse Spirit(40yd)
+    MONK        = { 116670, 115450 },                -- Vivify(40yd), Detox(40yd)
+    EVOKER      = { 361469, 360823 },                -- Living Flame(25yd), Naturalize(40yd)
+    MAGE        = { 475, 130 },                      -- Remove Curse(40yd), Slow Fall(40yd)
+    WARLOCK     = { 20707, 5697 },                   -- Soulstone(40yd), Unending Breath(30yd)
+    HUNTER      = { 34477 },                         -- Misdirection(40yd)
+    ROGUE       = { 57934 },                         -- Tricks of the Trade(30yd)
+    WARRIOR     = { 97462 },                         -- Rallying Cry(40yd)
+    DEATHKNIGHT = { 61999 },                         -- Raise Ally(40yd)
+    DEMONHUNTER = {},                                -- No long-range friendly spell
+}
+
+function VB:FindRangeCheckSpell()
+    VB._rangeSpellID = nil
+    VB._rangeSpellName = nil
+    if not VB.playerClass then return end
+    
+    local candidates = rangeCheckCandidates[VB.playerClass]
+    if not candidates then return end
+    
+    for _, spellID in ipairs(candidates) do
+        local name = VB:GetSpellName(spellID)
+        if name then
+            -- Verify the player actually knows this spell by checking if IsSpellInRange
+            -- returns non-nil on "player" (always in range of self for friendly spells)
+            local ok, result = pcall(C_Spell.IsSpellInRange, spellID, "player")
+            if ok and result ~= nil then
+                VB._rangeSpellID = spellID
+                VB._rangeSpellName = name
+                VB:Debug("Range spell: " .. name .. " (ID " .. spellID .. ")")
+                return
+            end
+        end
+    end
+    
+    VB:Debug("Range: no suitable spell found for " .. VB.playerClass)
+end
+
 function VB:UpdateRange(button)
     local unit = button.unit
     if not unit or not UnitExists(unit) then return end
+    if unit == "player" then return end
+    
     local inRange = true
-    if unit ~= "player" then
-        local ok, result = pcall(function()
-            local r = UnitInRange(unit)
-            if r then return true else return false end
-        end)
-        if ok then inRange = result else inRange = true end
+    
+    if VB._rangeSpellID and C_Spell and C_Spell.IsSpellInRange then
+        local ok, result = pcall(C_Spell.IsSpellInRange, VB._rangeSpellID, unit)
+        if ok then
+            if result == nil then
+                inRange = false
+            else
+                -- Secret boolean: #tostring(true)=4, #tostring(false)=5
+                local ok2, len = pcall(function() return #tostring(result) end)
+                if ok2 and type(len) == "number" then
+                    inRange = (len == 4)
+                end
+            end
+        end
     end
+    
     if inRange ~= button.inRange then
         button.inRange = inRange
         button:SetAlpha(inRange and 1 or 0.4)
