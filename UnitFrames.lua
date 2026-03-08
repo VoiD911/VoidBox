@@ -97,6 +97,15 @@ local function CreateAuraIcons(parent, count, iconSize)
         stk:SetTextColor(1, 0.85, 0)
         f.stacks = stk
 
+        -- Cooldown sweep overlay
+        local cd = CreateFrame("Cooldown", nil, f, "CooldownFrameTemplate")
+        cd:SetAllPoints()
+        cd:SetDrawEdge(false)
+        cd:SetDrawBling(false)
+        cd:SetHideCountdownNumbers(true)
+        cd:SetReverse(true)
+        f.cooldown = cd
+
         f:Hide()
         icons[i] = f
     end
@@ -585,8 +594,9 @@ local function SetAuraFrame(frame, aura)
         local isSec = issecretvalue and issecretvalue(appVal) or false
         
         if isSec then
-            -- Secret number: display via SetFormattedText (can't filter 0/1)
-            -- In practice, secret values are non-trivial (real 0 is not secret)
+            -- Secret number: display via SetFormattedText
+            -- We can't filter 0/1 (comparison crashes on secrets)
+            -- Accept showing badge for all secret values
             local ok = pcall(function()
                 frame.stacks:SetFormattedText("%d", appVal)
             end)
@@ -612,6 +622,25 @@ local function SetAuraFrame(frame, aura)
         frame.badge:SetShown(showBadge)
     end
     frame._showBadge = showBadge
+
+    -- Cooldown sweep (timer animation)
+    -- SetCooldownDuration(duration) starts from NOW — no startTime needed
+    -- We track auraInstanceID to avoid resetting the animation on refresh
+    if frame.cooldown then
+        local cdOk = pcall(function()
+            local auraID = aura.auraInstanceID
+            if auraID and auraID ~= frame._lastAuraID then
+                frame._lastAuraID = auraID
+                frame.cooldown:SetCooldownDuration(aura.duration)
+            elseif not auraID then
+                frame.cooldown:SetCooldownDuration(aura.duration)
+            end
+        end)
+        if not cdOk then
+            pcall(function() frame.cooldown:Clear() end)
+        end
+    end
+
     frame:Show()
 end
 
