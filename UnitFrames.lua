@@ -78,7 +78,7 @@ local function CreateAuraIcons(parent, count, iconSize)
         local badgeSize = math.max(9, math.floor(iconSize * 0.55))
         local badge = CreateFrame("Frame", nil, f, "BackdropTemplate")
         badge:SetSize(badgeSize, badgeSize)
-        badge:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 3, -3)
+        badge:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, 0)
         badge:SetBackdrop({
             bgFile = "Interface\\Buttons\\WHITE8x8",
             edgeFile = "Interface\\Buttons\\WHITE8x8",
@@ -579,55 +579,39 @@ local function SetAuraFrame(frame, aura)
     pcall(function() frame.icon:SetTexture(aura.icon) end)
 
     local showBadge = false
+    local appVal = aura.applications
 
-    -- aura.count may be a secret value in 12.0+
-    -- We must NOT use "or 0" because testing a secret value crashes
-    -- Strategy: format to secret string, SetText displays it fine,
-    -- then extract a real number via string.byte to decide visibility
-    local formatted = nil
-    local ok1 = pcall(function()
-        formatted = string.format("%d", aura.count)
-    end)
-    -- If count was nil, pcall fails — try with 0
-    if not ok1 or not formatted then
-        formatted = "0"
+    if appVal ~= nil then
+        local isSec = issecretvalue and issecretvalue(appVal) or false
+        
+        if isSec then
+            -- Secret number: display via SetFormattedText (can't filter 0/1)
+            -- In practice, secret values are non-trivial (real 0 is not secret)
+            local ok = pcall(function()
+                frame.stacks:SetFormattedText("%d", appVal)
+            end)
+            if ok then
+                frame.stacks:SetTextColor(1, 0.85, 0)
+                showBadge = true
+            end
+        else
+            -- Real number: compare normally, show only if >= 2
+            if type(appVal) == "number" and appVal >= 2 then
+                frame.stacks:SetText(tostring(appVal))
+                frame.stacks:SetTextColor(1, 0.85, 0)
+                showBadge = true
+            end
+        end
     end
 
-    if ok1 and formatted then
-        -- Try to get a real number for comparison
-        -- In 12.0+: tonumber(secretString) = nil, so we use string.byte extraction
-        local realNum = tonumber(formatted)  -- works outside secret context
-        if not realNum then
-            -- Secret string: extract digits via string.byte
-            local ok2, extracted = pcall(function()
-                local n = 0
-                for pos = 1, 10 do
-                    local b = string.byte(formatted, pos)
-                    if not b then break end
-                    if b >= 48 and b <= 57 then
-                        n = n * 10 + (b - 48)
-                    end
-                end
-                return n
-            end)
-            if ok2 then realNum = extracted end
-        end
-
-        if realNum and realNum > 1 then
-            frame.stacks:SetText(formatted)
-            frame.stacks:SetTextColor(1, 0.85, 0)
-            showBadge = true
-        elseif not realNum then
-            -- Could not extract number at all — show badge as safety
-            frame.stacks:SetText(formatted)
-            frame.stacks:SetTextColor(1, 0.85, 0)
-            showBadge = true
-        end
+    if not showBadge then
+        frame.stacks:SetText("")
     end
 
     if frame.badge then
         frame.badge:SetShown(showBadge)
     end
+    frame._showBadge = showBadge
     frame:Show()
 end
 
@@ -646,16 +630,22 @@ function VB:UpdateAuras(button)
     -- === DEBUFFS ===
     local debuffIdx = 0
     for i = 1, 40 do
-        if debuffIdx >= MAX_DEBUFF_ICONS then break end
         local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HARMFUL")
         if not aura then break end
-        debuffIdx = debuffIdx + 1
-        SetAuraFrame(button.debuffIcons[debuffIdx], aura)
+        if debuffIdx < MAX_DEBUFF_ICONS then
+            debuffIdx = debuffIdx + 1
+            SetAuraFrame(button.debuffIcons[debuffIdx], aura)
+        end
     end
     -- Center only the visible debuff icons
     CenterAuraRow(button.debuffIcons, debuffIdx, S.debuffSize, button.healthBar, button._row2Top or 14)
     -- Re-show the ones that have data
-    for i = 1, debuffIdx do button.debuffIcons[i]:Show() end
+    for i = 1, debuffIdx do
+        button.debuffIcons[i]:Show()
+        if button.debuffIcons[i]._showBadge and button.debuffIcons[i].badge then
+            button.debuffIcons[i].badge:Show()
+        end
+    end
 
     -- === HOTs / Shields (player-cast only) ===
     local buffIdx = 0
@@ -704,7 +694,12 @@ function VB:UpdateAuras(button)
     end
     -- Center only the visible buff icons
     CenterAuraRow(button.buffIcons, buffIdx, S.buffSize, button.healthBar, button._row3Top or 36)
-    for i = 1, buffIdx do button.buffIcons[i]:Show() end
+    for i = 1, buffIdx do
+        button.buffIcons[i]:Show()
+        if button.buffIcons[i]._showBadge and button.buffIcons[i].badge then
+            button.buffIcons[i].badge:Show()
+        end
+    end
 
     if button.othersIndicator and othersCount > 0 then
         button.othersIndicator:SetText("+" .. othersCount)
