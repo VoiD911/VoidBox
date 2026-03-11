@@ -119,7 +119,7 @@ function VB:CreateUnitButton(unit, index)
     local S = GetScaledSizes()
 
     local button = CreateFrame("Button", "VoidBoxButton"..index, VB.frames.container,
-        "SecureUnitButtonTemplate,BackdropTemplate")
+        "SecureUnitButtonTemplate,SecureHandlerEnterLeaveTemplate,BackdropTemplate")
     button:SetSize(S.frameW, S.frameH)
     button.unit = unit
     button:SetAttribute("unit", unit)
@@ -335,13 +335,13 @@ function VB:RegisterUnitButtonEvents(button)
         end
     end)
 
-    button:SetScript("OnEnter", function(self)
+    button:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(UIParent, "ANCHOR_NONE")
         GameTooltip:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -20, 20)
         GameTooltip:SetUnit(self.unit)
         GameTooltip:Show()
     end)
-    button:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+    button:HookScript("OnLeave", function(self) GameTooltip:Hide() end)
 end
 
 -------------------------------------------------

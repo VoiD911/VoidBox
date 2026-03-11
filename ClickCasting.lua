@@ -174,11 +174,72 @@ local function GetMouseAttrKey(binding)
 end
 
 -------------------------------------------------
+-- Keyboard Proxy Buttons
+-- Each keyboard binding gets a dedicated invisible SecureActionButton.
+-- On hover (OnEnter), the secure snippet updates the proxy's "unit"
+-- attribute to match the hovered unit frame, then binds the key
+-- to click the proxy. On leave, bindings are cleared.
+-- This approach works because SetBindingClick with a real named
+-- button + "LeftButton" is fully supported by the WoW secure system.
+-------------------------------------------------
+VB._kbProxies = {}
+VB._kbProxyCount = 0
+
+function VB:GetOrCreateKBProxy(index, binding)
+    if VB._kbProxies[index] then return VB._kbProxies[index] end
+    
+    VB._kbProxyCount = VB._kbProxyCount + 1
+    local name = "VoidBoxKBProxy" .. VB._kbProxyCount
+    -- SecureUnitButtonTemplate so the "unit" attribute is used for spell targeting
+    -- Must NOT be Hide()'d — hidden buttons can't receive binding clicks
+    -- Instead, placed off-screen with 0 alpha and no mouse interaction
+    local proxy = CreateFrame("Button", name, UIParent, "SecureUnitButtonTemplate")
+    proxy:SetSize(1, 1)
+    proxy:SetPoint("TOPLEFT", UIParent, "TOPLEFT", -200, 200)
+    proxy:SetAlpha(0)
+    proxy:EnableMouse(false)
+    proxy:RegisterForClicks("AnyUp", "AnyDown")
+    
+    VB._kbProxies[index] = proxy
+    return proxy
+end
+
+function VB:ConfigureKBProxy(proxy, binding)
+    if InCombatLockdown() then return end
+    
+    -- Ensure vehicle toggle like main unit buttons
+    proxy:SetAttribute("toggleForVehicle", true)
+    
+    local action = binding.action
+    if action == "spell" then
+        local spellName = binding.value
+        if type(binding.value) == "number" then
+            spellName = VB:GetSpellName(binding.value)
+        end
+        if spellName then
+            proxy:SetAttribute("type", "spell")
+            proxy:SetAttribute("spell", spellName)
+        end
+    elseif action == "macro" then
+        proxy:SetAttribute("type", "macro")
+        proxy:SetAttribute("macrotext", binding.value)
+    elseif action == "target" then
+        proxy:SetAttribute("type", "target")
+    elseif action == "focus" then
+        proxy:SetAttribute("type", "focus")
+    elseif action == "togglemenu" then
+        proxy:SetAttribute("type", "togglemenu")
+    elseif action == "assist" then
+        proxy:SetAttribute("type", "assist")
+    end
+end
+
+-------------------------------------------------
 -- Setup Secure Keyboard Bindings
--- Uses SecureHandlerWrapScript on OnEnter/OnLeave
--- to SetBindingClick for keyboard combos and scroll wheel.
--- The snippet reads attributes _vbKB1, _vbKB2... for the
--- WoW binding strings, and _vbKBBtn1... for the virtual button.
+-- Uses _onenter/_onleave attributes on the button
+-- (which inherits SecureHandlerEnterLeaveTemplate).
+-- On enter: SetBindingClick for scroll + keyboard proxies.
+-- On leave: ClearBindings.
 -------------------------------------------------
 function VB:SetupSecureBindings(button)
     local btnName = button:GetName()
@@ -191,89 +252,64 @@ function VB:SetupSecureBindings(button)
     
     for _, binding in ipairs(VB.clickCastings) do
         if binding.combo then
-            -- Keyboard binding
             kbIndex = kbIndex + 1
-            local virtualBtn = "VBKey" .. kbIndex
-            kbBindings[kbIndex] = { combo = binding.combo, virtualBtn = virtualBtn }
             
-            -- Set the action attributes for this virtual button
-            VB:SetButtonActionAttr(button, virtualBtn, binding)
+            -- Create/configure a proxy button for this keyboard binding
+            local proxy = VB:GetOrCreateKBProxy(kbIndex, binding)
+            VB:ConfigureKBProxy(proxy, binding)
+            
+            kbBindings[kbIndex] = { combo = binding.combo, proxyName = proxy:GetName() }
         end
         if binding.mouse == "ScrollUp" or binding.mouse == "ScrollDown" then
             hasScroll = true
         end
     end
     
-    -- Store binding info as attributes for the secure snippet
-    button:SetAttribute("_vbKBCount", kbIndex)
-    for i, kb in ipairs(kbBindings) do
-        button:SetAttribute("_vbKB" .. i, kb.combo)
-        button:SetAttribute("_vbKBBtn" .. i, kb.virtualBtn)
-    end
-    
     -- Enable mousewheel if needed
     button:EnableMouseWheel(hasScroll)
     
-    -- Only wrap once
-    if button._vbSecureWrapped then return end
-    button._vbSecureWrapped = true
+    -- SetFrameRef for each proxy so the _onenter snippet can access them
+    for i, kb in ipairs(kbBindings) do
+        SecureHandlerSetFrameRef(button, "vbProxy" .. i, VB._kbProxies[i])
+    end
     
-    -- Build the secure snippet for OnEnter
-    SecureHandlerWrapScript(button, "OnEnter", button, [[
-        local btn = self:GetName()
-        if not btn then return end
-        
-        -- Scroll wheel bindings
-        self:SetBindingClick(true, "MOUSEWHEELUP", btn, "Button6")
-        self:SetBindingClick(true, "MOUSEWHEELDOWN", btn, "Button7")
-        
-        -- Keyboard bindings
-        local count = self:GetAttribute("_vbKBCount") or 0
-        for i = 1, count do
-            local combo = self:GetAttribute("_vbKB" .. i)
-            local vBtn = self:GetAttribute("_vbKBBtn" .. i)
-            if combo and vBtn then
-                self:SetBindingClick(true, combo, btn, vBtn)
-            end
-        end
-    ]])
+    -- Build the _onenter snippet string dynamically
+    -- This runs in the restricted environment when mouse enters the button
+    -- "self" in _onenter = the button itself (it's the handler owner)
+    local enterParts = {}
+    table.insert(enterParts, 'self:ClearBindings()')
     
-    SecureHandlerWrapScript(button, "OnLeave", button, [[
-        self:ClearBindings()
-    ]])
+    -- Scroll wheel
+    table.insert(enterParts, string.format(
+        'self:SetBindingClick(true, "MOUSEWHEELUP", "%s", "Button6")', btnName))
+    table.insert(enterParts, string.format(
+        'self:SetBindingClick(true, "MOUSEWHEELDOWN", "%s", "Button7")', btnName))
+    
+    -- Keyboard bindings
+    local unit_line = 'local unit = self:GetAttribute("unit")'
+    if kbIndex > 0 then
+        table.insert(enterParts, unit_line)
+    end
+    for i, kb in ipairs(kbBindings) do
+        -- Update proxy unit, then bind key to proxy
+        table.insert(enterParts, string.format(
+            'local p%d = self:GetFrameRef("vbProxy%d")', i, i))
+        table.insert(enterParts, string.format(
+            'if p%d then p%d:SetAttribute("unit", unit) end', i, i))
+        table.insert(enterParts, string.format(
+            'self:SetBindingClick(true, "%s", "%s", "LeftButton")',
+            kb.combo, kb.proxyName))
+    end
+    
+    local enterSnippet = table.concat(enterParts, "\n")
+    local leaveSnippet = 'self:ClearBindings()'
+    
+    -- Set the _onenter/_onleave attributes
+    -- SecureHandlerEnterLeaveTemplate executes these in the restricted env
+    button:SetAttribute("_onenter", enterSnippet)
+    button:SetAttribute("_onleave", leaveSnippet)
 end
 
--------------------------------------------------
--- Set action attributes for a virtual button name
--------------------------------------------------
-function VB:SetButtonActionAttr(button, virtualBtn, binding)
-    if InCombatLockdown() then return end
-    
-    local typeKey = "type-" .. virtualBtn
-    local action = binding.action
-    
-    if action == "spell" then
-        local spellName = binding.value
-        if type(binding.value) == "number" then
-            spellName = VB:GetSpellName(binding.value)
-        end
-        if spellName then
-            button:SetAttribute(typeKey, "spell")
-            button:SetAttribute("spell-" .. virtualBtn, spellName)
-        end
-    elseif action == "macro" then
-        button:SetAttribute(typeKey, "macro")
-        button:SetAttribute("macrotext-" .. virtualBtn, binding.value)
-    elseif action == "target" then
-        button:SetAttribute(typeKey, "target")
-    elseif action == "focus" then
-        button:SetAttribute(typeKey, "focus")
-    elseif action == "togglemenu" then
-        button:SetAttribute(typeKey, "togglemenu")
-    elseif action == "assist" then
-        button:SetAttribute(typeKey, "assist")
-    end
-end
 
 -------------------------------------------------
 -- Apply Click Castings to a Button
@@ -347,17 +383,21 @@ function VB:ClearClickCastings(button)
         end
     end
     
-    -- Clear keyboard virtual button attributes
+    -- Clear keyboard proxy attributes
     local oldCount = button:GetAttribute("_vbKBCount") or 0
     for i = 1, math.max(oldCount, 20) do
-        local vBtn = "VBKey" .. i
-        button:SetAttribute("type-" .. vBtn, nil)
-        button:SetAttribute("spell-" .. vBtn, nil)
-        button:SetAttribute("macrotext-" .. vBtn, nil)
         button:SetAttribute("_vbKB" .. i, nil)
-        button:SetAttribute("_vbKBBtn" .. i, nil)
+        button:SetAttribute("_vbKBProxy" .. i, nil)
     end
     button:SetAttribute("_vbKBCount", 0)
+    
+    -- Clear proxy button configurations
+    for i, proxy in pairs(VB._kbProxies) do
+        proxy:SetAttribute("type", nil)
+        proxy:SetAttribute("spell", nil)
+        proxy:SetAttribute("macrotext", nil)
+        proxy:SetAttribute("unit", nil)
+    end
 end
 
 function VB:ApplyClickCastingsToAllFrames()
