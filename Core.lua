@@ -41,6 +41,8 @@ VB.defaults = {
     locked = false,
     showTankFrame = false,
     tankFramePosition = nil,
+    showDebuffs = true,
+    showBuffs = true,
     position = { point = "CENTER", x = 0, y = 0 },
     clickCastings = {},
 }
@@ -162,6 +164,7 @@ VB.profileKeys = {
     "showName", "showHealth", "healthFormat",
     "classColors", "locked", "position",
     "showTankFrame", "tankFramePosition",
+    "showDebuffs", "showBuffs",
 }
 
 -------------------------------------------------

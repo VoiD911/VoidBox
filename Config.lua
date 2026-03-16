@@ -806,6 +806,28 @@ function VB:CreateAppearanceTab()
             VB:Print(VB.L["TANK_FRAME_DISABLED"])
         end
     end)
+    yOffset = yOffset - 30
+    
+    local showDebuffsCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    showDebuffsCB:SetPoint("TOPLEFT", 10, yOffset)
+    showDebuffsCB.text:SetText(VB.L["SHOW_DEBUFFS"])
+    showDebuffsCB:SetChecked(VB.config.showDebuffs ~= false)
+    showDebuffsCB:SetScript("OnClick", function(self)
+        VB.config.showDebuffs = self:GetChecked()
+        for _, button in pairs(VB.unitButtons) do VB:UpdateAuras(button) end
+        for _, button in pairs(VB.tankButtons) do VB:UpdateAuras(button) end
+    end)
+    yOffset = yOffset - 30
+    
+    local showBuffsCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    showBuffsCB:SetPoint("TOPLEFT", 10, yOffset)
+    showBuffsCB.text:SetText(VB.L["SHOW_BUFFS"])
+    showBuffsCB:SetChecked(VB.config.showBuffs ~= false)
+    showBuffsCB:SetScript("OnClick", function(self)
+        VB.config.showBuffs = self:GetChecked()
+        for _, button in pairs(VB.unitButtons) do VB:UpdateAuras(button) end
+        for _, button in pairs(VB.tankButtons) do VB:UpdateAuras(button) end
+    end)
     yOffset = yOffset - 40
     
     local lockBtn = CreateFrame("Button", nil, content, "BackdropTemplate")

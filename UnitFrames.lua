@@ -658,79 +658,84 @@ function VB:UpdateAuras(button)
 
     -- === DEBUFFS ===
     local debuffIdx = 0
-    for i = 1, 40 do
-        local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HARMFUL")
-        if not aura then break end
-        if debuffIdx < MAX_DEBUFF_ICONS then
-            debuffIdx = debuffIdx + 1
-            SetAuraFrame(button.debuffIcons[debuffIdx], aura)
+    if VB.config.showDebuffs ~= false then
+        for i = 1, 40 do
+            local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HARMFUL")
+            if not aura then break end
+            if debuffIdx < MAX_DEBUFF_ICONS then
+                debuffIdx = debuffIdx + 1
+                SetAuraFrame(button.debuffIcons[debuffIdx], aura)
+            end
         end
-    end
-    -- Center only the visible debuff icons
-    CenterAuraRow(button.debuffIcons, debuffIdx, S.debuffSize, button.healthBar, button._row2Top or 14)
-    -- Re-show the ones that have data
-    for i = 1, debuffIdx do
-        button.debuffIcons[i]:Show()
-        if button.debuffIcons[i]._showBadge and button.debuffIcons[i].badge then
-            button.debuffIcons[i].badge:Show()
+        -- Center only the visible debuff icons
+        CenterAuraRow(button.debuffIcons, debuffIdx, S.debuffSize, button.healthBar, button._row2Top or 14)
+        -- Re-show the ones that have data
+        for i = 1, debuffIdx do
+            button.debuffIcons[i]:Show()
+            if button.debuffIcons[i]._showBadge and button.debuffIcons[i].badge then
+                button.debuffIcons[i].badge:Show()
+            end
         end
     end
 
     -- === HOTs / Shields (player-cast only) ===
     local buffIdx = 0
     local othersCount = 0
-    local inCombat = InCombatLockdown()
-    local playerGUID = UnitGUID("player")
 
-    if not inCombat then
-        for i = 1, 40 do
-            local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
-            if not aura then break end
-            local ok, id = pcall(function()
-                return tonumber(string.format("%d", aura.spellId))
-            end)
-            if ok and id and VB.healBuffSpellIDs[id] then
-                local isPlayer = false
-                pcall(function()
-                    if aura.sourceUnit and UnitGUID(aura.sourceUnit) == playerGUID then
-                        isPlayer = true
-                    end
+    if VB.config.showBuffs ~= false then
+        local inCombat = InCombatLockdown()
+        local playerGUID = UnitGUID("player")
+
+        if not inCombat then
+            for i = 1, 40 do
+                local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
+                if not aura then break end
+                local ok, id = pcall(function()
+                    return tonumber(string.format("%d", aura.spellId))
                 end)
-                if isPlayer then
-                    if buffIdx < MAX_BUFF_ICONS then
-                        buffIdx = buffIdx + 1
-                        SetAuraFrame(button.buffIcons[buffIdx], aura)
+                if ok and id and VB.healBuffSpellIDs[id] then
+                    local isPlayer = false
+                    pcall(function()
+                        if aura.sourceUnit and UnitGUID(aura.sourceUnit) == playerGUID then
+                            isPlayer = true
+                        end
+                    end)
+                    if isPlayer then
+                        if buffIdx < MAX_BUFF_ICONS then
+                            buffIdx = buffIdx + 1
+                            SetAuraFrame(button.buffIcons[buffIdx], aura)
+                        end
+                    else
+                        othersCount = othersCount + 1
                     end
-                else
-                    othersCount = othersCount + 1
                 end
             end
+        else
+            for i = 1, 40 do
+                if buffIdx >= MAX_BUFF_ICONS then break end
+                local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL RAID_IN_COMBAT PLAYER")
+                if not aura then break end
+                buffIdx = buffIdx + 1
+                SetAuraFrame(button.buffIcons[buffIdx], aura)
+            end
+            for i = 1, 40 do
+                local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL RAID_IN_COMBAT")
+                if not aura then break end
+                othersCount = othersCount + 1
+            end
+            othersCount = math.max(0, othersCount - buffIdx)
         end
-    else
-        for i = 1, 40 do
-            if buffIdx >= MAX_BUFF_ICONS then break end
-            local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL RAID_IN_COMBAT PLAYER")
-            if not aura then break end
-            buffIdx = buffIdx + 1
-            SetAuraFrame(button.buffIcons[buffIdx], aura)
+        -- Center only the visible buff icons
+        CenterAuraRow(button.buffIcons, buffIdx, S.buffSize, button.healthBar, button._row3Top or 36)
+        for i = 1, buffIdx do
+            button.buffIcons[i]:Show()
+            if button.buffIcons[i]._showBadge and button.buffIcons[i].badge then
+                button.buffIcons[i].badge:Show()
+            end
         end
-        for i = 1, 40 do
-            local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL RAID_IN_COMBAT")
-            if not aura then break end
-            othersCount = othersCount + 1
-        end
-        othersCount = math.max(0, othersCount - buffIdx)
-    end
-    -- Center only the visible buff icons
-    CenterAuraRow(button.buffIcons, buffIdx, S.buffSize, button.healthBar, button._row3Top or 36)
-    for i = 1, buffIdx do
-        button.buffIcons[i]:Show()
-        if button.buffIcons[i]._showBadge and button.buffIcons[i].badge then
-            button.buffIcons[i].badge:Show()
-        end
-    end
 
-    if button.othersIndicator and othersCount > 0 then
-        button.othersIndicator:SetText("+" .. othersCount)
+        if button.othersIndicator and othersCount > 0 then
+            button.othersIndicator:SetText("+" .. othersCount)
+        end
     end
 end

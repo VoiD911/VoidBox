@@ -142,6 +142,8 @@ SetDefault("SHOW_TANK_FRAME", "Show separate tank frame")
 SetDefault("TANK_FRAME_ENABLED", "Tank frame enabled")
 SetDefault("TANK_FRAME_DISABLED", "Tank frame disabled")
 SetDefault("TANK_FRAME_ENABLED_SOLO", "Tank frame enabled (will appear when you join a group with tanks)")
+SetDefault("SHOW_DEBUFFS", "Show debuffs")
+SetDefault("SHOW_BUFFS", "Show buffs (HoTs)")
 SetDefault("GROUP_TYPE", "Group type")
 SetDefault("UNITS", "Units")
 SetDefault("BUTTONS_CREATED", "Buttons created")
@@ -253,6 +255,8 @@ SetLocale("frFR", "SHOW_TANK_FRAME", "Afficher un cadre séparé pour les tanks"
 SetLocale("frFR", "TANK_FRAME_ENABLED", "Cadre tank activé")
 SetLocale("frFR", "TANK_FRAME_DISABLED", "Cadre tank désactivé")
 SetLocale("frFR", "TANK_FRAME_ENABLED_SOLO", "Cadre tank activé (apparaîtra quand vous rejoindrez un groupe avec des tanks)")
+SetLocale("frFR", "SHOW_DEBUFFS", "Afficher les debuffs")
+SetLocale("frFR", "SHOW_BUFFS", "Afficher les buffs (HoTs)")
 
 -------------------------------------------------
 -- German (deDE)
@@ -332,6 +336,8 @@ SetLocale("deDE", "SHOW_TANK_FRAME", "Separates Tank-Fenster anzeigen")
 SetLocale("deDE", "TANK_FRAME_ENABLED", "Tank-Fenster aktiviert")
 SetLocale("deDE", "TANK_FRAME_DISABLED", "Tank-Fenster deaktiviert")
 SetLocale("deDE", "TANK_FRAME_ENABLED_SOLO", "Tank-Fenster aktiviert (erscheint, wenn du einer Gruppe mit Tanks beitrittst)")
+SetLocale("deDE", "SHOW_DEBUFFS", "Debuffs anzeigen")
+SetLocale("deDE", "SHOW_BUFFS", "Buffs anzeigen (HoTs)")
 
 -------------------------------------------------
 -- Spanish (esES / esMX)
@@ -395,6 +401,8 @@ SetLocale("esES", "SHOW_TANK_FRAME", "Mostrar marco separado para tanques")
 SetLocale("esES", "TANK_FRAME_ENABLED", "Marco de tanques activado")
 SetLocale("esES", "TANK_FRAME_DISABLED", "Marco de tanques desactivado")
 SetLocale("esES", "TANK_FRAME_ENABLED_SOLO", "Marco de tanques activado (aparecerá al unirte a un grupo con tanques)")
+SetLocale("esES", "SHOW_DEBUFFS", "Mostrar debuffs")
+SetLocale("esES", "SHOW_BUFFS", "Mostrar buffs (HoTs)")
 
 -- esMX inherits esES
 SetLocale("esMX", "LOADED", "Cargado")
@@ -415,6 +423,8 @@ SetLocale("esMX", "SHOW_TANK_FRAME", "Mostrar marco separado para tanques")
 SetLocale("esMX", "TANK_FRAME_ENABLED", "Marco de tanques activado")
 SetLocale("esMX", "TANK_FRAME_DISABLED", "Marco de tanques desactivado")
 SetLocale("esMX", "TANK_FRAME_ENABLED_SOLO", "Marco de tanques activado (aparecerá al unirte a un grupo con tanques)")
+SetLocale("esMX", "SHOW_DEBUFFS", "Mostrar debuffs")
+SetLocale("esMX", "SHOW_BUFFS", "Mostrar buffs (HoTs)")
 
 -------------------------------------------------
 -- Brazilian Portuguese (ptBR)
@@ -456,6 +466,8 @@ SetLocale("ptBR", "SHOW_TANK_FRAME", "Mostrar quadro separado para tanques")
 SetLocale("ptBR", "TANK_FRAME_ENABLED", "Quadro de tanques ativado")
 SetLocale("ptBR", "TANK_FRAME_DISABLED", "Quadro de tanques desativado")
 SetLocale("ptBR", "TANK_FRAME_ENABLED_SOLO", "Quadro de tanques ativado (aparecerá ao entrar em um grupo com tanques)")
+SetLocale("ptBR", "SHOW_DEBUFFS", "Mostrar debuffs")
+SetLocale("ptBR", "SHOW_BUFFS", "Mostrar buffs (HoTs)")
 
 -------------------------------------------------
 -- Italian (itIT)
@@ -490,6 +502,8 @@ SetLocale("itIT", "SHOW_TANK_FRAME", "Mostra frame separato per i tank")
 SetLocale("itIT", "TANK_FRAME_ENABLED", "Frame tank attivato")
 SetLocale("itIT", "TANK_FRAME_DISABLED", "Frame tank disattivato")
 SetLocale("itIT", "TANK_FRAME_ENABLED_SOLO", "Frame tank attivato (apparirà quando entrerai in un gruppo con tank)")
+SetLocale("itIT", "SHOW_DEBUFFS", "Mostra debuff")
+SetLocale("itIT", "SHOW_BUFFS", "Mostra buff (HoT)")
 
 -------------------------------------------------
 -- Russian (ruRU)
@@ -528,6 +542,8 @@ SetLocale("ruRU", "SHOW_TANK_FRAME", "Показать отдельный фре
 SetLocale("ruRU", "TANK_FRAME_ENABLED", "Фрейм танков включён")
 SetLocale("ruRU", "TANK_FRAME_DISABLED", "Фрейм танков отключён")
 SetLocale("ruRU", "TANK_FRAME_ENABLED_SOLO", "Фрейм танков включён (появится при вступлении в группу с танками)")
+SetLocale("ruRU", "SHOW_DEBUFFS", "Показать дебаффы")
+SetLocale("ruRU", "SHOW_BUFFS", "Показать баффы (HoT)")
 
 -------------------------------------------------
 -- Korean (koKR)
@@ -560,6 +576,8 @@ SetLocale("koKR", "SHOW_TANK_FRAME", "탱커 전용 프레임 표시")
 SetLocale("koKR", "TANK_FRAME_ENABLED", "탱커 프레임 활성화됨")
 SetLocale("koKR", "TANK_FRAME_DISABLED", "탱커 프레임 비활성화됨")
 SetLocale("koKR", "TANK_FRAME_ENABLED_SOLO", "탱커 프레임 활성화됨 (탱커가 있는 그룹에 참여하면 표시됩니다)")
+SetLocale("koKR", "SHOW_DEBUFFS", "디버프 표시")
+SetLocale("koKR", "SHOW_BUFFS", "버프 표시 (HoT)")
 
 -------------------------------------------------
 -- Simplified Chinese (zhCN)
@@ -592,6 +610,8 @@ SetLocale("zhCN", "SHOW_TANK_FRAME", "显示独立坦克框架")
 SetLocale("zhCN", "TANK_FRAME_ENABLED", "坦克框架已启用")
 SetLocale("zhCN", "TANK_FRAME_DISABLED", "坦克框架已禁用")
 SetLocale("zhCN", "TANK_FRAME_ENABLED_SOLO", "坦克框架已启用（加入有坦克的队伍后将显示）")
+SetLocale("zhCN", "SHOW_DEBUFFS", "显示减益效果")
+SetLocale("zhCN", "SHOW_BUFFS", "显示增益效果 (HoT)")
 
 -------------------------------------------------
 -- Traditional Chinese (zhTW)
@@ -624,3 +644,5 @@ SetLocale("zhTW", "SHOW_TANK_FRAME", "顯示獨立坦克框架")
 SetLocale("zhTW", "TANK_FRAME_ENABLED", "坦克框架已啟用")
 SetLocale("zhTW", "TANK_FRAME_DISABLED", "坦克框架已停用")
 SetLocale("zhTW", "TANK_FRAME_ENABLED_SOLO", "坦克框架已啟用（加入有坦克的隊伍後將顯示）")
+SetLocale("zhTW", "SHOW_DEBUFFS", "顯示減益效果")
+SetLocale("zhTW", "SHOW_BUFFS", "顯示增益效果 (HoT)")
