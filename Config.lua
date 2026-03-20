@@ -817,7 +817,13 @@ function VB:CreateAppearanceTab()
         for _, button in pairs(VB.unitButtons) do VB:UpdateAuras(button) end
         for _, button in pairs(VB.tankButtons) do VB:UpdateAuras(button) end
     end)
-    yOffset = yOffset - 30
+    
+    local debuffSizeSlider = CreateSimpleSlider(content, VB.L["DEBUFF_ICON_SIZE"], 6, 30, 1, VB.config.debuffIconSize or 21, function(value)
+        VB.config.debuffIconSize = value
+        if not InCombatLockdown() then VB:UpdateAllFrames() end
+    end)
+    debuffSizeSlider:SetPoint("TOPLEFT", 200, yOffset + 5)
+    yOffset = yOffset - 45
     
     local showBuffsCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
     showBuffsCB:SetPoint("TOPLEFT", 10, yOffset)
@@ -828,7 +834,13 @@ function VB:CreateAppearanceTab()
         for _, button in pairs(VB.unitButtons) do VB:UpdateAuras(button) end
         for _, button in pairs(VB.tankButtons) do VB:UpdateAuras(button) end
     end)
-    yOffset = yOffset - 40
+    
+    local buffSizeSlider = CreateSimpleSlider(content, VB.L["BUFF_ICON_SIZE"], 6, 30, 1, VB.config.buffIconSize or 12, function(value)
+        VB.config.buffIconSize = value
+        if not InCombatLockdown() then VB:UpdateAllFrames() end
+    end)
+    buffSizeSlider:SetPoint("TOPLEFT", 200, yOffset + 5)
+    yOffset = yOffset - 50
     
     local lockBtn = CreateFrame("Button", nil, content, "BackdropTemplate")
     lockBtn:SetSize(150, 25)

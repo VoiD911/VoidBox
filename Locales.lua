@@ -144,6 +144,8 @@ SetDefault("TANK_FRAME_DISABLED", "Tank frame disabled")
 SetDefault("TANK_FRAME_ENABLED_SOLO", "Tank frame enabled (will appear when you join a group with tanks)")
 SetDefault("SHOW_DEBUFFS", "Show debuffs")
 SetDefault("SHOW_BUFFS", "Show buffs (HoTs)")
+SetDefault("DEBUFF_ICON_SIZE", "Debuff size")
+SetDefault("BUFF_ICON_SIZE", "Buff size")
 SetDefault("GROUP_TYPE", "Group type")
 SetDefault("UNITS", "Units")
 SetDefault("BUTTONS_CREATED", "Buttons created")
@@ -257,6 +259,8 @@ SetLocale("frFR", "TANK_FRAME_DISABLED", "Cadre tank désactivé")
 SetLocale("frFR", "TANK_FRAME_ENABLED_SOLO", "Cadre tank activé (apparaîtra quand vous rejoindrez un groupe avec des tanks)")
 SetLocale("frFR", "SHOW_DEBUFFS", "Afficher les debuffs")
 SetLocale("frFR", "SHOW_BUFFS", "Afficher les buffs (HoTs)")
+SetLocale("frFR", "DEBUFF_ICON_SIZE", "Taille debuffs")
+SetLocale("frFR", "BUFF_ICON_SIZE", "Taille buffs")
 
 -------------------------------------------------
 -- German (deDE)
@@ -338,6 +342,8 @@ SetLocale("deDE", "TANK_FRAME_DISABLED", "Tank-Fenster deaktiviert")
 SetLocale("deDE", "TANK_FRAME_ENABLED_SOLO", "Tank-Fenster aktiviert (erscheint, wenn du einer Gruppe mit Tanks beitrittst)")
 SetLocale("deDE", "SHOW_DEBUFFS", "Debuffs anzeigen")
 SetLocale("deDE", "SHOW_BUFFS", "Buffs anzeigen (HoTs)")
+SetLocale("deDE", "DEBUFF_ICON_SIZE", "Debuff-Größe")
+SetLocale("deDE", "BUFF_ICON_SIZE", "Buff-Größe")
 
 -------------------------------------------------
 -- Spanish (esES / esMX)
@@ -403,6 +409,8 @@ SetLocale("esES", "TANK_FRAME_DISABLED", "Marco de tanques desactivado")
 SetLocale("esES", "TANK_FRAME_ENABLED_SOLO", "Marco de tanques activado (aparecerá al unirte a un grupo con tanques)")
 SetLocale("esES", "SHOW_DEBUFFS", "Mostrar debuffs")
 SetLocale("esES", "SHOW_BUFFS", "Mostrar buffs (HoTs)")
+SetLocale("esES", "DEBUFF_ICON_SIZE", "Tamaño debuffs")
+SetLocale("esES", "BUFF_ICON_SIZE", "Tamaño buffs")
 
 -- esMX inherits esES
 SetLocale("esMX", "LOADED", "Cargado")
@@ -425,6 +433,8 @@ SetLocale("esMX", "TANK_FRAME_DISABLED", "Marco de tanques desactivado")
 SetLocale("esMX", "TANK_FRAME_ENABLED_SOLO", "Marco de tanques activado (aparecerá al unirte a un grupo con tanques)")
 SetLocale("esMX", "SHOW_DEBUFFS", "Mostrar debuffs")
 SetLocale("esMX", "SHOW_BUFFS", "Mostrar buffs (HoTs)")
+SetLocale("esMX", "DEBUFF_ICON_SIZE", "Tamaño debuffs")
+SetLocale("esMX", "BUFF_ICON_SIZE", "Tamaño buffs")
 
 -------------------------------------------------
 -- Brazilian Portuguese (ptBR)
@@ -468,6 +478,8 @@ SetLocale("ptBR", "TANK_FRAME_DISABLED", "Quadro de tanques desativado")
 SetLocale("ptBR", "TANK_FRAME_ENABLED_SOLO", "Quadro de tanques ativado (aparecerá ao entrar em um grupo com tanques)")
 SetLocale("ptBR", "SHOW_DEBUFFS", "Mostrar debuffs")
 SetLocale("ptBR", "SHOW_BUFFS", "Mostrar buffs (HoTs)")
+SetLocale("ptBR", "DEBUFF_ICON_SIZE", "Tamanho debuffs")
+SetLocale("ptBR", "BUFF_ICON_SIZE", "Tamanho buffs")
 
 -------------------------------------------------
 -- Italian (itIT)
@@ -504,6 +516,8 @@ SetLocale("itIT", "TANK_FRAME_DISABLED", "Frame tank disattivato")
 SetLocale("itIT", "TANK_FRAME_ENABLED_SOLO", "Frame tank attivato (apparirà quando entrerai in un gruppo con tank)")
 SetLocale("itIT", "SHOW_DEBUFFS", "Mostra debuff")
 SetLocale("itIT", "SHOW_BUFFS", "Mostra buff (HoT)")
+SetLocale("itIT", "DEBUFF_ICON_SIZE", "Dimensione debuff")
+SetLocale("itIT", "BUFF_ICON_SIZE", "Dimensione buff")
 
 -------------------------------------------------
 -- Russian (ruRU)
@@ -544,6 +558,8 @@ SetLocale("ruRU", "TANK_FRAME_DISABLED", "Фрейм танков отключё
 SetLocale("ruRU", "TANK_FRAME_ENABLED_SOLO", "Фрейм танков включён (появится при вступлении в группу с танками)")
 SetLocale("ruRU", "SHOW_DEBUFFS", "Показать дебаффы")
 SetLocale("ruRU", "SHOW_BUFFS", "Показать баффы (HoT)")
+SetLocale("ruRU", "DEBUFF_ICON_SIZE", "Размер дебаффов")
+SetLocale("ruRU", "BUFF_ICON_SIZE", "Размер баффов")
 
 -------------------------------------------------
 -- Korean (koKR)
@@ -578,6 +594,8 @@ SetLocale("koKR", "TANK_FRAME_DISABLED", "탱커 프레임 비활성화됨")
 SetLocale("koKR", "TANK_FRAME_ENABLED_SOLO", "탱커 프레임 활성화됨 (탱커가 있는 그룹에 참여하면 표시됩니다)")
 SetLocale("koKR", "SHOW_DEBUFFS", "디버프 표시")
 SetLocale("koKR", "SHOW_BUFFS", "버프 표시 (HoT)")
+SetLocale("koKR", "DEBUFF_ICON_SIZE", "디버프 크기")
+SetLocale("koKR", "BUFF_ICON_SIZE", "버프 크기")
 
 -------------------------------------------------
 -- Simplified Chinese (zhCN)
@@ -612,6 +630,8 @@ SetLocale("zhCN", "TANK_FRAME_DISABLED", "坦克框架已禁用")
 SetLocale("zhCN", "TANK_FRAME_ENABLED_SOLO", "坦克框架已启用（加入有坦克的队伍后将显示）")
 SetLocale("zhCN", "SHOW_DEBUFFS", "显示减益效果")
 SetLocale("zhCN", "SHOW_BUFFS", "显示增益效果 (HoT)")
+SetLocale("zhCN", "DEBUFF_ICON_SIZE", "减益图标大小")
+SetLocale("zhCN", "BUFF_ICON_SIZE", "增益图标大小")
 
 -------------------------------------------------
 -- Traditional Chinese (zhTW)
@@ -646,3 +666,5 @@ SetLocale("zhTW", "TANK_FRAME_DISABLED", "坦克框架已停用")
 SetLocale("zhTW", "TANK_FRAME_ENABLED_SOLO", "坦克框架已啟用（加入有坦克的隊伍後將顯示）")
 SetLocale("zhTW", "SHOW_DEBUFFS", "顯示減益效果")
 SetLocale("zhTW", "SHOW_BUFFS", "顯示增益效果 (HoT)")
+SetLocale("zhTW", "DEBUFF_ICON_SIZE", "減益圖標大小")
+SetLocale("zhTW", "BUFF_ICON_SIZE", "增益圖標大小")

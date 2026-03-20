@@ -43,6 +43,8 @@ VB.defaults = {
     tankFramePosition = nil,
     showDebuffs = true,
     showBuffs = true,
+    debuffIconSize = 21,
+    buffIconSize = 12,
     position = { point = "CENTER", x = 0, y = 0 },
     clickCastings = {},
 }
@@ -165,6 +167,7 @@ VB.profileKeys = {
     "classColors", "locked", "position",
     "showTankFrame", "tankFramePosition",
     "showDebuffs", "showBuffs",
+    "debuffIconSize", "buffIconSize",
 }
 
 -------------------------------------------------

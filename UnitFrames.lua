@@ -33,12 +33,16 @@ local AURA_ICON_SPACING = 1
 local function GetScaledSizes()
     local sw = (VB.config.scaleWidth or 100) / 100
     local sh = (VB.config.scaleHeight or 100) / 100
+    local frameH = math.floor(BASE_HEIGHT * sh)
+    local maxIconSize = math.floor(frameH / 3)
+    local baseDebuff = VB.config.debuffIconSize or BASE_DEBUFF_SIZE
+    local baseBuff = VB.config.buffIconSize or BASE_BUFF_SIZE
     return {
         frameW     = math.floor(BASE_WIDTH * sw),
-        frameH     = math.floor(BASE_HEIGHT * sh),
+        frameH     = frameH,
         row1Font   = math.max(7, math.floor(BASE_ROW1_FONT * sh)),
-        debuffSize = math.max(8, math.floor(BASE_DEBUFF_SIZE * sh)),
-        buffSize   = math.max(6, math.floor(BASE_BUFF_SIZE * sh)),
+        debuffSize = math.min(maxIconSize, math.max(6, baseDebuff)),
+        buffSize   = math.min(maxIconSize, math.max(6, baseBuff)),
         powerBarH  = math.max(2, math.floor(BASE_POWERBAR_H * sh)),
     }
 end
