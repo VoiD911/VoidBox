@@ -315,6 +315,9 @@ function VB:RegisterUnitButtonEvents(button)
     button:RegisterEvent("UNIT_CONNECTION")
     button:RegisterEvent("PLAYER_FLAGS_CHANGED")
     button:RegisterEvent("UNIT_THREAT_SITUATION_UPDATE")
+    button:RegisterEvent("UNIT_ABSORB_AMOUNT_CHANGED")
+    button:RegisterEvent("UNIT_HEAL_ABSORB_AMOUNT_CHANGED")
+    button:RegisterEvent("UNIT_HEAL_PREDICTION")
     button:RegisterEvent("READY_CHECK")
     button:RegisterEvent("READY_CHECK_CONFIRM")
     button:RegisterEvent("READY_CHECK_FINISHED")
@@ -338,6 +341,8 @@ function VB:RegisterUnitButtonEvents(button)
             VB:UpdateStatus(self)
         elseif event == "UNIT_THREAT_SITUATION_UPDATE" then
             VB:UpdateThreat(self)
+        elseif event == "UNIT_ABSORB_AMOUNT_CHANGED" or event == "UNIT_HEAL_ABSORB_AMOUNT_CHANGED" or event == "UNIT_HEAL_PREDICTION" then
+            VB:UpdateHealPrediction(self)
         elseif event == "READY_CHECK" or event == "READY_CHECK_CONFIRM" or event == "READY_CHECK_FINISHED" then
             VB:UpdateReadyCheck(self)
         elseif event == "INCOMING_RESURRECT_CHANGED" then

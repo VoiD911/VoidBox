@@ -29,13 +29,16 @@ function VB:CreateHealthBar(parent)
     healPrediction:Hide()
     healthBar.healPrediction = healPrediction
     
+    -- Absorb bar: overlay on full health bar, fills from RIGHT (Cell/VuhDo style)
+    -- Cannot anchor to health fill due to secret value arithmetic limitations
     local absorbBar = CreateFrame("StatusBar", nil, healthBar)
-    absorbBar:SetStatusBarTexture(VB.config.texture)
-    absorbBar:SetStatusBarColor(0.8, 0.8, 0, 0.6)
-    absorbBar:SetPoint("TOPLEFT", healthBar:GetStatusBarTexture(), "TOPRIGHT")
-    absorbBar:SetPoint("BOTTOMLEFT", healthBar:GetStatusBarTexture(), "BOTTOMRIGHT")
+    absorbBar:SetStatusBarTexture("Interface\\RaidFrame\\Shield-Fill")
+    absorbBar:SetStatusBarColor(1, 1, 1, 0.7)
+    absorbBar:SetAllPoints(healthBar)
     absorbBar:SetMinMaxValues(0, 1)
     absorbBar:SetValue(0)
+    absorbBar:SetReverseFill(true)
+    absorbBar:SetFrameLevel(healthBar:GetFrameLevel() + 2)
     absorbBar:Hide()
     healthBar.absorbBar = absorbBar
     
@@ -136,6 +139,8 @@ end
 
 -------------------------------------------------
 -- Heal Prediction (12.0+ compatible)
+-- Uses StatusBar:SetMinMaxValues/SetValue which accept secret values natively.
+-- Avoids all arithmetic (division, comparison) on health/absorb values.
 -------------------------------------------------
 function VB:UpdateHealPrediction(button)
     local unit = button.unit
@@ -144,68 +149,81 @@ function VB:UpdateHealPrediction(button)
     local healthBar = button.healthBar
     if not healthBar then return end
     
-    local ok = pcall(function()
-        local health = UnitHealth(unit)
-        local maxHealth = UnitHealthMax(unit)
-        if maxHealth == 0 then maxHealth = 1 end
-        
-        local healPredictionBar = healthBar.healPrediction
-        local absorbBar = healthBar.absorbBar
-        local healAbsorb = healthBar.healAbsorb
-        
-        local incomingHeal = 0
-        local absorb = 0
-        local healAbsorbAmount = 0
-        
+    local healPredictionBar = healthBar.healPrediction
+    local absorbBar = healthBar.absorbBar
+    local healAbsorbTex = healthBar.healAbsorb
+    
+    -- Get raw values (may be secret in combat)
+    local maxHealth = UnitHealthMax(unit)
+    
+    -- === Incoming heals (green overlay) ===
+    local showHeal = false
+    pcall(function()
         if UnitGetIncomingHeals then
-            local v = UnitGetIncomingHeals(unit)
-            if v and v > 0 then incomingHeal = v end
-        end
-        if UnitGetTotalAbsorbs then
-            local v = UnitGetTotalAbsorbs(unit)
-            if v and v > 0 then absorb = v end
-        end
-        if UnitGetTotalHealAbsorbs then
-            local v = UnitGetTotalHealAbsorbs(unit)
-            if v and v > 0 then healAbsorbAmount = v end
-        end
-        
-        if incomingHeal > 0 then
-            local missingHealth = maxHealth - health
-            local healToShow = math.min(incomingHeal, missingHealth)
+            local incomingHeal = UnitGetIncomingHeals(unit) or 0
+            -- SetValue accepts secrets; StatusBar clips to min/max automatically
             healPredictionBar:SetMinMaxValues(0, maxHealth)
-            healPredictionBar:SetValue(healToShow)
-            healPredictionBar:SetWidth(healthBar:GetWidth() * (healToShow / maxHealth))
-            healPredictionBar:Show()
-        else
-            healPredictionBar:Hide()
-        end
-        
-        if absorb > 0 then
-            local currentHealthWidth = healthBar:GetWidth() * (health / maxHealth)
-            local absorbWidth = healthBar:GetWidth() * (absorb / maxHealth)
-            absorbBar:SetMinMaxValues(0, maxHealth)
-            absorbBar:SetValue(absorb)
-            absorbBar:SetWidth(math.min(absorbWidth, healthBar:GetWidth() - currentHealthWidth))
-            absorbBar:Show()
-        else
-            absorbBar:Hide()
-        end
-        
-        if healAbsorbAmount > 0 then
-            local absorbWidth = healthBar:GetWidth() * (healAbsorbAmount / maxHealth)
-            healAbsorb:SetWidth(math.min(absorbWidth, healthBar:GetWidth() * (health / maxHealth)))
-            healAbsorb:Show()
-        else
-            healAbsorb:Hide()
+            healPredictionBar:SetValue(incomingHeal)
+            -- Anchor after health bar fill (already set in CreateHealthBar)
+            showHeal = true
         end
     end)
-    
-    if not ok then
-        healthBar.healPrediction:Hide()
-        healthBar.absorbBar:Hide()
-        healthBar.healAbsorb:Hide()
+    if showHeal then
+        healPredictionBar:Show()
+    else
+        healPredictionBar:Hide()
     end
+    
+    -- === Shield absorbs (white overlay, e.g. PW:Shield) ===
+    local showAbsorb = false
+    pcall(function()
+        if UnitGetTotalAbsorbs then
+            local absorb = UnitGetTotalAbsorbs(unit)
+            if absorb == nil then absorb = 0 end
+            absorbBar:SetMinMaxValues(0, maxHealth)
+            absorbBar:SetValue(absorb)
+            showAbsorb = true
+        end
+    end)
+    if showAbsorb then
+        absorbBar:Show()
+    else
+        absorbBar:Hide()
+    end
+    
+    -- === Heal absorbs (red overlay eating into health, e.g. Necrotic) ===
+    local showHealAbsorb = false
+    pcall(function()
+        if UnitGetTotalHealAbsorbs then
+            local healAbsorbAmount = UnitGetTotalHealAbsorbs(unit) or 0
+            -- healAbsorb is a Texture, not a StatusBar — we need width
+            -- Use a helper StatusBar instead for secret-safe sizing
+            if not healthBar.healAbsorbBar then
+                -- Create a StatusBar replacement for the texture approach
+                local hab = CreateFrame("StatusBar", nil, healthBar)
+                hab:SetStatusBarTexture(VB.config.texture)
+                hab:SetStatusBarColor(0.8, 0, 0, 0.5)
+                hab:SetPoint("TOPRIGHT", healthBar:GetStatusBarTexture(), "TOPRIGHT")
+                hab:SetPoint("BOTTOMRIGHT", healthBar:GetStatusBarTexture(), "BOTTOMRIGHT")
+                hab:SetMinMaxValues(0, 1)
+                hab:SetValue(0)
+                hab:SetReverseFill(true)
+                hab:Hide()
+                healthBar.healAbsorbBar = hab
+                -- Hide old texture approach
+                healAbsorbTex:Hide()
+            end
+            healthBar.healAbsorbBar:SetMinMaxValues(0, maxHealth)
+            healthBar.healAbsorbBar:SetValue(healAbsorbAmount)
+            showHealAbsorb = true
+        end
+    end)
+    if showHealAbsorb and healthBar.healAbsorbBar then
+        healthBar.healAbsorbBar:Show()
+    elseif healthBar.healAbsorbBar then
+        healthBar.healAbsorbBar:Hide()
+    end
+    healAbsorbTex:Hide()  -- always hide old texture approach
 end
 
 -------------------------------------------------
