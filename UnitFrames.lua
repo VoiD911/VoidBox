@@ -19,6 +19,20 @@ local addonName, VB = ...
 local BASE_WIDTH = 80
 local BASE_HEIGHT = 55
 
+-- Dispel highlight: ColorCurve mapping dispel type IDs to colors
+-- Dispel type IDs per Wowhead: 0=none, 1=Magic, 2=Curse, 3=Disease, 4=Poison, 9=Enrage
+local dispelColorCurve
+if C_CurveUtil and C_CurveUtil.CreateColorCurve then
+    dispelColorCurve = C_CurveUtil.CreateColorCurve()
+    dispelColorCurve:SetType(Enum.LuaCurveType.Step)
+    dispelColorCurve:AddPoint(0, CreateColor(0, 0, 0, 0))       -- 0: No dispel (transparent)
+    dispelColorCurve:AddPoint(1, CreateColor(0.2, 0.6, 1, 1))   -- 1: Magic (blue)
+    dispelColorCurve:AddPoint(2, CreateColor(0.6, 0.2, 1, 1))   -- 2: Curse (purple)
+    dispelColorCurve:AddPoint(3, CreateColor(0.6, 0.4, 0, 1))   -- 3: Disease (brown)
+    dispelColorCurve:AddPoint(4, CreateColor(0, 0.6, 0.1, 1))   -- 4: Poison (green)
+    dispelColorCurve:AddPoint(9, CreateColor(1, 0.2, 0, 1))     -- 9: Enrage (red-orange)
+end
+
 -- Base layout sizes at 100% (total = 11+2+20+1+12+1+4+2+2 = 55)
 local BASE_ROW1_FONT = 10
 local BASE_DEBUFF_SIZE = 21
@@ -518,6 +532,8 @@ end
 function VB:UpdateThreat(button)
     local unit = button.unit
     if not unit or not UnitExists(unit) then return end
+    -- Dispel highlight takes priority over threat
+    if button._hasDispelHighlight then return end
     local ok = pcall(function()
         local status = UnitThreatSituation(unit)
         if status and status >= 2 then
@@ -572,6 +588,108 @@ end
 -- Row 2: HARMFUL debuffs (icon + stacks, max 4)
 -- Row 3: Player-cast HOTs/shields only (max 4)
 --        + "others healing" indicator bottom-right
+-------------------------------------------------
+-- Dispel border overlay (4 edge textures)
+-- Uses SetVertexColor with secret ColorMixin
+-------------------------------------------------
+local DISPEL_BORDER_SIZE = 4
+
+function VB:CreateDispelBorder(button)
+    if button._dispelBorder then return end
+    local b = {}
+    for _, side in ipairs({"TOP", "BOTTOM", "LEFT", "RIGHT"}) do
+        local tex = button:CreateTexture(nil, "OVERLAY", nil, 7)
+        tex:SetColorTexture(1, 1, 1, 1)  -- white base, tinted by SetVertexColor
+        if side == "TOP" then
+            tex:SetPoint("TOPLEFT", button, "TOPLEFT", 0, 0)
+            tex:SetPoint("TOPRIGHT", button, "TOPRIGHT", 0, 0)
+            tex:SetHeight(DISPEL_BORDER_SIZE)
+        elseif side == "BOTTOM" then
+            tex:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", 0, 0)
+            tex:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 0, 0)
+            tex:SetHeight(DISPEL_BORDER_SIZE)
+        elseif side == "LEFT" then
+            tex:SetPoint("TOPLEFT", button, "TOPLEFT", 0, 0)
+            tex:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", 0, 0)
+            tex:SetWidth(DISPEL_BORDER_SIZE)
+        elseif side == "RIGHT" then
+            tex:SetPoint("TOPRIGHT", button, "TOPRIGHT", 0, 0)
+            tex:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 0, 0)
+            tex:SetWidth(DISPEL_BORDER_SIZE)
+        end
+        tex:Hide()
+        b[side] = tex
+    end
+    -- Pulse animation group (shared by all 4 edges via a parent frame)
+    local pulseFrame = CreateFrame("Frame", nil, button)
+    pulseFrame:SetAllPoints()
+    local ag = pulseFrame:CreateAnimationGroup()
+    ag:SetLooping("BOUNCE")
+    local fade = ag:CreateAnimation("Alpha")
+    fade:SetFromAlpha(1)
+    fade:SetToAlpha(0.3)
+    fade:SetDuration(0.6)
+    fade:SetSmoothing("IN_OUT")
+    pulseFrame.ag = ag
+    -- Parent the textures to pulseFrame so they inherit the alpha animation
+    for _, tex in pairs(b) do
+        tex:SetParent(pulseFrame)
+    end
+    b._pulseFrame = pulseFrame
+    b._animGroup = ag
+    button._dispelBorder = b
+end
+
+function VB:ShowDispelBorder(button, color)
+    if not button._dispelBorder then VB:CreateDispelBorder(button) end
+    local b = button._dispelBorder
+    -- Try to use the actual color; if components are secret, try passing them directly
+    local r, g, b_c, a = 0.2, 0.6, 1, 1  -- default: blue (Magic)
+    local useReal = false
+    pcall(function()
+        local cr, cg, cb, ca = color:GetRGBA()
+        if issecretvalue and (issecretvalue(cr) or issecretvalue(ca)) then
+            for side, tex in pairs(b) do
+                if side ~= "_pulseFrame" and side ~= "_animGroup" then
+                    tex:SetVertexColor(cr, cg, cb, ca)
+                    tex:Show()
+                end
+            end
+            useReal = true
+        else
+            r, g, b_c, a = cr, cg, cb, ca
+        end
+    end)
+    if not useReal then
+        for side, tex in pairs(b) do
+            if side ~= "_pulseFrame" and side ~= "_animGroup" then
+                tex:SetVertexColor(r, g, b_c, a)
+                tex:Show()
+            end
+        end
+    end
+    -- Start pulse animation
+    if b._animGroup and not b._animGroup:IsPlaying() then
+        b._animGroup:Play()
+    end
+end
+
+function VB:HideDispelBorder(button)
+    if not button._dispelBorder then return end
+    local b = button._dispelBorder
+    if b._animGroup then
+        b._animGroup:Stop()
+    end
+    if b._pulseFrame then
+        b._pulseFrame:SetAlpha(1)
+    end
+    for side, tex in pairs(b) do
+        if side ~= "_pulseFrame" and side ~= "_animGroup" then
+            tex:Hide()
+        end
+    end
+end
+
 -------------------------------------------------
 
 -- Center N visible icons on a row
@@ -741,5 +859,48 @@ function VB:UpdateAuras(button)
         if button.othersIndicator and othersCount > 0 then
             button.othersIndicator:SetText("+" .. othersCount)
         end
+    end
+
+    -- === Dispel highlight (border color) ===
+    local dispelEnabled = VB.config.showDispelHighlight ~= false
+    local hasAPI = dispelColorCurve and C_UnitAuras and C_UnitAuras.GetAuraDispelTypeColor
+    
+    if dispelEnabled and hasAPI then
+        local foundDispel = false
+        for i = 1, 40 do
+            local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HARMFUL")
+            if not aura then break end
+            local ok, color = pcall(C_UnitAuras.GetAuraDispelTypeColor, unit, aura.auraInstanceID, dispelColorCurve)
+            if ok and color then
+                -- Check if any RGBA component is secret (combat) or if alpha > 0 (out of combat)
+                local isDispellable = false
+                local compOk, compResult = pcall(function()
+                    local r, g, b, a = color:GetRGBA()
+                    -- If we can read them, check alpha > 0
+                    if issecretvalue and (issecretvalue(r) or issecretvalue(a)) then
+                        return "secret"
+                    end
+                    return a > 0
+                end)
+                if compOk then
+                    if compResult == "secret" or compResult == true then
+                        isDispellable = true
+                    end
+                end
+                if isDispellable then
+                    VB:ShowDispelBorder(button, color)
+                    foundDispel = true
+                    break
+                end
+            end
+        end
+        button._hasDispelHighlight = foundDispel
+        if not foundDispel then
+            VB:HideDispelBorder(button)
+            VB:UpdateThreat(button)
+        end
+    else
+        button._hasDispelHighlight = false
+        VB:HideDispelBorder(button)
     end
 end

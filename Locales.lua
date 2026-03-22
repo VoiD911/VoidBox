@@ -146,6 +146,7 @@ SetDefault("SHOW_DEBUFFS", "Show debuffs")
 SetDefault("SHOW_BUFFS", "Show buffs (HoTs)")
 SetDefault("DEBUFF_ICON_SIZE", "Debuff size")
 SetDefault("BUFF_ICON_SIZE", "Buff size")
+SetDefault("SHOW_DISPEL_HIGHLIGHT", "Highlight dispellable debuffs (border)")
 SetDefault("GROUP_TYPE", "Group type")
 SetDefault("UNITS", "Units")
 SetDefault("BUTTONS_CREATED", "Buttons created")
@@ -261,6 +262,7 @@ SetLocale("frFR", "SHOW_DEBUFFS", "Afficher les debuffs")
 SetLocale("frFR", "SHOW_BUFFS", "Afficher les buffs (HoTs)")
 SetLocale("frFR", "DEBUFF_ICON_SIZE", "Taille debuffs")
 SetLocale("frFR", "BUFF_ICON_SIZE", "Taille buffs")
+SetLocale("frFR", "SHOW_DISPEL_HIGHLIGHT", "Bordure debuffs dissipables")
 
 -------------------------------------------------
 -- German (deDE)
@@ -344,6 +346,7 @@ SetLocale("deDE", "SHOW_DEBUFFS", "Debuffs anzeigen")
 SetLocale("deDE", "SHOW_BUFFS", "Buffs anzeigen (HoTs)")
 SetLocale("deDE", "DEBUFF_ICON_SIZE", "Debuff-Größe")
 SetLocale("deDE", "BUFF_ICON_SIZE", "Buff-Größe")
+SetLocale("deDE", "SHOW_DISPEL_HIGHLIGHT", "Entfluchbare Debuffs hervorheben (Rahmen)")
 
 -------------------------------------------------
 -- Spanish (esES / esMX)
@@ -411,6 +414,7 @@ SetLocale("esES", "SHOW_DEBUFFS", "Mostrar debuffs")
 SetLocale("esES", "SHOW_BUFFS", "Mostrar buffs (HoTs)")
 SetLocale("esES", "DEBUFF_ICON_SIZE", "Tamaño debuffs")
 SetLocale("esES", "BUFF_ICON_SIZE", "Tamaño buffs")
+SetLocale("esES", "SHOW_DISPEL_HIGHLIGHT", "Resaltar debuffs disipables (borde)")
 
 -- esMX inherits esES
 SetLocale("esMX", "LOADED", "Cargado")
@@ -435,6 +439,7 @@ SetLocale("esMX", "SHOW_DEBUFFS", "Mostrar debuffs")
 SetLocale("esMX", "SHOW_BUFFS", "Mostrar buffs (HoTs)")
 SetLocale("esMX", "DEBUFF_ICON_SIZE", "Tamaño debuffs")
 SetLocale("esMX", "BUFF_ICON_SIZE", "Tamaño buffs")
+SetLocale("esMX", "SHOW_DISPEL_HIGHLIGHT", "Resaltar debuffs disipables (borde)")
 
 -------------------------------------------------
 -- Brazilian Portuguese (ptBR)
@@ -480,6 +485,7 @@ SetLocale("ptBR", "SHOW_DEBUFFS", "Mostrar debuffs")
 SetLocale("ptBR", "SHOW_BUFFS", "Mostrar buffs (HoTs)")
 SetLocale("ptBR", "DEBUFF_ICON_SIZE", "Tamanho debuffs")
 SetLocale("ptBR", "BUFF_ICON_SIZE", "Tamanho buffs")
+SetLocale("ptBR", "SHOW_DISPEL_HIGHLIGHT", "Destacar debuffs dissipáveis (borda)")
 
 -------------------------------------------------
 -- Italian (itIT)
@@ -518,6 +524,7 @@ SetLocale("itIT", "SHOW_DEBUFFS", "Mostra debuff")
 SetLocale("itIT", "SHOW_BUFFS", "Mostra buff (HoT)")
 SetLocale("itIT", "DEBUFF_ICON_SIZE", "Dimensione debuff")
 SetLocale("itIT", "BUFF_ICON_SIZE", "Dimensione buff")
+SetLocale("itIT", "SHOW_DISPEL_HIGHLIGHT", "Evidenzia debuff dissolvibili (bordo)")
 
 -------------------------------------------------
 -- Russian (ruRU)
@@ -560,6 +567,7 @@ SetLocale("ruRU", "SHOW_DEBUFFS", "Показать дебаффы")
 SetLocale("ruRU", "SHOW_BUFFS", "Показать баффы (HoT)")
 SetLocale("ruRU", "DEBUFF_ICON_SIZE", "Размер дебаффов")
 SetLocale("ruRU", "BUFF_ICON_SIZE", "Размер баффов")
+SetLocale("ruRU", "SHOW_DISPEL_HIGHLIGHT", "Подсветка рассеиваемых дебаффов (рамка)")
 
 -------------------------------------------------
 -- Korean (koKR)
@@ -596,6 +604,7 @@ SetLocale("koKR", "SHOW_DEBUFFS", "디버프 표시")
 SetLocale("koKR", "SHOW_BUFFS", "버프 표시 (HoT)")
 SetLocale("koKR", "DEBUFF_ICON_SIZE", "디버프 크기")
 SetLocale("koKR", "BUFF_ICON_SIZE", "버프 크기")
+SetLocale("koKR", "SHOW_DISPEL_HIGHLIGHT", "해제 가능한 디버프 강조 (테두리)")
 
 -------------------------------------------------
 -- Simplified Chinese (zhCN)
@@ -632,6 +641,7 @@ SetLocale("zhCN", "SHOW_DEBUFFS", "显示减益效果")
 SetLocale("zhCN", "SHOW_BUFFS", "显示增益效果 (HoT)")
 SetLocale("zhCN", "DEBUFF_ICON_SIZE", "减益图标大小")
 SetLocale("zhCN", "BUFF_ICON_SIZE", "增益图标大小")
+SetLocale("zhCN", "SHOW_DISPEL_HIGHLIGHT", "高亮可驱散减益 (边框)")
 
 -------------------------------------------------
 -- Traditional Chinese (zhTW)
@@ -668,3 +678,4 @@ SetLocale("zhTW", "SHOW_DEBUFFS", "顯示減益效果")
 SetLocale("zhTW", "SHOW_BUFFS", "顯示增益效果 (HoT)")
 SetLocale("zhTW", "DEBUFF_ICON_SIZE", "減益圖標大小")
 SetLocale("zhTW", "BUFF_ICON_SIZE", "增益圖標大小")
+SetLocale("zhTW", "SHOW_DISPEL_HIGHLIGHT", "高亮可驅散減益 (邊框)")

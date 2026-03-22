@@ -840,7 +840,18 @@ function VB:CreateAppearanceTab()
         if not InCombatLockdown() then VB:UpdateAllFrames() end
     end)
     buffSizeSlider:SetPoint("TOPLEFT", 200, yOffset + 5)
-    yOffset = yOffset - 50
+    yOffset = yOffset - 30
+    
+    local dispelCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    dispelCB:SetPoint("TOPLEFT", 10, yOffset)
+    dispelCB.text:SetText(VB.L["SHOW_DISPEL_HIGHLIGHT"])
+    dispelCB:SetChecked(VB.config.showDispelHighlight ~= false)
+    dispelCB:SetScript("OnClick", function(self)
+        VB.config.showDispelHighlight = self:GetChecked()
+        for _, button in pairs(VB.unitButtons) do VB:UpdateAuras(button) end
+        for _, button in pairs(VB.tankButtons) do VB:UpdateAuras(button) end
+    end)
+    yOffset = yOffset - 40
     
     local lockBtn = CreateFrame("Button", nil, content, "BackdropTemplate")
     lockBtn:SetSize(150, 25)

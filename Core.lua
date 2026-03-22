@@ -45,6 +45,7 @@ VB.defaults = {
     showBuffs = true,
     debuffIconSize = 21,
     buffIconSize = 12,
+    showDispelHighlight = true,
     position = { point = "CENTER", x = 0, y = 0 },
     clickCastings = {},
 }
@@ -168,6 +169,7 @@ VB.profileKeys = {
     "showTankFrame", "tankFramePosition",
     "showDebuffs", "showBuffs",
     "debuffIconSize", "buffIconSize",
+    "showDispelHighlight",
 }
 
 -------------------------------------------------
@@ -460,6 +462,7 @@ function VB:CreateMainFrame()
     local handle = CreateFrame("Button", nil, main, "BackdropTemplate")
     handle:SetSize(14, 14)
     handle:SetPoint("TOPRIGHT", main, "TOPLEFT", -2, 0)
+    handle:SetFrameStrata("HIGH")
     handle:SetBackdrop({
         bgFile = "Interface\\Buttons\\WHITE8x8",
         edgeFile = "Interface\\Buttons\\WHITE8x8",
