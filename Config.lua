@@ -135,7 +135,7 @@ end
 -------------------------------------------------
 function VB:CreateConfigFrame()
     configFrame = CreateFrame("Frame", "VoidBoxConfig", UIParent, "BackdropTemplate")
-    configFrame:SetSize(500, 600)
+    configFrame:SetSize(500, 700)
     configFrame:SetPoint("CENTER")
     configFrame:SetBackdrop({
         bgFile = "Interface\\Buttons\\WHITE8x8",
@@ -850,6 +850,15 @@ function VB:CreateAppearanceTab()
         VB.config.showDispelHighlight = self:GetChecked()
         for _, button in pairs(VB.unitButtons) do VB:UpdateAuras(button) end
         for _, button in pairs(VB.tankButtons) do VB:UpdateAuras(button) end
+    end)
+    yOffset = yOffset - 30
+    
+    local autoTargetCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    autoTargetCB:SetPoint("TOPLEFT", 10, yOffset)
+    autoTargetCB.text:SetText(VB.L["AUTO_TARGET_ON_CAST"])
+    autoTargetCB:SetChecked(VB.config.autoTargetOnCast or false)
+    autoTargetCB:SetScript("OnClick", function(self)
+        VB.config.autoTargetOnCast = self:GetChecked()
     end)
     yOffset = yOffset - 40
     

@@ -46,6 +46,7 @@ VB.defaults = {
     debuffIconSize = 21,
     buffIconSize = 12,
     showDispelHighlight = true,
+    autoTargetOnCast = false,
     position = { point = "CENTER", x = 0, y = 0 },
     clickCastings = {},
 }
@@ -170,6 +171,7 @@ VB.profileKeys = {
     "showDebuffs", "showBuffs",
     "debuffIconSize", "buffIconSize",
     "showDispelHighlight",
+    "autoTargetOnCast",
 }
 
 -------------------------------------------------

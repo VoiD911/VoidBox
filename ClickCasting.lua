@@ -217,8 +217,13 @@ function VB:ConfigureKBProxy(proxy, binding)
             spellName = VB:GetSpellName(binding.value)
         end
         if spellName then
-            proxy:SetAttribute("type", "spell")
-            proxy:SetAttribute("spell", spellName)
+            if VB.config.autoTargetOnCast then
+                proxy:SetAttribute("type", "macro")
+                proxy:SetAttribute("macrotext", "/target [@mouseover,exists]\n/cast " .. spellName)
+            else
+                proxy:SetAttribute("type", "spell")
+                proxy:SetAttribute("spell", spellName)
+            end
         end
     elseif action == "macro" then
         proxy:SetAttribute("type", "macro")
@@ -349,9 +354,16 @@ function VB:SetButtonAttribute(button, attrKey, actionType, actionValue)
             spellName = VB:GetSpellName(actionValue)
         end
         if spellName then
-            button:SetAttribute(attrKey, "spell")
-            local spellKey = attrKey:gsub("type", "spell")
-            button:SetAttribute(spellKey, spellName)
+            if VB.config.autoTargetOnCast then
+                -- Wrap as macro: target + cast
+                button:SetAttribute(attrKey, "macro")
+                local macroKey = attrKey:gsub("type", "macrotext")
+                button:SetAttribute(macroKey, "/target [@mouseover,exists]\n/cast " .. spellName)
+            else
+                button:SetAttribute(attrKey, "spell")
+                local spellKey = attrKey:gsub("type", "spell")
+                button:SetAttribute(spellKey, spellName)
+            end
         end
     elseif actionType == "macro" then
         button:SetAttribute(attrKey, "macro")

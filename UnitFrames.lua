@@ -365,6 +365,10 @@ function VB:RegisterUnitButtonEvents(button)
         GameTooltip:Show()
     end)
     button:HookScript("OnLeave", function(self) GameTooltip:Hide() end)
+
+    -- Auto-target on click-cast (HealBot style)
+    -- PostClick cannot call TargetUnit (protected). Instead handled via macro wrapping in ApplyClickCastings.
+    
 end
 
 -------------------------------------------------
