@@ -372,6 +372,7 @@ function VB:OnPlayerLogin()
     if GetSpecialization then
         VB.playerSpecID = GetSpecializationInfo(GetSpecialization())
     end
+    VB:BuildDispelColorCurve()
     VB:CreateMainFrame()
     VB:InitClickCastings()
 end
@@ -399,6 +400,7 @@ function VB:OnSpecChanged()
     if GetSpecialization then
         VB.playerSpecID = GetSpecializationInfo(GetSpecialization())
     end
+    VB:BuildDispelColorCurve()
     VB:ApplyClickCastingsToAllFrames()
     -- Re-detect range check spell (talents may have changed)
     VB:FindRangeCheckSpell()

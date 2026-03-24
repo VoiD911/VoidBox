@@ -21,16 +21,77 @@ local BASE_HEIGHT = 55
 
 -- Dispel highlight: ColorCurve mapping dispel type IDs to colors
 -- Dispel type IDs per Wowhead: 0=none, 1=Magic, 2=Curse, 3=Disease, 4=Poison, 9=Enrage
+-- Dynamic: rebuilt per class/spec so only types the player can dispel show visible colors
 local dispelColorCurve
-if C_CurveUtil and C_CurveUtil.CreateColorCurve then
+
+-- Dispel colors (visible)
+local DISPEL_COLORS = {
+    [1] = CreateColor(0.2, 0.6, 1, 1),   -- Magic (blue)
+    [2] = CreateColor(0.6, 0.2, 1, 1),   -- Curse (purple)
+    [3] = CreateColor(0.6, 0.4, 0, 1),   -- Disease (brown)
+    [4] = CreateColor(0, 0.6, 0.1, 1),   -- Poison (green)
+    [9] = CreateColor(1, 0.2, 0, 1),     -- Enrage (red-orange)
+}
+local DISPEL_TRANSPARENT = CreateColor(0, 0, 0, 0)
+
+-- Class/spec dispel capabilities for WoW 12.0 (Midnight)
+-- Key = class, Value = { default = {typeIDs}, [specID] = {typeIDs} }
+-- Magic dispel is spec-restricted for most healers
+local CLASS_DISPEL_TYPES = {
+    PRIEST      = { default = {1, 3} },                          -- Magic + Disease (all specs)
+    DRUID       = { default = {2, 4}, [105] = {1, 2, 4} },      -- Curse+Poison; Resto adds Magic
+    PALADIN     = { default = {3, 4}, [65] = {1, 3, 4} },       -- Disease+Poison; Holy adds Magic
+    SHAMAN      = { default = {2}, [264] = {1, 2} },             -- Curse; Resto adds Magic
+    MONK        = { default = {3, 4}, [270] = {1, 3, 4} },      -- Disease+Poison; Mistweaver adds Magic
+    EVOKER      = { default = {4}, [1468] = {1, 4} },            -- Poison; Preservation adds Magic
+    MAGE        = { default = {2} },                              -- Curse only
+    WARLOCK     = { default = {} },                               -- No friendly dispel
+    WARRIOR     = { default = {} },
+    ROGUE       = { default = {} },
+    DEATHKNIGHT = { default = {} },
+    DEMONHUNTER = { default = {} },
+    HUNTER      = { default = {} },
+}
+
+-- Build (or rebuild) the dispelColorCurve based on current class + spec
+-- Types the player CAN dispel → visible color; others → transparent (alpha=0)
+-- Step curve: must explicitly map ALL known IDs to avoid fallback to nearest lower point
+function VB:BuildDispelColorCurve()
+    if not C_CurveUtil or not C_CurveUtil.CreateColorCurve then return end
+
+    local classData = CLASS_DISPEL_TYPES[VB.playerClass]
+    local canDispel = {}
+
+    if classData then
+        -- Start with default types for the class
+        for _, id in ipairs(classData.default) do
+            canDispel[id] = true
+        end
+        -- Override with spec-specific if available
+        if VB.playerSpecID and classData[VB.playerSpecID] then
+            canDispel = {}
+            for _, id in ipairs(classData[VB.playerSpecID]) do
+                canDispel[id] = true
+            end
+        end
+    end
+
     dispelColorCurve = C_CurveUtil.CreateColorCurve()
     dispelColorCurve:SetType(Enum.LuaCurveType.Step)
-    dispelColorCurve:AddPoint(0, CreateColor(0, 0, 0, 0))       -- 0: No dispel (transparent)
-    dispelColorCurve:AddPoint(1, CreateColor(0.2, 0.6, 1, 1))   -- 1: Magic (blue)
-    dispelColorCurve:AddPoint(2, CreateColor(0.6, 0.2, 1, 1))   -- 2: Curse (purple)
-    dispelColorCurve:AddPoint(3, CreateColor(0.6, 0.4, 0, 1))   -- 3: Disease (brown)
-    dispelColorCurve:AddPoint(4, CreateColor(0, 0.6, 0.1, 1))   -- 4: Poison (green)
-    dispelColorCurve:AddPoint(9, CreateColor(1, 0.2, 0, 1))     -- 9: Enrage (red-orange)
+
+    -- Must map ALL known IDs explicitly (Step curve falls back to nearest lower)
+    local allIDs = {0, 1, 2, 3, 4, 9}
+    for _, id in ipairs(allIDs) do
+        if id == 0 then
+            dispelColorCurve:AddPoint(0, DISPEL_TRANSPARENT)
+        elseif canDispel[id] then
+            dispelColorCurve:AddPoint(id, DISPEL_COLORS[id])
+        else
+            dispelColorCurve:AddPoint(id, DISPEL_TRANSPARENT)
+        end
+    end
+
+    VB:Debug("Dispel curve rebuilt for " .. (VB.playerClass or "?") .. " spec " .. tostring(VB.playerSpecID))
 end
 
 -- Base layout sizes at 100% (total = 11+2+20+1+12+1+4+2+2 = 55)
