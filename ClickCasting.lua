@@ -284,11 +284,33 @@ function VB:SetupSecureBindings(button)
     local enterParts = {}
     table.insert(enterParts, 'self:ClearBindings()')
     
-    -- Scroll wheel
+    -- Scroll wheel: always bind bare scroll up/down
     table.insert(enterParts, string.format(
         'self:SetBindingClick(true, "MOUSEWHEELUP", "%s", "Button6")', btnName))
     table.insert(enterParts, string.format(
         'self:SetBindingClick(true, "MOUSEWHEELDOWN", "%s", "Button7")', btnName))
+    
+    -- Also bind modifier+scroll combos via dedicated proxy buttons
+    -- SetBindingClick doesn't transmit modifier state, so we need proxies
+    -- with the action pre-configured (same pattern as keyboard bindings)
+    for _, binding in ipairs(VB.clickCastings) do
+        if (binding.mouse == "ScrollUp" or binding.mouse == "ScrollDown") and (binding.mods or "") ~= "" then
+            kbIndex = kbIndex + 1
+            local proxy = VB:GetOrCreateKBProxy(kbIndex, binding)
+            VB:ConfigureKBProxy(proxy, binding)
+            
+            local parts = {}
+            local mods = binding.mods
+            if mods:find("alt") then table.insert(parts, "ALT") end
+            if mods:find("ctrl") then table.insert(parts, "CTRL") end
+            if mods:find("shift") then table.insert(parts, "SHIFT") end
+            local modPrefix = table.concat(parts, "-") .. "-"
+            local wowKey = binding.mouse == "ScrollUp" and "MOUSEWHEELUP" or "MOUSEWHEELDOWN"
+            
+            SecureHandlerSetFrameRef(button, "vbProxy" .. kbIndex, proxy)
+            kbBindings[kbIndex] = { combo = modPrefix .. wowKey, proxyName = proxy:GetName() }
+        end
+    end
     
     -- Keyboard bindings
     local unit_line = 'local unit = self:GetAttribute("unit")'
