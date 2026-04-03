@@ -815,17 +815,12 @@ local function SetAuraFrame(frame, aura)
     frame._showBadge = showBadge
 
     -- Cooldown sweep (timer animation)
-    -- SetCooldownDuration(duration) starts from NOW — no startTime needed
-    -- We track auraInstanceID to avoid resetting the animation on refresh
+    -- SetCooldownDuration(duration) starts from NOW — accepts secret values
+    -- Always call on every UNIT_AURA to handle buff refreshes correctly
+    -- (aura.duration is secret in combat, can't compare old vs new)
     if frame.cooldown then
         local cdOk = pcall(function()
-            local auraID = aura.auraInstanceID
-            if auraID and auraID ~= frame._lastAuraID then
-                frame._lastAuraID = auraID
-                frame.cooldown:SetCooldownDuration(aura.duration)
-            elseif not auraID then
-                frame.cooldown:SetCooldownDuration(aura.duration)
-            end
+            frame.cooldown:SetCooldownDuration(aura.duration)
         end)
         if not cdOk then
             pcall(function() frame.cooldown:Clear() end)
