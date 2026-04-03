@@ -693,18 +693,17 @@ function VB:CreateAppearanceTab()
     sizeLabel:SetText(VB.L["FRAME_SIZE"])
     yOffset = yOffset - 20
     
-    local scaleWSlider = CreateSimpleSlider(content, VB.L["SCALE_WIDTH"], 50, 150, 5, VB.config.scaleWidth or 100, function(value)
+    local scaleWSlider = CreateSimpleSlider(content, VB.L["SCALE_WIDTH"], 50, 250, 5, VB.config.scaleWidth or 100, function(value)
         VB.config.scaleWidth = value
         if not InCombatLockdown() then VB:UpdateAllFrames() end
     end)
     scaleWSlider:SetPoint("TOPLEFT", 10, yOffset)
-    yOffset = yOffset - 50
     
-    local scaleHSlider = CreateSimpleSlider(content, VB.L["SCALE_HEIGHT"], 50, 150, 5, VB.config.scaleHeight or 100, function(value)
+    local scaleHSlider = CreateSimpleSlider(content, VB.L["SCALE_HEIGHT"], 50, 250, 5, VB.config.scaleHeight or 100, function(value)
         VB.config.scaleHeight = value
         if not InCombatLockdown() then VB:UpdateAllFrames() end
     end)
-    scaleHSlider:SetPoint("TOPLEFT", 10, yOffset)
+    scaleHSlider:SetPoint("TOPLEFT", 240, yOffset)
     yOffset = yOffset - 55
     
     local groupSlider = CreateSimpleSlider(content, VB.L["GROUP_SIZE"], 1, 10, 1, VB.config.maxColumns or 5, function(value)
@@ -744,10 +743,9 @@ function VB:CreateAppearanceTab()
             if not InCombatLockdown() then VB:UpdateAllFrames() end
         end)
     end
-    yOffset = yOffset - 50
     
     local roleLabel = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    roleLabel:SetPoint("TOPLEFT", 10, yOffset)
+    roleLabel:SetPoint("TOPLEFT", 240, yOffset)
     roleLabel:SetText(VB.L["ROLE_ORDER"])
     
     local roleOrderItems = {
@@ -767,7 +765,7 @@ function VB:CreateAppearanceTab()
     end
     
     local roleDropdown = CreateSimpleDropdown(content, 220, roleOrderItems, currentRoleText)
-    roleDropdown:SetPoint("TOPLEFT", 10, yOffset - 18)
+    roleDropdown:SetPoint("TOPLEFT", 240, yOffset - 18)
     local roleMenu = roleDropdown.menu
     for i = 1, select("#", roleMenu:GetChildren()) do
         local btn = select(i, roleMenu:GetChildren())
@@ -779,6 +777,25 @@ function VB:CreateAppearanceTab()
         end)
     end
     yOffset = yOffset - 50
+    
+    local tankFrameCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    tankFrameCB:SetPoint("TOPLEFT", 10, yOffset)
+    tankFrameCB.text:SetText(VB.L["SHOW_TANK_FRAME"])
+    tankFrameCB:SetChecked(VB.config.showTankFrame or false)
+    tankFrameCB:SetScript("OnClick", function(self)
+        VB.config.showTankFrame = self:GetChecked()
+        if not InCombatLockdown() then VB:UpdateTankFrame() end
+        if self:GetChecked() then
+            if VB.groupType == "solo" then
+                VB:Print(VB.L["TANK_FRAME_ENABLED_SOLO"])
+            else
+                VB:Print(VB.L["TANK_FRAME_ENABLED"])
+            end
+        else
+            VB:Print(VB.L["TANK_FRAME_DISABLED"])
+        end
+    end)
+    yOffset = yOffset - 30
     
     local classColorsCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
     classColorsCB:SetPoint("TOPLEFT", 10, yOffset)
@@ -806,25 +823,6 @@ function VB:CreateAppearanceTab()
     minimapCB:SetChecked(VB:IsMinimapButtonShown())
     minimapCB:SetScript("OnClick", function(self)
         VB:SetMinimapButtonShown(self:GetChecked())
-    end)
-    yOffset = yOffset - 30
-    
-    local tankFrameCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
-    tankFrameCB:SetPoint("TOPLEFT", 10, yOffset)
-    tankFrameCB.text:SetText(VB.L["SHOW_TANK_FRAME"])
-    tankFrameCB:SetChecked(VB.config.showTankFrame or false)
-    tankFrameCB:SetScript("OnClick", function(self)
-        VB.config.showTankFrame = self:GetChecked()
-        if not InCombatLockdown() then VB:UpdateTankFrame() end
-        if self:GetChecked() then
-            if VB.groupType == "solo" then
-                VB:Print(VB.L["TANK_FRAME_ENABLED_SOLO"])
-            else
-                VB:Print(VB.L["TANK_FRAME_ENABLED"])
-            end
-        else
-            VB:Print(VB.L["TANK_FRAME_DISABLED"])
-        end
     end)
     yOffset = yOffset - 30
     
