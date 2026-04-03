@@ -704,6 +704,16 @@ function VB:CreateAppearanceTab()
     groupSlider:SetPoint("TOPLEFT", 10, yOffset)
     yOffset = yOffset - 55
     
+    local keepGroupsCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    keepGroupsCB:SetPoint("TOPLEFT", 10, yOffset)
+    keepGroupsCB.text:SetText(VB.L["KEEP_GROUPS_TOGETHER"])
+    keepGroupsCB:SetChecked(VB.config.keepGroupsTogether or false)
+    keepGroupsCB:SetScript("OnClick", function(self)
+        VB.config.keepGroupsTogether = self:GetChecked()
+        if not InCombatLockdown() then VB:UpdateAllFrames() end
+    end)
+    yOffset = yOffset - 30
+    
     local orientLabel = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     orientLabel:SetPoint("TOPLEFT", 10, yOffset)
     orientLabel:SetText(VB.L["ORIENTATION"])

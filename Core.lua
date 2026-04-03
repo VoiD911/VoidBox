@@ -46,6 +46,7 @@ VB.defaults = {
     debuffIconSize = 21,
     buffIconSize = 12,
     showDispelHighlight = true,
+    keepGroupsTogether = false,
     autoTargetOnCast = false,
     position = { point = "CENTER", x = 0, y = 0 },
     clickCastings = {},
@@ -171,6 +172,7 @@ VB.profileKeys = {
     "showDebuffs", "showBuffs",
     "debuffIconSize", "buffIconSize",
     "showDispelHighlight",
+    "keepGroupsTogether",
     "autoTargetOnCast",
 }
 
@@ -527,7 +529,7 @@ function VB:UpdateAllFrames()
         button:Hide()
     end
     
-    local units = VB:GetUnitsToDisplay()
+    local units, isGrouped = VB:GetUnitsToDisplay()
     
     local col, row = 0, 0
     local groupSize = VB.config.maxColumns or 5
@@ -539,49 +541,104 @@ function VB:UpdateAllFrames()
     local spacing = VB.config.frameSpacing or 2
     local vertical = VB.config.orientation == "VERTICAL"
     
-    for i, unit in ipairs(units) do
-        local button = VB:GetOrCreateUnitButton(unit, i)
-        VB:ResizeUnitButton(button)
+    local totalUnits = 0
+    local maxGroupLen = 0
+    local numGroups = 0
+    
+    if isGrouped then
+        -- Layout by raid subgroups
+        -- Vertical: each group = a column (left to right), members top to bottom
+        -- Horizontal: each group = a row (top to bottom), members left to right
+        local sortedGroups = {}
+        for sg in pairs(units) do table.insert(sortedGroups, sg) end
+        table.sort(sortedGroups)
         
-        local x, y
-        if vertical then
-            -- Vertical: stack rows down, new column every groupSize
-            x = col * (width + spacing)
-            y = -row * (height + spacing)
-            row = row + 1
-            if row >= groupSize then
-                row = 0
-                col = col + 1
+        numGroups = #sortedGroups
+        local groupIdx = 0
+        
+        for _, sg in ipairs(sortedGroups) do
+            local grpUnits = units[sg]
+            for memberIdx, unit in ipairs(grpUnits) do
+                totalUnits = totalUnits + 1
+                local button = VB:GetOrCreateUnitButton(unit, totalUnits)
+                VB:ResizeUnitButton(button)
+                
+                local x, y
+                if vertical then
+                    -- Group = column, members = rows
+                    x = groupIdx * (width + spacing)
+                    y = -(memberIdx - 1) * (height + spacing)
+                else
+                    -- Group = row, members = columns
+                    x = (memberIdx - 1) * (width + spacing)
+                    y = -groupIdx * (height + spacing)
+                end
+                
+                button:ClearAllPoints()
+                button:SetPoint("TOPLEFT", VB.frames.container, "TOPLEFT", x, y)
+                button:Show()
+                VB:UpdateUnitButton(button)
             end
-        else
-            -- Horizontal: stack columns right, new row every groupSize
-            x = col * (width + spacing)
-            y = -row * (height + spacing)
-            col = col + 1
-            if col >= groupSize then
-                col = 0
-                row = row + 1
-            end
+            if #grpUnits > maxGroupLen then maxGroupLen = #grpUnits end
+            groupIdx = groupIdx + 1
         end
         
-        button:ClearAllPoints()
-        button:SetPoint("TOPLEFT", VB.frames.container, "TOPLEFT", x, y)
-        button:Show()
-        VB:UpdateUnitButton(button)
-    end
-    
-    local totalCols, totalRows
-    if vertical then
-        totalRows = math.min(#units, groupSize)
-        totalCols = math.max(1, math.ceil(#units / groupSize))
+        -- Resize main frame
+        if vertical then
+            VB.frames.main:SetSize(
+                numGroups * (width + spacing) - spacing,
+                maxGroupLen * (height + spacing) - spacing
+            )
+        else
+            VB.frames.main:SetSize(
+                maxGroupLen * (width + spacing) - spacing,
+                numGroups * (height + spacing) - spacing
+            )
+        end
     else
-        totalCols = math.min(#units, groupSize)
-        totalRows = math.max(1, math.ceil(#units / groupSize))
+        -- Original flat layout
+        for i, unit in ipairs(units) do
+            local button = VB:GetOrCreateUnitButton(unit, i)
+            VB:ResizeUnitButton(button)
+            
+            local x, y
+            if vertical then
+                x = col * (width + spacing)
+                y = -row * (height + spacing)
+                row = row + 1
+                if row >= groupSize then
+                    row = 0
+                    col = col + 1
+                end
+            else
+                x = col * (width + spacing)
+                y = -row * (height + spacing)
+                col = col + 1
+                if col >= groupSize then
+                    col = 0
+                    row = row + 1
+                end
+            end
+            
+            button:ClearAllPoints()
+            button:SetPoint("TOPLEFT", VB.frames.container, "TOPLEFT", x, y)
+            button:Show()
+            VB:UpdateUnitButton(button)
+        end
+        
+        local totalCols, totalRows
+        if vertical then
+            totalRows = math.min(#units, groupSize)
+            totalCols = math.max(1, math.ceil(#units / groupSize))
+        else
+            totalCols = math.min(#units, groupSize)
+            totalRows = math.max(1, math.ceil(#units / groupSize))
+        end
+        VB.frames.main:SetSize(
+            totalCols * (width + spacing) - spacing,
+            totalRows * (height + spacing) - spacing
+        )
     end
-    VB.frames.main:SetSize(
-        totalCols * (width + spacing) - spacing,
-        totalRows * (height + spacing) - spacing
-    )
     
     -- Update tank frame if enabled
     VB:UpdateTankFrame()
@@ -614,6 +671,35 @@ function VB:GetUnitsToDisplay()
     
     local rolePriority = roleOrders[VB.config.roleOrder or "TDH"] or roleOrders["TDH"]
     
+    -- Keep groups together: return grouped units { [subgroup] = { units } }
+    if VB.config.keepGroupsTogether and VB.groupType == "raid" then
+        local groups = {}
+        for _, unit in ipairs(units) do
+            local subgroup = 1
+            if UnitExists(unit) then
+                local raidIndex = UnitInRaid(unit)
+                if raidIndex then
+                    local _, _, sg = GetRaidRosterInfo(raidIndex + 1)
+                    if sg then subgroup = sg end
+                end
+            end
+            if not groups[subgroup] then groups[subgroup] = {} end
+            table.insert(groups[subgroup], unit)
+        end
+        -- Sort within each group by role
+        for sg, grpUnits in pairs(groups) do
+            table.sort(grpUnits, function(a, b)
+                local roleA = UnitGroupRolesAssigned(a) or "NONE"
+                local roleB = UnitGroupRolesAssigned(b) or "NONE"
+                local prioA = rolePriority[roleA] or 2
+                local prioB = rolePriority[roleB] or 2
+                if prioA ~= prioB then return prioA < prioB end
+                return a < b
+            end)
+        end
+        return groups, true  -- second return = isGrouped
+    end
+    
     table.sort(units, function(a, b)
         local roleA = UnitGroupRolesAssigned(a) or "NONE"
         local roleB = UnitGroupRolesAssigned(b) or "NONE"
@@ -623,7 +709,20 @@ function VB:GetUnitsToDisplay()
         return a < b
     end)
     
-    return units
+    return units, false
+end
+
+function VB:GetUnitsFlat()
+    local units, isGrouped = VB:GetUnitsToDisplay()
+    if not isGrouped then return units end
+    local flat = {}
+    local sortedGroups = {}
+    for sg in pairs(units) do table.insert(sortedGroups, sg) end
+    table.sort(sortedGroups)
+    for _, sg in ipairs(sortedGroups) do
+        for _, u in ipairs(units[sg]) do table.insert(flat, u) end
+    end
+    return flat
 end
 
 -------------------------------------------------
@@ -755,7 +854,7 @@ function VB:UpdateTankFrame()
     
     -- Find tank units
     local tanks = {}
-    local allUnits = VB:GetUnitsToDisplay()
+    local allUnits = VB:GetUnitsFlat()
     for _, unit in ipairs(allUnits) do
         if UnitExists(unit) then
             local role = UnitGroupRolesAssigned(unit) or "NONE"
@@ -842,7 +941,7 @@ SlashCmdList["VOIDBOX"] = function(msg)
         VB:Print(VB.L["PROFILES"] .. ": " .. table.concat(VB:GetProfileList(), ", "))
     elseif msg == "debugrole" then
         VB:Print("=== Debug Role Icons ===")
-        local units = VB:GetUnitsToDisplay()
+        local units = VB:GetUnitsFlat()
         for _, unit in ipairs(units) do
             if UnitExists(unit) then
                 local name = UnitName(unit) or "?"
@@ -861,7 +960,7 @@ SlashCmdList["VOIDBOX"] = function(msg)
         end
     elseif msg == "debughealth" then
         VB:Print("=== Debug Health Values ===")
-        local units = VB:GetUnitsToDisplay()
+        local units = VB:GetUnitsFlat()
         for _, unit in ipairs(units) do
             if UnitExists(unit) then
                 local name = UnitName(unit) or "?"
@@ -906,7 +1005,7 @@ SlashCmdList["VOIDBOX"] = function(msg)
         VB:Print("Debug: " .. (VB.config.debug and "ON" or "OFF"))
         if VB.config.debug then
             VB:Print("  Group type: " .. tostring(VB.groupType))
-            VB:Print("  Units: " .. #VB:GetUnitsToDisplay())
+            VB:Print("  Units: " .. #VB:GetUnitsFlat())
             local count = 0
             for _ in pairs(VB.unitButtons) do count = count + 1 end
             VB:Print("  Buttons created: " .. count)
