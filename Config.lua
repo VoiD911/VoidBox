@@ -678,6 +678,16 @@ function VB:CreateAppearanceTab()
     
     local yOffset = -10
     
+    local hideWhenSoloCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    hideWhenSoloCB:SetPoint("TOPLEFT", 10, yOffset)
+    hideWhenSoloCB.text:SetText(VB.L["HIDE_WHEN_SOLO"])
+    hideWhenSoloCB:SetChecked(VB.config.hideWhenSolo or false)
+    hideWhenSoloCB:SetScript("OnClick", function(self)
+        VB.config.hideWhenSolo = self:GetChecked()
+        if not InCombatLockdown() then VB:UpdateAllFrames() end
+    end)
+    yOffset = yOffset - 30
+    
     local sizeLabel = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     sizeLabel:SetPoint("TOPLEFT", 10, yOffset)
     sizeLabel:SetText(VB.L["FRAME_SIZE"])

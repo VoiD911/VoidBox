@@ -47,6 +47,7 @@ VB.defaults = {
     buffIconSize = 12,
     showDispelHighlight = true,
     keepGroupsTogether = false,
+    hideWhenSolo = false,
     autoTargetOnCast = false,
     position = { point = "CENTER", x = 0, y = 0 },
     clickCastings = {},
@@ -173,6 +174,7 @@ VB.profileKeys = {
     "debuffIconSize", "buffIconSize",
     "showDispelHighlight",
     "keepGroupsTogether",
+    "hideWhenSolo",
     "autoTargetOnCast",
 }
 
@@ -523,6 +525,17 @@ function VB:UpdateAllFrames()
         VB:Debug("UpdateAllFrames delayed - in combat")
         VB.pendingUpdate = true
         return
+    end
+    
+    -- Hide when solo
+    if VB.config.hideWhenSolo and VB.groupType == "solo" then
+        if VB.frames.main then VB.frames.main:Hide() end
+        if VB.frames.handle then VB.frames.handle:Hide() end
+        if VB.frames.tankFrame then VB.frames.tankFrame:Hide() end
+        return
+    else
+        if VB.frames.main then VB.frames.main:Show() end
+        if VB.frames.handle and not VB.config.locked then VB.frames.handle:Show() end
     end
     
     for _, button in pairs(VB.unitButtons) do
