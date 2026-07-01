@@ -422,6 +422,13 @@ function VB:RegisterUnitButtonEvents(button)
     button:HookScript("OnEnter", function(self)
         GameTooltip_SetDefaultAnchor(GameTooltip, self)
         GameTooltip:SetUnit(self.unit)
+        if VB.config.showTooltipBindings ~= false and VB.clickCastings and #VB.clickCastings > 0 then
+            GameTooltip:AddLine(" ")
+            GameTooltip:AddLine(VB.L["TOOLTIP_BINDINGS_HEADER"])
+            for _, binding in ipairs(VB.clickCastings) do
+                GameTooltip:AddDoubleLine(VB:GetBindingDisplayText(binding), VB:GetActionDisplayText(binding))
+            end
+        end
         GameTooltip:Show()
     end)
     button:HookScript("OnLeave", function(self) GameTooltip:Hide() end)

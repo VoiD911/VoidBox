@@ -10,6 +10,7 @@ _G.VoidBox = VB
 VB.frames = {}
 VB.unitButtons = {}
 VB.tankButtons = {}
+VB.petButtons = {}
 VB.config = {}
 VB.clickCastings = {}
 
@@ -17,6 +18,17 @@ VB.clickCastings = {}
 VB.playerClass = nil
 VB.playerSpecID = nil
 VB.groupType = "solo" -- solo, party, raid
+
+-- FRIZQT__.TTF (the client's default font) has no glyphs for non-Latin scripts,
+-- so names render as boxes for these locales. Blizzard ships locale-specific
+-- fonts that do have the right glyphs; use those as the addon's default instead.
+VB.DEFAULT_LATIN_FONT = "Fonts\\FRIZQT__.TTF"
+VB.LOCALE_FONTS = {
+    ruRU = "Fonts\\FRIZQT___CYR.TTF",
+    koKR = "Fonts\\2002.TTF",
+    zhCN = "Fonts\\ARKai_T.ttf",
+    zhTW = "Fonts\\bLEI00D.TTF",
+}
 
 -- Defaults
 VB.defaults = {
@@ -32,7 +44,7 @@ VB.defaults = {
     showPowerBar = true,
     powerBarHeight = 4,
     texture = "Interface\\TargetingFrame\\UI-StatusBar",
-    font = "Fonts\\FRIZQT__.TTF",
+    font = VB.LOCALE_FONTS[GetLocale()] or VB.DEFAULT_LATIN_FONT,
     fontSize = 11,
     showName = true,
     showHealth = true,
@@ -41,11 +53,14 @@ VB.defaults = {
     locked = false,
     showTankFrame = false,
     tankFramePosition = nil,
+    showPetFrame = false,
+    petFramePosition = nil,
     showDebuffs = true,
     showBuffs = true,
     debuffIconSize = 21,
     buffIconSize = 12,
     showDispelHighlight = true,
+    showTooltipBindings = true,
     keepGroupsTogether = false,
     hideWhenSolo = false,
     autoTargetOnCast = false,
@@ -123,6 +138,7 @@ eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
+eventFrame:RegisterEvent("UNIT_PET")
 eventFrame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
 eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 
@@ -138,6 +154,8 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
         VB:OnPlayerEnteringWorld()
     elseif event == "GROUP_ROSTER_UPDATE" then
         VB:OnGroupRosterUpdate()
+    elseif event == "UNIT_PET" then
+        if VB.config.showPetFrame then VB:UpdatePetFrame() end
     elseif event == "PLAYER_SPECIALIZATION_CHANGED" then
         -- This event fires with no args or "player" depending on context
         local unit = ...
@@ -170,9 +188,11 @@ VB.profileKeys = {
     "showName", "showHealth", "healthFormat",
     "classColors", "locked", "position",
     "showTankFrame", "tankFramePosition",
+    "showPetFrame", "petFramePosition",
     "showDebuffs", "showBuffs",
     "debuffIconSize", "buffIconSize",
     "showDispelHighlight",
+    "showTooltipBindings",
     "keepGroupsTogether",
     "hideWhenSolo",
     "autoTargetOnCast",
@@ -219,7 +239,18 @@ function VB:OnAddonLoaded()
         end
         VoidBoxDB.profiles["Default"] = defaultProfile
     end
-    
+
+    -- Fix pre-existing profiles stuck on the Latin-only default font when the
+    -- client locale needs a different font to render its glyphs (e.g. ruRU)
+    local localeFont = VB.LOCALE_FONTS[GetLocale()]
+    if localeFont then
+        for _, profile in pairs(VoidBoxDB.profiles) do
+            if profile.font == VB.DEFAULT_LATIN_FONT then
+                profile.font = localeFont
+            end
+        end
+    end
+
     -- Merge defaults into active profile for any missing keys
     local activeProfile = VoidBoxDB.profiles[VoidBoxDB.activeProfile]
     for _, key in ipairs(VB.profileKeys) do
@@ -532,6 +563,7 @@ function VB:UpdateAllFrames()
         if VB.frames.main then VB.frames.main:Hide() end
         if VB.frames.handle then VB.frames.handle:Hide() end
         if VB.frames.tankFrame then VB.frames.tankFrame:Hide() end
+        if VB.frames.petFrame then VB.frames.petFrame:Hide() end
         return
     else
         if VB.frames.main then VB.frames.main:Show() end
@@ -655,6 +687,8 @@ function VB:UpdateAllFrames()
     
     -- Update tank frame if enabled
     VB:UpdateTankFrame()
+    -- Update pet frame if enabled
+    VB:UpdatePetFrame()
 end
 
 local roleOrders = {
@@ -906,8 +940,188 @@ function VB:UpdateTankFrame()
     -- Lock state
     tf:EnableMouse(not VB.config.locked)
     if tf.handle then tf.handle:SetShown(not VB.config.locked) end
-    
+
     tf:Show()
+end
+
+-------------------------------------------------
+-- Pet Frame (separate panel for group/raid pets)
+-------------------------------------------------
+VB.petButtonCount = 0
+
+-- Map a base unit token to its pet's unit token
+local function GetPetUnitToken(unit)
+    if unit == "player" then return "pet" end
+    local group, index = unit:match("^(party)(%d+)$")
+    if group then return "partypet" .. index end
+    group, index = unit:match("^(raid)(%d+)$")
+    if group then return "raidpet" .. index end
+    return nil
+end
+
+function VB:CreatePetFrame()
+    if VB.frames.petFrame then return end
+
+    local pf = CreateFrame("Frame", "VoidBoxPetFrame", UIParent, "BackdropTemplate")
+    pf:SetSize(80, 55)
+    pf:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+    })
+    pf:SetBackdropColor(0.05, 0.05, 0.05, 0.6)
+    pf:SetBackdropBorderColor(0.4, 0.2, 0.6, 0.8)
+    pf:SetClampedToScreen(true)
+    pf:SetMovable(true)
+    pf:EnableMouse(true)
+    pf:RegisterForDrag("LeftButton")
+
+    local pos = VB.config.petFramePosition
+    if pos and pos.point then
+        pf:SetPoint(pos.point, UIParent, pos.relPoint or pos.point, pos.x or 0, pos.y or 0)
+    elseif VB.frames.main then
+        pf:SetPoint("BOTTOMRIGHT", VB.frames.main, "TOPRIGHT", 0, 20)
+    else
+        pf:SetPoint("CENTER", UIParent, "CENTER", 200, 0)
+    end
+
+    pf:SetScript("OnDragStart", function(self)
+        if not VB.config.locked then self:StartMoving() end
+    end)
+    pf:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        local point, _, relPoint, x, y = self:GetPoint()
+        VB.config.petFramePosition = { point = point, relPoint = relPoint, x = x, y = y }
+    end)
+
+    -- Label
+    local label = pf:CreateFontString(nil, "OVERLAY")
+    label:SetFont(VB.config.font, 8, "OUTLINE")
+    label:SetPoint("BOTTOM", pf, "TOP", 0, 1)
+    label:SetText("|cFF9966FFPETS|r")
+    pf.label = label
+
+    -- Drag handle (visible when unlocked)
+    local handle = CreateFrame("Frame", nil, pf, "BackdropTemplate")
+    handle:SetHeight(14)
+    handle:SetPoint("TOPLEFT", pf, "TOPLEFT", 0, 14)
+    handle:SetPoint("TOPRIGHT", pf, "TOPRIGHT", 0, 14)
+    handle:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+    })
+    handle:SetBackdropColor(0.6, 0.4, 1.0, 0.7)
+    handle:SetBackdropBorderColor(0.6, 0.4, 1.0, 0.9)
+    handle:EnableMouse(true)
+    handle:RegisterForDrag("LeftButton")
+    handle:SetScript("OnDragStart", function()
+        if not VB.config.locked then pf:StartMoving() end
+    end)
+    handle:SetScript("OnDragStop", function()
+        pf:StopMovingOrSizing()
+        local point, _, relPoint, x, y = pf:GetPoint()
+        VB.config.petFramePosition = { point = point, relPoint = relPoint, x = x, y = y }
+    end)
+    handle:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine("|cFF9966FFVoidBox|r Pets")
+        GameTooltip:AddLine(VB.L["DRAG_TO_MOVE"], 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    handle:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    local handleText = handle:CreateFontString(nil, "OVERLAY")
+    handleText:SetFont(VB.config.font, 8, "OUTLINE")
+    handleText:SetPoint("CENTER")
+    handleText:SetText("|cFF9966FFPETS|r")
+
+    handle:SetShown(not VB.config.locked)
+    pf.handle = handle
+
+    -- Container for pet buttons
+    local container = CreateFrame("Frame", nil, pf)
+    container:SetAllPoints()
+    pf.container = container
+
+    pf:Hide()
+    VB.frames.petFrame = pf
+end
+
+function VB:GetOrCreatePetButton(unit, index)
+    local key = "pet" .. index
+    if VB.petButtons[key] then
+        VB.petButtons[key].unit = unit
+        VB.petButtons[key]:SetAttribute("unit", unit)
+        return VB.petButtons[key]
+    end
+    VB.petButtonCount = VB.petButtonCount + 1
+    local button = VB:CreateUnitButton(unit, 2000 + VB.petButtonCount)
+    -- Re-parent to pet container
+    button:SetParent(VB.frames.petFrame.container)
+    VB.petButtons[key] = button
+    return button
+end
+
+function VB:UpdatePetFrame()
+    if not VB.frames.petFrame then
+        VB:CreatePetFrame()
+    end
+
+    local pf = VB.frames.petFrame
+
+    -- Hide all pet buttons first
+    for _, btn in pairs(VB.petButtons) do
+        btn:Hide()
+    end
+
+    -- If disabled or solo, hide the frame
+    if not VB.config.showPetFrame or VB.groupType == "solo" then
+        pf:Hide()
+        return
+    end
+
+    -- Find pet units
+    local pets = {}
+    local allUnits = VB:GetUnitsFlat()
+    for _, unit in ipairs(allUnits) do
+        local petUnit = GetPetUnitToken(unit)
+        if petUnit and UnitExists(petUnit) then
+            table.insert(pets, petUnit)
+        end
+    end
+
+    if #pets == 0 then
+        pf:Hide()
+        return
+    end
+
+    -- Compute sizes
+    local sw = (VB.config.scaleWidth or 100) / 100
+    local sh = (VB.config.scaleHeight or 100) / 100
+    local width = math.floor(80 * sw)
+    local height = math.floor(55 * sh)
+    local spacing = VB.config.frameSpacing or 2
+
+    -- Layout pets vertically
+    for i, unit in ipairs(pets) do
+        local button = VB:GetOrCreatePetButton(unit, i)
+        VB:ResizeUnitButton(button)
+        button:ClearAllPoints()
+        button:SetPoint("TOPLEFT", pf.container, "TOPLEFT", 0, -(i - 1) * (height + spacing))
+        button:Show()
+        VB:UpdateUnitButton(button)
+    end
+
+    -- Resize pet frame to fit
+    local totalH = #pets * (height + spacing) - spacing
+    pf:SetSize(width, totalH)
+
+    -- Lock state
+    pf:EnableMouse(not VB.config.locked)
+    if pf.handle then pf.handle:SetShown(not VB.config.locked) end
+
+    pf:Show()
 end
 
 -------------------------------------------------
@@ -924,6 +1138,8 @@ SlashCmdList["VOIDBOX"] = function(msg)
         if VB.frames.handle then VB.frames.handle:Hide() end
         if VB.frames.tankFrame then VB.frames.tankFrame:EnableMouse(false) end
         if VB.frames.tankFrame and VB.frames.tankFrame.handle then VB.frames.tankFrame.handle:Hide() end
+        if VB.frames.petFrame then VB.frames.petFrame:EnableMouse(false) end
+        if VB.frames.petFrame and VB.frames.petFrame.handle then VB.frames.petFrame.handle:Hide() end
         VB:Print(VB.L["FRAMES_LOCKED"])
     elseif msg == "unlock" then
         VB.config.locked = false
@@ -931,6 +1147,8 @@ SlashCmdList["VOIDBOX"] = function(msg)
         if VB.frames.handle then VB.frames.handle:Show() end
         if VB.frames.tankFrame then VB.frames.tankFrame:EnableMouse(true) end
         if VB.frames.tankFrame and VB.frames.tankFrame.handle then VB.frames.tankFrame.handle:Show() end
+        if VB.frames.petFrame then VB.frames.petFrame:EnableMouse(true) end
+        if VB.frames.petFrame and VB.frames.petFrame.handle then VB.frames.petFrame.handle:Show() end
         VB:Print(VB.L["FRAMES_UNLOCKED"])
     elseif msg == "reset" then
         VB.config.position = { point = "CENTER", x = 0, y = 0 }

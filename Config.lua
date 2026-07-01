@@ -796,7 +796,17 @@ function VB:CreateAppearanceTab()
         end
     end)
     yOffset = yOffset - 30
-    
+
+    local petFrameCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    petFrameCB:SetPoint("TOPLEFT", 10, yOffset)
+    petFrameCB.text:SetText(VB.L["SHOW_PET_FRAME"])
+    petFrameCB:SetChecked(VB.config.showPetFrame or false)
+    petFrameCB:SetScript("OnClick", function(self)
+        VB.config.showPetFrame = self:GetChecked()
+        if not InCombatLockdown() then VB:UpdatePetFrame() end
+    end)
+    yOffset = yOffset - 30
+
     local classColorsCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
     classColorsCB:SetPoint("TOPLEFT", 10, yOffset)
     classColorsCB.text:SetText(VB.L["CLASS_COLORS"])
@@ -870,7 +880,16 @@ function VB:CreateAppearanceTab()
         for _, button in pairs(VB.tankButtons) do VB:UpdateAuras(button) end
     end)
     yOffset = yOffset - 30
-    
+
+    local tooltipBindingsCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    tooltipBindingsCB:SetPoint("TOPLEFT", 10, yOffset)
+    tooltipBindingsCB.text:SetText(VB.L["SHOW_TOOLTIP_BINDINGS"])
+    tooltipBindingsCB:SetChecked(VB.config.showTooltipBindings ~= false)
+    tooltipBindingsCB:SetScript("OnClick", function(self)
+        VB.config.showTooltipBindings = self:GetChecked()
+    end)
+    yOffset = yOffset - 30
+
     local autoTargetCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
     autoTargetCB:SetPoint("TOPLEFT", 10, yOffset)
     autoTargetCB.text:SetText(VB.L["AUTO_TARGET_ON_CAST"])
