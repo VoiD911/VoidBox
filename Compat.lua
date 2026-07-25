@@ -340,6 +340,37 @@ function VB:UnitHasHealBuff(unit)
             end
         end
     end
-    
+
     return false
+end
+
+-------------------------------------------------
+-- Safe Spell ID (WoW 12.0+ secret values)
+-- aura.spellId may be a secret value in combat; convert to a
+-- real, comparable Lua number the same way UnitHasHealBuff does.
+-------------------------------------------------
+function VB:SafeSpellId(spellId)
+    if not spellId then return nil end
+    local ok, id = pcall(function()
+        return tonumber(string.format("%d", spellId))
+    end)
+    if ok then return id end
+    return nil
+end
+
+-------------------------------------------------
+-- Bloodlust/Heroism exhaustion debuff family
+-- Hidden by default: clutters raid frames, no useful info.
+-------------------------------------------------
+VB.EXHAUSTION_DEBUFF_IDS = {
+    [57724] = true,  -- Sated (Horde Bloodlust)
+    [57723] = true,  -- Exhaustion (Alliance Heroism)
+    [80354] = true,  -- Temporal Displacement (Timewarp)
+    [95809] = true,  -- Insanity (Netherwinds)
+    [15007] = true,  -- Fatigued (resurrection sickness / battle rez debuff)
+}
+
+function VB:IsDebuffBlocked(id)
+    if not id then return false end
+    return VB.EXHAUSTION_DEBUFF_IDS[id] and VB.config.hideExhaustionDebuffs ~= false
 end

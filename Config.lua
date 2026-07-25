@@ -169,6 +169,7 @@ function VB:CreateConfigFrame()
     
     VB:CreateBindingsTab()
     VB:CreateAppearanceTab()
+    VB:CreateDebuffsTab()
     VB:CreateProfilesTab()
     VB:ShowConfigTab("bindings")
     
@@ -184,13 +185,15 @@ function VB:CreateConfigTabs()
     local tabData = {
         { id = "bindings", text = VB.L["TAB_BINDINGS"] },
         { id = "appearance", text = VB.L["TAB_APPEARANCE"] },
+        { id = "debuffs", text = VB.L["TAB_DEBUFFS"] },
         { id = "profiles", text = VB.L["TAB_PROFILES"] },
     }
-    
+
+    local tabWidth = math.floor((480 - (#tabData - 1) * 5) / #tabData)
     local lastTab = nil
     for i, data in ipairs(tabData) do
         local tab = CreateFrame("Button", nil, configFrame, "BackdropTemplate")
-        tab:SetSize(120, 25)
+        tab:SetSize(tabWidth, 25)
         tab:SetBackdrop({
             bgFile = "Interface\\Buttons\\WHITE8x8",
             edgeFile = "Interface\\Buttons\\WHITE8x8",
@@ -232,6 +235,7 @@ function VB:ShowConfigTab(tabId)
     end
     if configFrame.bindingsContent then configFrame.bindingsContent:SetShown(tabId == "bindings") end
     if configFrame.appearanceContent then configFrame.appearanceContent:SetShown(tabId == "appearance") end
+    if configFrame.debuffsContent then configFrame.debuffsContent:SetShown(tabId == "debuffs") end
     if configFrame.profilesContent then
         configFrame.profilesContent:SetShown(tabId == "profiles")
         if tabId == "profiles" then VB:RefreshProfilesTab() end
@@ -927,6 +931,26 @@ function VB:CreateAppearanceTab()
         if VB.frames.main then VB.frames.main:EnableMouse(not VB.config.locked) end
         if VB.frames.handle then VB.frames.handle:SetShown(not VB.config.locked) end
         UpdateLockButton()
+    end)
+end
+
+-------------------------------------------------
+-- Debuffs Tab
+-------------------------------------------------
+function VB:CreateDebuffsTab()
+    local content = CreateFrame("Frame", nil, configFrame.content)
+    content:SetAllPoints()
+    content:Hide()
+    configFrame.debuffsContent = content
+
+    local exhaustionCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    exhaustionCB:SetPoint("TOPLEFT", 5, -5)
+    exhaustionCB.text:SetText(VB.L["HIDE_EXHAUSTION_DEBUFFS"])
+    exhaustionCB:SetChecked(VB.config.hideExhaustionDebuffs ~= false)
+    exhaustionCB:SetScript("OnClick", function(self)
+        VB.config.hideExhaustionDebuffs = self:GetChecked()
+        for _, button in pairs(VB.unitButtons) do VB:UpdateAuras(button) end
+        for _, button in pairs(VB.tankButtons) do VB:UpdateAuras(button) end
     end)
 end
 

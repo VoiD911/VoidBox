@@ -3,3 +3,6 @@ VoidBoxDB.lua
 
 # Claude Code local settings
 .claude/
+
+# Superpowers brainstorming scratch
+.superpowers/

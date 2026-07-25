@@ -59,6 +59,7 @@ VB.defaults = {
     showBuffs = true,
     debuffIconSize = 21,
     buffIconSize = 12,
+    hideExhaustionDebuffs = true,
     showDispelHighlight = true,
     showTooltipBindings = true,
     keepGroupsTogether = false,

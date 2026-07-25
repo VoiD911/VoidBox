@@ -855,7 +855,8 @@ function VB:UpdateAuras(button)
         for i = 1, 40 do
             local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HARMFUL")
             if not aura then break end
-            if debuffIdx < MAX_DEBUFF_ICONS then
+            local safeId = aura.spellId and VB:SafeSpellId(aura.spellId)
+            if not VB:IsDebuffBlocked(safeId) and debuffIdx < MAX_DEBUFF_ICONS then
                 debuffIdx = debuffIdx + 1
                 SetAuraFrame(button.debuffIcons[debuffIdx], aura)
             end
