@@ -360,30 +360,43 @@ VB.healBuffSpellIDs = {
     [378001] = true,  -- Dream Projection
 }
 
+-- True when an aura is one of the tracked HoTs / shields.
+--
+-- Two passes, because one table cannot cover both clients: the ID table above
+-- holds Retail IDs, while on Forever every Vanilla rank of a spell has its own
+-- ID (Rejuvenation alone has eleven) and only rank 1 happens to share the
+-- Retail ID. All ranks do share one localized name, so that is the second pass.
+--
+-- In combat both spellId and name are secret and this returns false; the
+-- in-combat aura rows rely on the server-side RAID_IN_COMBAT filter instead.
+function VB:IsHealBuff(aura)
+    if not aura then return false end
+
+    local id = aura.spellId and VB:SafeSpellId(aura.spellId)
+    if id and VB.healBuffSpellIDs[id] then
+        return true
+    end
+
+    if aura.name then
+        -- aura.name can be a secret string, hence the pcall
+        local ok, isHealBuff = pcall(function()
+            return VB.healBuffNames[aura.name]
+        end)
+        if ok and isHealBuff then
+            return true
+        end
+    end
+
+    return false
+end
+
 function VB:UnitHasHealBuff(unit)
     if not unit or not UnitExists(unit) then return false end
     
     if VB:HasAuraAPI() then
         for _, aura in ipairs(VB:GetAuras(unit, "HELPFUL")) do
-            if aura.spellId then
-                -- spellId may be a secret value in 12.0+, convert to real number
-                local ok, id = pcall(function()
-                    return tonumber(string.format("%d", aura.spellId))
-                end)
-                if ok and id and VB.healBuffSpellIDs[id] then
-                    return true
-                end
-            end
-            -- Forever runs Vanilla content, where the spell IDs above do not
-            -- exist and every rank of a HoT shares one name. Match by name.
-            if VB.isForever and aura.name then
-                -- aura.name can be a secret string in combat, hence the pcall
-                local okName, isHealBuff = pcall(function()
-                    return VB.healBuffNames[aura.name]
-                end)
-                if okName and isHealBuff then
-                    return true
-                end
+            if VB:IsHealBuff(aura) then
+                return true
             end
         end
     elseif UnitBuff then

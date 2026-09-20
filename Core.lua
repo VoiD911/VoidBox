@@ -433,6 +433,9 @@ function VB:OnPlayerEnteringWorld()
     if not VB._rangeSpellID then
         VB:FindRangeCheckSpell()
     end
+    -- Spell names can still be uncached at PLAYER_LOGIN; rebuild once the world
+    -- is up so the HoT name table is not left half-empty for the session.
+    VB:BuildForeverHealBuffNames()
     VB:UpdateGroupType()
     VB:UpdateAllFrames()
 end

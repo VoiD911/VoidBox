@@ -894,10 +894,7 @@ function VB:UpdateAuras(button)
 
         if not inCombat then
             for _, aura in ipairs(VB:GetAuras(unit, "HELPFUL")) do
-                local ok, id = pcall(function()
-                    return tonumber(string.format("%d", aura.spellId))
-                end)
-                if ok and id and VB.healBuffSpellIDs[id] then
+                if VB:IsHealBuff(aura) then
                     local isPlayer = false
                     pcall(function()
                         if aura.sourceUnit and UnitGUID(aura.sourceUnit) == playerGUID then

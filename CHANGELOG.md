@@ -1,5 +1,18 @@
 # VoidBox
 
+## v1.10.2 (2026-09-20)
+
+- **Fix: HoT/shield icons appeared only in combat on Forever**
+    - The out-of-combat row filtered auras against the Retail spell ID table.
+      In Vanilla every rank has its own ID and only rank 1 matches Retail, so a
+      level-60 Rejuvenation or Renew was skipped; the in-combat row has no ID
+      filter (it uses the server-side RAID_IN_COMBAT filter), hence icons that
+      showed in combat and vanished out of it.
+    - ID and name matching are now one shared `VB:IsHealBuff()` used by both the
+      aura row and `UnitHasHealBuff`, instead of only the latter
+    - The HoT name table is rebuilt at PLAYER_ENTERING_WORLD too, in case spell
+      data was still uncached at login
+
 ## v1.10.1 (2026-09-20)
 
 - **Fix: "Auras cannot be accessed when secret while tainted by 'VoidBox'"**
