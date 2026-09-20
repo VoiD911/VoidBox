@@ -82,6 +82,13 @@ function VB:BuildDispelColorCurve()
         canDispel = {}
     end
 
+    -- Same allow-list, in the shape AuraButton:AddDispelTypeTexture wants:
+    -- dispellable types get their colour, everything else stays transparent.
+    VB.dispelColorMap = {}
+    for id, color in pairs(DISPEL_COLORS) do
+        VB.dispelColorMap[id] = canDispel[id] and color or DISPEL_TRANSPARENT
+    end
+
     dispelColorCurve = C_CurveUtil.CreateColorCurve()
     dispelColorCurve:SetType(Enum.LuaCurveType.Step)
 
@@ -271,15 +278,18 @@ function VB:CreateUnitButton(unit, index)
     statusIcon:Hide()
     button.statusIcon = statusIcon
 
-    -- === Row 2: Debuff icons, positioned dynamically in UpdateAuras ===
+    -- === Rows 2 & 3: debuffs and HoTs ===
+    -- Native AuraContainers when the client has them: the client tracks and
+    -- renders, so the rows survive combat secrecy. Otherwise the Lua icon pool.
     local row2Top = row1H + 2
     button._row2Top = row2Top
-    button.debuffIcons = CreateAuraIcons(healthBar, MAX_DEBUFF_ICONS, S.debuffSize)
-
-    -- === Row 3: HOT/buff icons, positioned dynamically in UpdateAuras ===
     local row3Top = row2Top + S.debuffSize + 1
     button._row3Top = row3Top
-    button.buffIcons = CreateAuraIcons(healthBar, MAX_BUFF_ICONS, S.buffSize)
+
+    if not VB:SetupButtonAuraContainers(button, S, MAX_DEBUFF_ICONS, MAX_BUFF_ICONS) then
+        button.debuffIcons = CreateAuraIcons(healthBar, MAX_DEBUFF_ICONS, S.debuffSize)
+        button.buffIcons = CreateAuraIcons(healthBar, MAX_BUFF_ICONS, S.buffSize)
+    end
 
     -- "Others healing" indicator: small + icon bottom-right of healthBar
     local othersIndicator = healthBar:CreateFontString(nil, "OVERLAY")
@@ -338,7 +348,7 @@ function VB:ResizeUnitButton(button)
     -- Row 2: debuff icons (positions set dynamically in UpdateAuras)
     local row2Top = row1H + 2
     button._row2Top = row2Top
-    for i, f in ipairs(button.debuffIcons) do
+    for i, f in ipairs(button.debuffIcons or {}) do
         f:SetSize(S.debuffSize, S.debuffSize)
         f._iconSize = S.debuffSize
         if f.badge then
@@ -352,7 +362,8 @@ function VB:ResizeUnitButton(button)
     -- Row 3: buff/HOT icons (positions set dynamically in UpdateAuras)
     local row3Top = row2Top + S.debuffSize + 1
     button._row3Top = row3Top
-    for i, f in ipairs(button.buffIcons) do
+    VB:AnchorAuraContainers(button, S)
+    for i, f in ipairs(button.buffIcons or {}) do
         f:SetSize(S.buffSize, S.buffSize)
         f._iconSize = S.buffSize
         if f.badge then
@@ -852,8 +863,17 @@ function VB:UpdateAuras(button)
     local unit = button.unit
     if not unit or not UnitExists(unit) then return end
 
-    for _, f in ipairs(button.debuffIcons) do f:Hide(); if f.badge then f.badge:Hide() end end
-    for _, f in ipairs(button.buffIcons) do f:Hide(); if f.badge then f.badge:Hide() end end
+    -- Native containers: the client tracks, filters and renders these rows, so
+    -- pointing them at the unit is the whole job and it keeps working in combat.
+    if button.debuffContainer then
+        VB:SetAuraContainersShown(button, VB.config.showDebuffs ~= false,
+                                          VB.config.showBuffs ~= false)
+        VB:UpdateAuraContainers(button)
+        return
+    end
+
+    for _, f in ipairs(button.debuffIcons or {}) do f:Hide(); if f.badge then f.badge:Hide() end end
+    for _, f in ipairs(button.buffIcons or {}) do f:Hide(); if f.badge then f.badge:Hide() end end
     if button.othersIndicator then button.othersIndicator:SetText("") end
 
     if not VB:HasAuraAPI() then return end
@@ -889,39 +909,41 @@ function VB:UpdateAuras(button)
     local othersCount = 0
 
     if VB.config.showBuffs ~= false then
-        local inCombat = InCombatLockdown()
-        local playerGUID = UnitGUID("player")
+        -- Lean on the server-side filters rather than reading fields ourselves.
+        -- "PLAYER" isolates our own auras without touching aura.sourceUnit, which
+        -- turns secret in combat, and "RAID_IN_COMBAT" is the in-combat variant
+        -- of "RAID" (it yields nothing out of combat, and vice versa).
+        local mine = VB:GetAuras(unit, "HELPFUL PLAYER")
+        if #mine == 0 then
+            mine = VB:GetAuras(unit, "HELPFUL RAID_IN_COMBAT PLAYER")
+        end
 
-        if not inCombat then
-            for _, aura in ipairs(VB:GetAuras(unit, "HELPFUL")) do
-                if VB:IsHealBuff(aura) then
-                    local isPlayer = false
-                    pcall(function()
-                        if aura.sourceUnit and UnitGUID(aura.sourceUnit) == playerGUID then
-                            isPlayer = true
-                        end
-                    end)
-                    if isPlayer then
-                        if buffIdx < MAX_BUFF_ICONS then
-                            buffIdx = buffIdx + 1
-                            SetAuraFrame(button.buffIcons[buffIdx], aura)
-                        end
-                    else
-                        othersCount = othersCount + 1
-                    end
-                end
-            end
-        else
-            for _, aura in ipairs(VB:GetAuras(unit, "HELPFUL RAID_IN_COMBAT PLAYER")) do
-                if buffIdx >= MAX_BUFF_ICONS then break end
+        local raid = VB:GetAuras(unit, "HELPFUL RAID")
+        if #raid == 0 then
+            raid = VB:GetAuras(unit, "HELPFUL RAID_IN_COMBAT")
+        end
+
+        -- Narrow to actual HoTs/shields only while the identity fields are
+        -- readable. Under secrecy the server filter is all we get, so take it
+        -- as-is rather than dropping every icon.
+        local readable = mine[1] and VB:AuraFieldsReadable(mine[1])
+
+        for _, aura in ipairs(mine) do
+            if buffIdx >= MAX_BUFF_ICONS then break end
+            if not readable or VB:IsHealBuff(aura) then
                 buffIdx = buffIdx + 1
                 SetAuraFrame(button.buffIcons[buffIdx], aura)
             end
-            for _ in ipairs(VB:GetAuras(unit, "HELPFUL RAID_IN_COMBAT")) do
+        end
+
+        -- "RAID" already includes our own auras, so subtract them back out
+        local raidReadable = raid[1] and VB:AuraFieldsReadable(raid[1])
+        for _, aura in ipairs(raid) do
+            if not raidReadable or VB:IsHealBuff(aura) then
                 othersCount = othersCount + 1
             end
-            othersCount = math.max(0, othersCount - buffIdx)
         end
+        othersCount = math.max(0, othersCount - buffIdx)
         -- Center only the visible buff icons
         CenterAuraRow(button.buffIcons, buffIdx, S.buffSize, button.healthBar, button._row3Top or 36)
         for i = 1, buffIdx do

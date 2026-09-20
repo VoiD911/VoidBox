@@ -17,6 +17,11 @@ adapts itself at login:
   so keyboard bindings switch to global override bindings on `@mouseover` proxy
   buttons. VoidBox prints a notice at login when that happens. Scroll-wheel
   click-casting is unavailable on that path.
+- **Aura rows use native AuraContainers.** Addon code cannot read auras in
+  combat any more (enumeration raises, per-spell lookups answer nil), so the
+  debuff, HoT and dispel rows are rendered by the client itself: VoidBox
+  declares a filter and styles the buttons it is handed, and never touches the
+  aura data. They keep working in combat as a result.
 - **Known beta client bug:** early Forever builds write `SavedVariables` on exit
   but never read them back, so settings can reset between sessions. That is a
   client issue, not an addon one.

@@ -360,6 +360,26 @@ VB.healBuffSpellIDs = {
     [378001] = true,  -- Dream Projection
 }
 
+-- Whether an aura's identity fields can actually be read.
+--
+-- InCombatLockdown() is the PLAYER's combat state and says nothing about a
+-- given unit's auras: a target can be in combat - and its auras already secret
+-- - while the player is not. Keying aura filtering on the lockdown therefore
+-- silently dropped every icon in that case. Ask the value itself instead.
+function VB:AuraFieldsReadable(aura)
+    if not aura then return false end
+
+    if issecretvalue then
+        local ok, isSecret = pcall(issecretvalue, aura.name)
+        if ok and VB:SafeBool(isSecret) then return false end
+    end
+
+    -- No issecretvalue on this client: fall back to reading the name, which
+    -- raises or yields nothing when the value is secret.
+    local ok, name = pcall(function() return aura.name end)
+    return ok and name ~= nil
+end
+
 -- True when an aura is one of the tracked HoTs / shields.
 --
 -- Two passes, because one table cannot cover both clients: the ID table above

@@ -417,6 +417,7 @@ end
 function VB:OnPlayerLogin()
     VB.playerSpecID = VB:GetPlayerSpecID()
     VB:BuildForeverHealBuffNames()
+    VB:BuildHealBuffIDSet()
     VB:ForeverStartupNotice()
     VB:BuildDispelColorCurve()
     VB:CreateMainFrame()
@@ -436,6 +437,8 @@ function VB:OnPlayerEnteringWorld()
     -- Spell names can still be uncached at PLAYER_LOGIN; rebuild once the world
     -- is up so the HoT name table is not left half-empty for the session.
     VB:BuildForeverHealBuffNames()
+    VB:BuildHealBuffIDSet()
+    VB:RefreshAuraContainerFilters()
     VB:UpdateGroupType()
     VB:UpdateAllFrames()
 end
@@ -448,6 +451,8 @@ end
 function VB:OnSpecChanged()
     VB.playerSpecID = VB:GetPlayerSpecID()
     VB:BuildForeverHealBuffNames()
+    VB:BuildHealBuffIDSet()
+    VB:RefreshAuraContainerFilters()
     VB:BuildDispelColorCurve()
     VB:ApplyClickCastingsToAllFrames()
     -- Re-detect range check spell (talents may have changed)
@@ -1183,6 +1188,126 @@ SlashCmdList["VOIDBOX"] = function(msg)
     elseif msg == "profile" or msg == "profiles" then
         VB:Print(VB.L["ACTIVE_PROFILE"] .. ": |cFF9966FF" .. VB:GetActiveProfileName() .. "|r")
         VB:Print(VB.L["PROFILES"] .. ": " .. table.concat(VB:GetProfileList(), ", "))
+    elseif msg == "debugauras" or msg:find("^debugauras%s+") then
+        -- Probe which aura enumeration actually yields data on this client.
+        -- Defaults to a friendly unit VoidBox displays, since in combat the
+        -- current target is almost always a hostile mob.
+        local unit = msg:match("^debugauras%s+(%S+)")
+        if not unit then
+            for _, u in ipairs(VB:GetUnitsFlat()) do
+                if UnitExists(u) and not UnitIsUnit(u, "player") then unit = u break end
+            end
+            unit = unit or "player"
+        end
+
+        VB:Print("=== Debug Auras (" .. unit .. ": " .. (UnitName(unit) or "?") .. ") ===")
+        VB:Print("  player in combat: " .. tostring(InCombatLockdown())
+            .. " - unit in combat: " .. tostring(UnitAffectingCombat(unit))
+            .. " - ShouldAurasBeSecret: " .. tostring(VB:AurasAreSecret()))
+
+        -- 1) GetUnitAuras per filter
+        for _, f in ipairs({ "HELPFUL", "HELPFUL PLAYER", "HELPFUL RAID",
+                             "HELPFUL RAID_IN_COMBAT", "HELPFUL RAID_IN_COMBAT PLAYER" }) do
+            local rows = VB:GetAuras(unit, f)
+            local first = rows[1]
+            VB:Print(("  GetUnitAuras[%s] rows=%d readable=%s name=%s"):format(
+                f, #rows, tostring(first and VB:AuraFieldsReadable(first)),
+                tostring(first and select(2, pcall(function() return first.name end)))))
+        end
+
+        -- 2) Raw GetAuraDataByIndex: does the server-side filter make the call
+        --    legal under secrecy while a bare HELPFUL raises?
+        if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
+            for _, f in ipairs({ "HELPFUL", "HELPFUL RAID_IN_COMBAT PLAYER" }) do
+                local ok, aura = pcall(C_UnitAuras.GetAuraDataByIndex, unit, 1, f)
+                VB:Print(("  ByIndex[%s] ok=%s %s"):format(f, tostring(ok),
+                    ok and ("got=" .. tostring(aura ~= nil)) or "(raised)"))
+            end
+        end
+
+        -- 3) Slot-based enumeration, the other server-side path
+        if C_UnitAuras and C_UnitAuras.GetAuraSlots then
+            local ok, a, b = pcall(C_UnitAuras.GetAuraSlots, unit, "HELPFUL")
+            VB:Print(("  GetAuraSlots ok=%s cont=%s firstSlot=%s"):format(
+                tostring(ok), tostring(a), tostring(b)))
+        end
+
+        VB:Print("  known HoT names: " .. tostring(next(VB.healBuffNames) ~= nil))
+
+        -- 4) Per-spell access. Aura secrecy is per spell, not global, so a
+        --    targeted query may answer where enumeration is refused outright.
+        local probeID = 774  -- Rejuvenation rank 1
+        local probeName = VB:GetSpellName(probeID)
+        if C_Secrets then
+            local ok1, secret1 = pcall(C_Secrets.ShouldSpellAuraBeSecret, probeID)
+            local ok2, level = pcall(C_Secrets.GetSpellAuraSecrecy, probeID)
+            VB:Print(("  ShouldSpellAuraBeSecret(%d)=%s/%s  GetSpellAuraSecrecy=%s/%s"):format(
+                probeID, tostring(ok1), tostring(secret1), tostring(ok2), tostring(level)))
+        end
+        if C_UnitAuras.GetUnitAuraBySpellID then
+            local ok, aura = pcall(C_UnitAuras.GetUnitAuraBySpellID, unit, probeID)
+            VB:Print(("  GetUnitAuraBySpellID(%d) ok=%s %s"):format(probeID, tostring(ok),
+                ok and ("got=" .. tostring(aura ~= nil)) or "(raised)"))
+        end
+        if C_UnitAuras.GetAuraDataBySpellName and probeName then
+            local ok, aura = pcall(C_UnitAuras.GetAuraDataBySpellName, unit, probeName, "HELPFUL")
+            VB:Print(("  GetAuraDataBySpellName(%s) ok=%s %s"):format(probeName, tostring(ok),
+                ok and ("got=" .. tostring(aura ~= nil)) or "(raised)"))
+        end
+    elseif msg == "debugcontainer" then
+        -- Can this client do AuraContainers? They are the sanctioned way to show
+        -- auras without reading them: the client tracks, filters and renders,
+        -- the addon only styles. Nothing secret crosses into Lua.
+        VB:Print("=== Debug AuraContainer ===")
+        VB:Print("  C_AuraContainerUtil: " .. tostring(C_AuraContainerUtil ~= nil))
+        if C_XMLUtil and C_XMLUtil.GetTemplateInfo then
+            local ok, info = pcall(C_XMLUtil.GetTemplateInfo, "CustomAuraContainerTemplate")
+            VB:Print("  CustomAuraContainerTemplate: " .. tostring(ok and info ~= nil))
+        end
+
+        local ok, container = pcall(CreateFrame, "AuraContainer", nil, UIParent,
+                                    "CustomAuraContainerTemplate")
+        VB:Print("  CreateFrame(AuraContainer) ok=" .. tostring(ok)
+            .. " got=" .. tostring(ok and container ~= nil))
+        if not ok then
+            VB:Print("  -> " .. tostring(container))
+            return
+        end
+        if not container then return end
+
+        local methods = {}
+        for _, m in ipairs({ "SetUnit", "AddAuraGroup", "AddAuraSlot", "SetEnabled",
+                             "UpdateAllAuras", "GetAuraGroupFrameCount",
+                             "GetAuraGroupFrame", "SetFlowLayoutAxis",
+                             "SetAuraGroupMaxFrameCount", "SetAuraGroupCandidateFilters",
+                             "SetFlowLayoutAnchorPoint" }) do
+            if type(container[m]) == "function" then methods[#methods + 1] = m end
+        end
+        VB:Print("  methods: " .. (#methods > 0 and table.concat(methods, ", ") or "(none)"))
+
+        -- Live test against a grouped ally
+        local unit
+        for _, u in ipairs(VB:GetUnitsFlat()) do
+            if UnitExists(u) and not UnitIsUnit(u, "player") then unit = u break end
+        end
+        unit = unit or "player"
+
+        local okU = pcall(container.SetUnit, container, unit)
+        local okG = pcall(container.AddAuraGroup, container, "vbProbe", "HELPFUL|PLAYER",
+                          { maxFrameCount = 4 })
+        pcall(container.UpdateAllAuras, container)
+        local okC, count = pcall(container.GetAuraGroupFrameCount, container, "vbProbe")
+
+        VB:Print(("  unit=%s SetUnit=%s AddAuraGroup=%s"):format(unit, tostring(okU), tostring(okG)))
+        VB:Print(("  in combat=%s secret=%s -> HELPFUL||PLAYER frames=%s"):format(
+            tostring(InCombatLockdown()), tostring(VB:AurasAreSecret()),
+            okC and tostring(count) or "(raised)"))
+
+        -- Tear the probe down: it is parented to UIParent and unpositioned, so
+        -- leaving it enabled scatters live aura icons across the screen.
+        pcall(container.SetEnabled, container, false)
+        pcall(container.SetUnit, container, nil)
+        container:Hide()
     elseif msg == "debugrole" then
         VB:Print("=== Debug Role Icons ===")
         local units = VB:GetUnitsFlat()

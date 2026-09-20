@@ -1,5 +1,56 @@
 # VoidBox
 
+## v1.11.0 (2026-09-20)
+
+- **Aura rows now render through native AuraContainers, and work in combat again**
+    - Addon code cannot read auras once they go secret: the index walk and
+      `GetAuraSlots` raise, `GetUnitAuras` returns nothing, and per-spell
+      lookups answer nil (healing HoTs report secrecy level 2). Drawing auras
+      from data we read was a dead end on Forever.
+    - `AuraContainer` (12.1+) is the sanctioned way round it: VoidBox declares a
+      filter and styles the buttons the client hands it, and never touches the
+      aura data. The client does the tracking, filtering, sorting and rendering.
+    - Debuffs use `HARMFUL`; HoTs/shields use `HELPFUL|PLAYER`, so our own casts
+      are separated server-side instead of reading `aura.sourceUnit`
+    - Dispel colouring moves to `AddDispelTypeTexture` with VoidBox's existing
+      allow-list as the colour map, and stack counts to `SetApplicationCount`
+    - Cooldown sweeps keep ticking in combat, which the old path could not do
+    - New `AuraContainers.lua`. Clients without the intrinsic frame type (Retail
+      before 12.1) keep the previous Lua path unchanged.
+    - The HoT row is narrowed to actual heals with `candidateFilters.includeSpellIDs`,
+      fed by a spellbook walk that picks up every rank this character knows
+      (a level-60 Rejuvenation is not spell 774). Unfiltered rather than empty
+      if the walk finds nothing.
+    - Rows are centred by shrink-wrapping each container to its frame count,
+      which stays readable in combat even while the auras themselves are secret
+    - Known change: the "+N other healers' HoTs" indicator and the frame-level
+      dispel border are inactive on the container path; dispel now shows as a
+      coloured border on the debuff icon itself.
+- Added `/vb debugcontainer` to probe AuraContainer support on any client
+
+## v1.10.3 (2026-09-20)
+
+- **Fix: no HoT icon when the healed unit is in combat**
+    - The HoT row picked its path from `InCombatLockdown()`, which is the
+      PLAYER's combat state and says nothing about a given unit's auras. A unit
+      already in combat has secret auras, so name/ID matching returned false for
+      every aura and no icon was drawn, while the server-filtered path that
+      would have worked was never taken.
+    - Mine-vs-others is now split by the server-side `PLAYER` filter instead of
+      comparing `UnitGUID(aura.sourceUnit)`, a field that turns secret in combat
+    - `RAID`/`RAID_IN_COMBAT` are tried in turn, since each yields nothing in the
+      other combat state
+    - Identity filtering is applied only while the fields are readable; under
+      secrecy the server filter is taken as-is rather than dropping every icon
+- **Known limitation on Forever:** no aura can be read in combat. Enumeration
+  raises (`GetAuraDataByIndex`, `GetAuraSlots`), `GetUnitAuras` returns nothing
+  and targeted lookups answer nil - healing HoTs report secrecy level 2. Debuff
+  icons, HoT icons and dispel highlighting are therefore empty in combat. A
+  one-time chat notice now explains this instead of looking like a fault.
+- Added `/vb debugauras [unit]`: probes GetUnitAuras per filter, raw
+  GetAuraDataByIndex and GetAuraSlots side by side, with readability and
+  `IsHealBuff` per aura. Defaults to a grouped ally rather than the target.
+
 ## v1.10.2 (2026-09-20)
 
 - **Fix: HoT/shield icons appeared only in combat on Forever**

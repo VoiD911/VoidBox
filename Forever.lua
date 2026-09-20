@@ -163,6 +163,61 @@ function VB:BuildForeverHealBuffNames()
     end
 end
 
+-- Every spell ID the aura row should accept.
+--
+-- Vanilla gives each rank its own ID, so a level-60 Rejuvenation is not 774.
+-- Walking the spellbook and matching localized names picks up exactly the ranks
+-- this character knows - which is also exactly what they can have out on a
+-- target. Safe to read: the spellbook is not secret.
+VB.healBuffIDs = {}
+
+local function ForEachKnownSpell(callback)
+    if not C_SpellBook or not C_SpellBook.GetNumSpellBookSkillLines then return end
+    local bank = (Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player) or 0
+
+    local ok, numLines = pcall(C_SpellBook.GetNumSpellBookSkillLines)
+    if not ok or not numLines then return end
+
+    for line = 1, numLines do
+        local okLine, lineInfo = pcall(C_SpellBook.GetSpellBookSkillLineInfo, line)
+        if okLine and lineInfo and lineInfo.numSpellBookItems then
+            local offset = lineInfo.itemIndexOffset or 0
+            for i = 1, lineInfo.numSpellBookItems do
+                local okItem, item = pcall(C_SpellBook.GetSpellBookItemInfo, offset + i, bank)
+                if okItem and item and item.spellID then
+                    callback(item.spellID, item.name)
+                end
+            end
+        end
+    end
+end
+
+function VB:BuildHealBuffIDSet()
+    local ids = {}
+    for id in pairs(VB.healBuffSpellIDs) do ids[id] = true end
+
+    if VB.isForever and next(VB.healBuffNames) then
+        local found = 0
+        ForEachKnownSpell(function(spellID, name)
+            name = name or VB:GetSpellName(spellID)
+            if name and VB.healBuffNames[name] then
+                ids[spellID] = true
+                found = found + 1
+            end
+        end)
+        -- If the spellbook gave us nothing, applying this set as a filter would
+        -- blank the row entirely. Better unfiltered than empty.
+        if found == 0 then
+            VB.healBuffIDs = nil
+            VB:Debug("Heal buff ID set: spellbook walk found nothing, filter disabled")
+            return
+        end
+        VB:Debug("Heal buff ID set: " .. found .. " ranks from spellbook")
+    end
+
+    VB.healBuffIDs = ids
+end
+
 -- Dispel types the player can actually remove, read from the spellbook.
 -- Returns a { [typeID] = true } set, or nil when this is not Forever.
 function VB:GetForeverDispelTypes()
