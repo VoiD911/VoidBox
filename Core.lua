@@ -135,13 +135,21 @@ end
 -- Event Frame
 -------------------------------------------------
 local eventFrame = CreateFrame("Frame")
-eventFrame:RegisterEvent("ADDON_LOADED")
-eventFrame:RegisterEvent("PLAYER_LOGIN")
-eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-eventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
-eventFrame:RegisterEvent("UNIT_PET")
-eventFrame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
-eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+-- SafeRegisterEvent skips events this client does not know: on Forever a plain
+-- RegisterEvent on an unknown event raises and aborts the rest of this file.
+for _, event in ipairs({
+    "ADDON_LOADED",
+    "PLAYER_LOGIN",
+    "PLAYER_ENTERING_WORLD",
+    "GROUP_ROSTER_UPDATE",
+    "UNIT_PET",
+    "PLAYER_SPECIALIZATION_CHANGED",
+    "PLAYER_TALENT_UPDATE",
+    "LEARNED_SPELL_IN_TAB",
+    "PLAYER_REGEN_ENABLED",
+}) do
+    VB:SafeRegisterEvent(eventFrame, event)
+end
 
 eventFrame:SetScript("OnEvent", function(self, event, ...)
     if event == "ADDON_LOADED" then
@@ -157,7 +165,9 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
         VB:OnGroupRosterUpdate()
     elseif event == "UNIT_PET" then
         if VB.config.showPetFrame then VB:UpdatePetFrame() end
-    elseif event == "PLAYER_SPECIALIZATION_CHANGED" then
+    elseif event == "PLAYER_SPECIALIZATION_CHANGED"
+        or event == "PLAYER_TALENT_UPDATE"
+        or event == "LEARNED_SPELL_IN_TAB" then
         -- This event fires with no args or "player" depending on context
         local unit = ...
         if not unit or unit == "player" then
@@ -405,9 +415,9 @@ function VB:DeleteProfile(name)
 end
 
 function VB:OnPlayerLogin()
-    if GetSpecialization then
-        VB.playerSpecID = GetSpecializationInfo(GetSpecialization())
-    end
+    VB.playerSpecID = VB:GetPlayerSpecID()
+    VB:BuildForeverHealBuffNames()
+    VB:ForeverStartupNotice()
     VB:BuildDispelColorCurve()
     VB:CreateMainFrame()
     VB:InitClickCastings()
@@ -433,9 +443,8 @@ function VB:OnGroupRosterUpdate()
 end
 
 function VB:OnSpecChanged()
-    if GetSpecialization then
-        VB.playerSpecID = GetSpecializationInfo(GetSpecialization())
-    end
+    VB.playerSpecID = VB:GetPlayerSpecID()
+    VB:BuildForeverHealBuffNames()
     VB:BuildDispelColorCurve()
     VB:ApplyClickCastingsToAllFrames()
     -- Re-detect range check spell (talents may have changed)
@@ -1179,9 +1188,8 @@ SlashCmdList["VOIDBOX"] = function(msg)
                 local name = UnitName(unit) or "?"
                 local role = UnitGroupRolesAssigned(unit) or "NONE"
                 local specRole = "N/A"
-                if UnitIsUnit(unit, "player") and GetSpecialization and GetSpecializationRole then
-                    local spec = GetSpecialization()
-                    if spec then specRole = GetSpecializationRole(spec) or "nil" end
+                if UnitIsUnit(unit, "player") then
+                    specRole = VB:GetPlayerSpecRole() or "N/A"
                 end
                 local btn = VB.unitButtons[unit]
                 local iconShown = btn and btn.roleIcon and btn.roleIcon:IsShown() or false

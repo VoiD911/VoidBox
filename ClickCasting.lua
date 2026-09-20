@@ -161,6 +161,12 @@ function VB:InitClickCastings()
     else
         VB:MigrateBindings()
     end
+
+    -- Fallback bindings are global, not per-frame: install them once here so
+    -- they exist even before any unit button has been built.
+    if not VB.hasSecureSnippets then
+        VB:ApplyFallbackKeyBindings()
+    end
 end
 
 -------------------------------------------------
@@ -204,12 +210,14 @@ function VB:GetOrCreateKBProxy(index, binding)
     return proxy
 end
 
-function VB:ConfigureKBProxy(proxy, binding)
+-- mouseoverMode: no secure snippet is available to push the hovered unit into
+-- the proxy's "unit" attribute, so the proxy has to resolve @mouseover itself.
+function VB:ConfigureKBProxy(proxy, binding, mouseoverMode)
     if InCombatLockdown() then return end
-    
+
     -- Ensure vehicle toggle like main unit buttons
     proxy:SetAttribute("toggleForVehicle", true)
-    
+
     local action = binding.action
     if action == "spell" then
         local spellName = binding.value
@@ -217,7 +225,16 @@ function VB:ConfigureKBProxy(proxy, binding)
             spellName = VB:GetSpellName(binding.value)
         end
         if spellName then
-            if VB.config.autoTargetOnCast then
+            if mouseoverMode then
+                proxy:SetAttribute("type", "macro")
+                if VB.config.autoTargetOnCast then
+                    proxy:SetAttribute("macrotext",
+                        "/target [@mouseover,exists]\n/cast [@mouseover,exists,nodead][] " .. spellName)
+                else
+                    proxy:SetAttribute("macrotext",
+                        "/cast [@mouseover,exists,nodead][] " .. spellName)
+                end
+            elseif VB.config.autoTargetOnCast then
                 proxy:SetAttribute("type", "macro")
                 proxy:SetAttribute("macrotext", "/target [@mouseover,exists]\n/cast " .. spellName)
             else
@@ -229,14 +246,68 @@ function VB:ConfigureKBProxy(proxy, binding)
         proxy:SetAttribute("type", "macro")
         proxy:SetAttribute("macrotext", binding.value)
     elseif action == "target" then
-        proxy:SetAttribute("type", "target")
+        if mouseoverMode then
+            proxy:SetAttribute("type", "macro")
+            proxy:SetAttribute("macrotext", "/target [@mouseover,exists]")
+        else
+            proxy:SetAttribute("type", "target")
+        end
     elseif action == "focus" then
-        proxy:SetAttribute("type", "focus")
+        if mouseoverMode then
+            proxy:SetAttribute("type", "macro")
+            proxy:SetAttribute("macrotext", "/focus [@mouseover,exists]")
+        else
+            proxy:SetAttribute("type", "focus")
+        end
     elseif action == "togglemenu" then
-        proxy:SetAttribute("type", "togglemenu")
+        -- togglemenu needs a resolved unit attribute, which the fallback path
+        -- cannot provide; the binding is simply skipped there.
+        if not mouseoverMode then
+            proxy:SetAttribute("type", "togglemenu")
+        end
     elseif action == "assist" then
-        proxy:SetAttribute("type", "assist")
+        if mouseoverMode then
+            proxy:SetAttribute("type", "macro")
+            proxy:SetAttribute("macrotext", "/assist [@mouseover,exists]")
+        else
+            proxy:SetAttribute("type", "assist")
+        end
     end
+end
+
+-------------------------------------------------
+-- Fallback keyboard bindings (no secure snippets)
+--
+-- Forever builds without loadstring_untainted cannot compile _onenter/_onleave,
+-- so hover-scoped bindings are impossible. Instead we install global override
+-- bindings onto @mouseover proxy buttons - the classic mouseover-macro approach.
+-- Trade-offs: bindings are global rather than frame-scoped, and scroll-wheel
+-- click-casting is dropped (overriding MOUSEWHEEL globally would eat camera zoom).
+-------------------------------------------------
+function VB:ApplyFallbackKeyBindings()
+    if InCombatLockdown() then
+        VB.pendingClickCastings = true
+        return false
+    end
+
+    if not VB._bindingOwner then
+        VB._bindingOwner = CreateFrame("Frame", "VoidBoxBindingOwner", UIParent)
+    end
+    ClearOverrideBindings(VB._bindingOwner)
+
+    local index = 0
+    for _, binding in ipairs(VB.clickCastings) do
+        if binding.combo then
+            index = index + 1
+            local proxy = VB:GetOrCreateKBProxy(index, binding)
+            VB:ConfigureKBProxy(proxy, binding, true)
+            SetOverrideBindingClick(VB._bindingOwner, true, binding.combo,
+                                    proxy:GetName(), "LeftButton")
+        end
+    end
+
+    VB:Debug("Fallback keyboard bindings applied: " .. index)
+    return true
 end
 
 -------------------------------------------------
@@ -249,6 +320,13 @@ end
 function VB:SetupSecureBindings(button)
     local btnName = button:GetName()
     if not btnName then return end
+
+    -- Without loadstring_untainted the client cannot compile snippets at all,
+    -- so setting _onenter would be a silent no-op. Take the fallback path.
+    if not VB.hasSecureSnippets then
+        button:EnableMouseWheel(false)
+        return VB:ApplyFallbackKeyBindings()
+    end
     
     -- Collect keyboard bindings + scroll bindings
     local kbBindings = {}
@@ -333,8 +411,17 @@ function VB:SetupSecureBindings(button)
     
     -- Set the _onenter/_onleave attributes
     -- SecureHandlerEnterLeaveTemplate executes these in the restricted env
-    button:SetAttribute("_onenter", enterSnippet)
-    button:SetAttribute("_onleave", leaveSnippet)
+    -- pcall: a build that advertises loadstring_untainted but still fails to
+    -- compile must not take the whole click-casting pass down with it.
+    local compiled = pcall(button.SetAttribute, button, "_onenter", enterSnippet)
+    if compiled then
+        pcall(button.SetAttribute, button, "_onleave", leaveSnippet)
+    else
+        VB.hasSecureSnippets = false
+        button:EnableMouseWheel(false)
+        VB:Print("|cffffcc00Secure snippets failed to compile|r - keyboard click-casting switched to global mouseover bindings.")
+        VB:ApplyFallbackKeyBindings()
+    end
 end
 
 
@@ -425,6 +512,11 @@ function VB:ClearClickCastings(button)
     end
     button:SetAttribute("_vbKBCount", 0)
     
+    -- Drop fallback global bindings (no-op when snippets are available)
+    if VB._bindingOwner then
+        ClearOverrideBindings(VB._bindingOwner)
+    end
+
     -- Clear proxy button configurations
     for i, proxy in pairs(VB._kbProxies) do
         proxy:SetAttribute("type", nil)

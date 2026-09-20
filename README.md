@@ -2,7 +2,24 @@
 
 Minimalist solo/party/raid unit frames with click-casting — Cell/Healbot-Click/Grid/VuhDo style.
 
-Compatible with **WoW 12.0 Midnight** (secret values, new APIs).
+Compatible with **WoW 12.0 Midnight** and **WoW: Forever** (Classic+, interface 16001).
+
+### Notes for WoW: Forever
+
+Forever runs the Midnight UI codebase on a level-60 Vanilla ruleset, so VoidBox
+adapts itself at login:
+
+- Dispel highlighting is derived from the spells in your spellbook (Vanilla has
+  no specializations)
+- Range checking and HoT/shield tracking use Vanilla spells and cover every rank
+- **Click-casting:** mouse bindings work normally. On builds where
+  `loadstring_untainted` is missing, the client cannot compile secure snippets,
+  so keyboard bindings switch to global override bindings on `@mouseover` proxy
+  buttons. VoidBox prints a notice at login when that happens. Scroll-wheel
+  click-casting is unavailable on that path.
+- **Known beta client bug:** early Forever builds write `SavedVariables` on exit
+  but never read them back, so settings can reset between sessions. That is a
+  client issue, not an addon one.
 
 ## Usage
 

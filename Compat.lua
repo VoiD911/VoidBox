@@ -19,6 +19,56 @@ function VB:SafeBool(value)
 end
 
 -------------------------------------------------
+-- Aura access (WoW 12.0+ secret auras, incl. Forever)
+--
+-- Once the aura system goes secret, C_UnitAuras.GetAuraDataByIndex RAISES
+-- ("Auras cannot be accessed when secret while tainted by 'VoidBox'") instead
+-- of returning nil. C_UnitAuras.GetUnitAuras is the supported replacement: the
+-- call itself is always allowed, only the individual fields turn secret.
+-------------------------------------------------
+function VB:AurasAreSecret()
+    if C_Secrets and C_Secrets.ShouldAurasBeSecret then
+        local ok, secret = pcall(C_Secrets.ShouldAurasBeSecret)
+        if ok then return VB:SafeBool(secret) end
+    end
+    return false
+end
+
+-- GetAuraDataByIndex takes space-separated filters, GetUnitAuras pipe-separated
+local function toPipeFilter(filter)
+    if not filter or filter == "" then return nil end
+    return (filter:gsub("%s+", "|"))
+end
+
+-- Returns an array of AuraData (possibly empty), never raises.
+function VB:GetAuras(unit, filter, maxCount)
+    if not unit then return {} end
+    maxCount = maxCount or 40
+
+    if C_UnitAuras and C_UnitAuras.GetUnitAuras then
+        local ok, auras = pcall(C_UnitAuras.GetUnitAuras, unit, toPipeFilter(filter), maxCount)
+        if ok and type(auras) == "table" then return auras end
+    end
+
+    -- Legacy index walk, only while auras are readable. pcall on each step so a
+    -- mid-iteration switch to secret stops the loop instead of erroring out.
+    local result = {}
+    if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex and not VB:AurasAreSecret() then
+        for i = 1, maxCount do
+            local ok, aura = pcall(C_UnitAuras.GetAuraDataByIndex, unit, i, filter)
+            if not ok or not aura then break end
+            result[#result + 1] = aura
+        end
+    end
+    return result
+end
+
+-- True when this client can read auras at all
+function VB:HasAuraAPI()
+    return (C_UnitAuras and (C_UnitAuras.GetUnitAuras or C_UnitAuras.GetAuraDataByIndex)) and true or false
+end
+
+-------------------------------------------------
 -- Spell Info Wrapper
 -- GetSpellInfo() deprecated since 11.0, removed in 12.0
 -- Replaced by C_Spell.GetSpellInfo() which returns a table
@@ -112,10 +162,8 @@ function VB:GetUnitDebuffs(unit, maxCount)
     local debuffs = {}
     maxCount = maxCount or 40
     
-    if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
-        for i = 1, maxCount do
-            local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HARMFUL")
-            if not aura then break end
+    if VB:HasAuraAPI() then
+        for _, aura in ipairs(VB:GetAuras(unit, "HARMFUL", maxCount)) do
             table.insert(debuffs, {
                 name = aura.name,
                 icon = aura.icon,
@@ -154,10 +202,8 @@ function VB:GetUnitBuffsByPlayer(unit, maxCount)
     maxCount = maxCount or 40
     local playerGUID = UnitGUID("player")
     
-    if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
-        for i = 1, maxCount do
-            local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
-            if not aura then break end
+    if VB:HasAuraAPI() then
+        for _, aura in ipairs(VB:GetAuras(unit, "HELPFUL", maxCount)) do
             if aura.sourceUnit and UnitGUID(aura.sourceUnit) == playerGUID then
                 table.insert(buffs, {
                     name = aura.name,
@@ -317,16 +363,25 @@ VB.healBuffSpellIDs = {
 function VB:UnitHasHealBuff(unit)
     if not unit or not UnitExists(unit) then return false end
     
-    if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
-        for i = 1, 40 do
-            local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
-            if not aura then break end
+    if VB:HasAuraAPI() then
+        for _, aura in ipairs(VB:GetAuras(unit, "HELPFUL")) do
             if aura.spellId then
                 -- spellId may be a secret value in 12.0+, convert to real number
                 local ok, id = pcall(function()
                     return tonumber(string.format("%d", aura.spellId))
                 end)
                 if ok and id and VB.healBuffSpellIDs[id] then
+                    return true
+                end
+            end
+            -- Forever runs Vanilla content, where the spell IDs above do not
+            -- exist and every rank of a HoT shares one name. Match by name.
+            if VB.isForever and aura.name then
+                -- aura.name can be a secret string in combat, hence the pcall
+                local okName, isHealBuff = pcall(function()
+                    return VB.healBuffNames[aura.name]
+                end)
+                if okName and isHealBuff then
                     return true
                 end
             end

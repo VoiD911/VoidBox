@@ -60,13 +60,17 @@ function VB:BuildDispelColorCurve()
     if not C_CurveUtil or not C_CurveUtil.CreateColorCurve then return end
 
     local classData = CLASS_DISPEL_TYPES[VB.playerClass]
-    local canDispel = {}
+    local canDispel = VB:GetForeverDispelTypes()
 
-    if classData then
+    if canDispel then
+        -- Forever: Vanilla has no specs, dispel schools come from known spells
+    elseif classData then
+        canDispel = {}
         -- Start with default types for the class
         for _, id in ipairs(classData.default) do
             canDispel[id] = true
         end
+
         -- Override with spec-specific if available
         if VB.playerSpecID and classData[VB.playerSpecID] then
             canDispel = {}
@@ -74,6 +78,8 @@ function VB:BuildDispelColorCurve()
                 canDispel[id] = true
             end
         end
+    else
+        canDispel = {}
     end
 
     dispelColorCurve = C_CurveUtil.CreateColorCurve()
@@ -366,23 +372,31 @@ end
 -------------------------------------------------
 -- Events
 -------------------------------------------------
+local UNIT_BUTTON_EVENTS = {
+    "UNIT_HEALTH",
+    "UNIT_MAXHEALTH",
+    "UNIT_POWER_UPDATE",
+    "UNIT_MAXPOWER",
+    "UNIT_AURA",
+    "UNIT_NAME_UPDATE",
+    "UNIT_CONNECTION",
+    "PLAYER_FLAGS_CHANGED",
+    "UNIT_THREAT_SITUATION_UPDATE",
+    "UNIT_ABSORB_AMOUNT_CHANGED",
+    "UNIT_HEAL_ABSORB_AMOUNT_CHANGED",
+    "UNIT_HEAL_PREDICTION",
+    "READY_CHECK",
+    "READY_CHECK_CONFIRM",
+    "READY_CHECK_FINISHED",
+    "INCOMING_RESURRECT_CHANGED",
+}
+
 function VB:RegisterUnitButtonEvents(button)
-    button:RegisterEvent("UNIT_HEALTH")
-    button:RegisterEvent("UNIT_MAXHEALTH")
-    button:RegisterEvent("UNIT_POWER_UPDATE")
-    button:RegisterEvent("UNIT_MAXPOWER")
-    button:RegisterEvent("UNIT_AURA")
-    button:RegisterEvent("UNIT_NAME_UPDATE")
-    button:RegisterEvent("UNIT_CONNECTION")
-    button:RegisterEvent("PLAYER_FLAGS_CHANGED")
-    button:RegisterEvent("UNIT_THREAT_SITUATION_UPDATE")
-    button:RegisterEvent("UNIT_ABSORB_AMOUNT_CHANGED")
-    button:RegisterEvent("UNIT_HEAL_ABSORB_AMOUNT_CHANGED")
-    button:RegisterEvent("UNIT_HEAL_PREDICTION")
-    button:RegisterEvent("READY_CHECK")
-    button:RegisterEvent("READY_CHECK_CONFIRM")
-    button:RegisterEvent("READY_CHECK_FINISHED")
-    button:RegisterEvent("INCOMING_RESURRECT_CHANGED")
+    -- Forever does not implement every Midnight unit event; registering one it
+    -- does not know raises, so each is filtered through SafeRegisterEvent.
+    for _, event in ipairs(UNIT_BUTTON_EVENTS) do
+        VB:SafeRegisterEvent(button, event)
+    end
     button.rangeCheckTimer = 0
 
     button:SetScript("OnEvent", function(self, event, ...)
@@ -504,10 +518,7 @@ function VB:UpdateRole(button)
     local roleIcon = button.roleIcon
     local role = UnitGroupRolesAssigned(unit)
     if (not role or role == "NONE") and UnitIsUnit(unit, "player") then
-        if GetSpecialization and GetSpecializationRole then
-            local spec = GetSpecialization()
-            if spec then role = GetSpecializationRole(spec) end
-        end
+        role = VB:GetPlayerSpecRole() or role
     end
     local atlas = roleAtlasNames[role]
     if atlas then
@@ -556,8 +567,8 @@ function VB:FindRangeCheckSpell()
     VB._rangeSpellName = nil
     if not VB.playerClass then return end
     
-    local candidates = rangeCheckCandidates[VB.playerClass]
-    if not candidates then return end
+    local candidates = VB:GetRangeSpellCandidates(VB.playerClass, rangeCheckCandidates)
+    if not candidates or #candidates == 0 then return end
     
     for _, spellID in ipairs(candidates) do
         local name = VB:GetSpellName(spellID)
@@ -845,16 +856,17 @@ function VB:UpdateAuras(button)
     for _, f in ipairs(button.buffIcons) do f:Hide(); if f.badge then f.badge:Hide() end end
     if button.othersIndicator then button.othersIndicator:SetText("") end
 
-    if not C_UnitAuras or not C_UnitAuras.GetAuraDataByIndex then return end
+    if not VB:HasAuraAPI() then return end
 
     local S = GetScaledSizes()
+    -- One read per refresh: UNIT_AURA is noisy and both the debuff row and the
+    -- dispel highlight walk the same HARMFUL list.
+    local harmful = VB:GetAuras(unit, "HARMFUL")
 
     -- === DEBUFFS ===
     local debuffIdx = 0
     if VB.config.showDebuffs ~= false then
-        for i = 1, 40 do
-            local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HARMFUL")
-            if not aura then break end
+        for _, aura in ipairs(harmful) do
             local safeId = aura.spellId and VB:SafeSpellId(aura.spellId)
             if not VB:IsDebuffBlocked(safeId) and debuffIdx < MAX_DEBUFF_ICONS then
                 debuffIdx = debuffIdx + 1
@@ -881,9 +893,7 @@ function VB:UpdateAuras(button)
         local playerGUID = UnitGUID("player")
 
         if not inCombat then
-            for i = 1, 40 do
-                local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
-                if not aura then break end
+            for _, aura in ipairs(VB:GetAuras(unit, "HELPFUL")) do
                 local ok, id = pcall(function()
                     return tonumber(string.format("%d", aura.spellId))
                 end)
@@ -905,16 +915,12 @@ function VB:UpdateAuras(button)
                 end
             end
         else
-            for i = 1, 40 do
+            for _, aura in ipairs(VB:GetAuras(unit, "HELPFUL RAID_IN_COMBAT PLAYER")) do
                 if buffIdx >= MAX_BUFF_ICONS then break end
-                local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL RAID_IN_COMBAT PLAYER")
-                if not aura then break end
                 buffIdx = buffIdx + 1
                 SetAuraFrame(button.buffIcons[buffIdx], aura)
             end
-            for i = 1, 40 do
-                local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL RAID_IN_COMBAT")
-                if not aura then break end
+            for _ in ipairs(VB:GetAuras(unit, "HELPFUL RAID_IN_COMBAT")) do
                 othersCount = othersCount + 1
             end
             othersCount = math.max(0, othersCount - buffIdx)
@@ -939,9 +945,7 @@ function VB:UpdateAuras(button)
     
     if dispelEnabled and hasAPI then
         local foundDispel = false
-        for i = 1, 40 do
-            local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HARMFUL")
-            if not aura then break end
+        for _, aura in ipairs(harmful) do
             local ok, color = pcall(C_UnitAuras.GetAuraDispelTypeColor, unit, aura.auraInstanceID, dispelColorCurve)
             if ok and color then
                 -- Check if any RGBA component is secret (combat) or if alpha > 0 (out of combat)
