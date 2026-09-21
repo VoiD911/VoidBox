@@ -11,6 +11,9 @@ adapts itself at login:
 
 - Dispel highlighting is derived from the spells in your spellbook (Vanilla has
   no specializations)
+- **Downranking:** drag a lower rank from the spellbook onto a click-cast slot
+  to cast that exact rank; the list shows it as "Rejuvenation (Rank 1)". A
+  top-rank binding shows "(Rank max)" and follows you up as you learn new ranks.
 - Range checking and HoT/shield tracking use Vanilla spells and cover every rank
 - **Click-casting:** mouse bindings work normally. On builds where
   `loadstring_untainted` is missing, the client cannot compile secure snippets,

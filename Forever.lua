@@ -218,6 +218,72 @@ function VB:BuildHealBuffIDSet()
     VB.healBuffIDs = ids
 end
 
+-------------------------------------------------
+-- Spell ranks (downranking)
+--
+-- Vanilla ranks are separate spells: Rejuvenation rank 1 is 774, rank 2 is
+-- 1058, each its own base and override. Casting by name always picks the top
+-- rank; casting by ID picks exactly that rank.
+-------------------------------------------------
+
+-- Rank number, read from the client's own localized subtext ("Rang 2",
+-- "Rank 2", ...). Digits are the same in every locale.
+function VB:GetSpellRank(spellID)
+    if type(spellID) ~= "number" or not C_Spell or not C_Spell.GetSpellSubtext then return nil end
+    local ok, subtext = pcall(C_Spell.GetSpellSubtext, spellID)
+    if not ok or type(subtext) ~= "string" then return nil end
+    return tonumber(subtext:match("(%d+)")), subtext
+end
+
+-- Highest rank of this spell's name that the character knows.
+function VB:GetHighestKnownRank(spellID)
+    local name = VB:GetSpellName(spellID)
+    if not name then return nil end
+
+    local highest
+    ForEachKnownSpell(function(otherID, otherName)
+        if (otherName or VB:GetSpellName(otherID)) == name then
+            local rank = VB:GetSpellRank(otherID)
+            if rank and (not highest or rank > highest) then highest = rank end
+        end
+    end)
+    return highest
+end
+
+-- True when this is a deliberately lower rank than the best one known. Only
+-- those get pinned: a top-rank binding stays name-based so it follows the
+-- player up when the next rank is learned.
+function VB:IsDownrank(spellID)
+    local rank = VB:GetSpellRank(spellID)
+    if not rank then return false end
+    local highest = VB:GetHighestKnownRank(spellID)
+    return highest ~= nil and rank < highest
+end
+
+-- Display name for a binding.
+--   pinned rank   -> "Récupération (Rang 1)"
+--   unpinned rank -> "Récupération (Rang max)": it casts by name, so it always
+--                    fires the top rank and follows the player up. Showing the
+--                    rank it happened to be dragged at would go stale.
+--   no ranks      -> "Récupération" (Retail, or spells without ranks)
+-- The localized "max" is spliced into the client's own subtext in place of the
+-- number, so the word for "rank" (Rang/Rank/Rango/Ранг...) comes from the game
+-- itself and only "max" needs translating.
+function VB:GetBindingSpellLabel(spellID, rankLocked)
+    local name = VB:GetSpellName(spellID)
+    if not name then return nil end
+
+    local rank, subtext = VB:GetSpellRank(spellID)
+    if not rank then return name end
+
+    if rankLocked then
+        return name .. " (" .. subtext .. ")"
+    end
+    local maxWord = (VB.L and VB.L["RANK_MAX_WORD"]) or "max"
+    local maxLabel = subtext:gsub("%d+", maxWord, 1)
+    return name .. " (" .. maxLabel .. ")"
+end
+
 -- Dispel types the player can actually remove, read from the spellbook.
 -- Returns a { [typeID] = true } set, or nil when this is not Forever.
 function VB:GetForeverDispelTypes()
@@ -257,8 +323,8 @@ function VB:ForeverStartupNotice()
     if not VB.isForever or VB._foreverNoticeShown then return end
     VB._foreverNoticeShown = true
 
-    VB:Print(("WoW Forever detected (interface %d) - Vanilla spell set active."):format(VB.tocVersion))
+    VB:Print(VB.L["FOREVER_DETECTED"]:format(VB.tocVersion))
     if not VB.hasSecureSnippets then
-        VB:Print("|cffffcc00Secure snippets unavailable on this build|r: keyboard click-casting falls back to global mouseover bindings. Mouse click-casting is unaffected; scroll-wheel bindings are disabled.")
+        VB:Print("|cffffcc00" .. VB.L["SNIPPETS_UNAVAILABLE"] .. "|r")
     end
 end

@@ -12,6 +12,7 @@
         value    = 12345,               -- spellID, macro body, or nil
         display  = "Ctrl + F1",         -- human-readable combo text
         name     = "Renew",             -- display name for the action
+        rankLocked = true,              -- optional: cast this exact rank (downrank)
     }
     
     LEGACY FORMAT (v1 - auto-migrated):
@@ -210,6 +211,26 @@ function VB:GetOrCreateKBProxy(index, binding)
     return proxy
 end
 
+-- What a spell binding casts, in the two forms the secure templates take.
+--   attrValue - for a "spell" attribute. A pinned rank is passed as its numeric
+--               ID, which the template casts with CastSpellByID: exact, and no
+--               localized "(Rank N)" parsing involved.
+--   macroName - for macro text. Macros only take names, so a pinned rank falls
+--               back to the Classic "Name(Rank N)" form.
+-- Unpinned bindings resolve to the bare name, which always casts the top rank.
+function VB:ResolveSpellForCast(value, rankLocked)
+    if type(value) ~= "number" then return value, value end
+
+    local name = VB:GetSpellName(value)
+    if not name then return nil, nil end
+
+    if rankLocked then
+        local _, subtext = VB:GetSpellRank(value)
+        return value, subtext and (name .. "(" .. subtext .. ")") or name
+    end
+    return name, name
+end
+
 -- mouseoverMode: no secure snippet is available to push the hovered unit into
 -- the proxy's "unit" attribute, so the proxy has to resolve @mouseover itself.
 function VB:ConfigureKBProxy(proxy, binding, mouseoverMode)
@@ -220,10 +241,7 @@ function VB:ConfigureKBProxy(proxy, binding, mouseoverMode)
 
     local action = binding.action
     if action == "spell" then
-        local spellName = binding.value
-        if type(binding.value) == "number" then
-            spellName = VB:GetSpellName(binding.value)
-        end
+        local attrValue, spellName = VB:ResolveSpellForCast(binding.value, binding.rankLocked)
         if spellName then
             if mouseoverMode then
                 proxy:SetAttribute("type", "macro")
@@ -239,7 +257,7 @@ function VB:ConfigureKBProxy(proxy, binding, mouseoverMode)
                 proxy:SetAttribute("macrotext", "/target [@mouseover,exists]\n/cast " .. spellName)
             else
                 proxy:SetAttribute("type", "spell")
-                proxy:SetAttribute("spell", spellName)
+                proxy:SetAttribute("spell", attrValue)
             end
         end
     elseif action == "macro" then
@@ -419,7 +437,7 @@ function VB:SetupSecureBindings(button)
     else
         VB.hasSecureSnippets = false
         button:EnableMouseWheel(false)
-        VB:Print("|cffffcc00Secure snippets failed to compile|r - keyboard click-casting switched to global mouseover bindings.")
+        VB:Print("|cffffcc00" .. VB.L["SNIPPETS_FAILED"] .. "|r")
         VB:ApplyFallbackKeyBindings()
     end
 end
@@ -442,7 +460,7 @@ function VB:ApplyClickCastings(button)
         if binding.mouse and not binding.combo then
             local attrKey = GetMouseAttrKey(binding)
             if attrKey then
-                VB:SetButtonAttribute(button, attrKey, binding.action, binding.value)
+                VB:SetButtonAttribute(button, attrKey, binding.action, binding.value, binding.rankLocked)
             end
         end
     end
@@ -454,14 +472,11 @@ function VB:ApplyClickCastings(button)
 end
 
 -- Legacy-compatible SetButtonAttribute (for mouse bindings)
-function VB:SetButtonAttribute(button, attrKey, actionType, actionValue)
+function VB:SetButtonAttribute(button, attrKey, actionType, actionValue, rankLocked)
     if InCombatLockdown() then return end
-    
+
     if actionType == "spell" then
-        local spellName = actionValue
-        if type(actionValue) == "number" then
-            spellName = VB:GetSpellName(actionValue)
-        end
+        local attrValue, spellName = VB:ResolveSpellForCast(actionValue, rankLocked)
         if spellName then
             if VB.config.autoTargetOnCast then
                 -- Wrap as macro: target + cast
@@ -471,7 +486,7 @@ function VB:SetButtonAttribute(button, attrKey, actionType, actionValue)
             else
                 button:SetAttribute(attrKey, "spell")
                 local spellKey = attrKey:gsub("type", "spell")
-                button:SetAttribute(spellKey, spellName)
+                button:SetAttribute(spellKey, attrValue)
             end
         end
     elseif actionType == "macro" then
@@ -607,7 +622,10 @@ function VB:GetActionDisplayText(binding)
     if action == "spell" then
         local spellName = value
         if type(value) == "number" then
-            spellName = VB:GetSpellName(value) or VB.L["DISPLAY_UNKNOWN_SPELL"]
+            -- Pinned ranks show their rank; top-rank bindings stay bare because
+            -- they follow the player up to the next rank.
+            spellName = VB:GetBindingSpellLabel(value, binding.rankLocked)
+                or VB.L["DISPLAY_UNKNOWN_SPELL"]
         end
         return "|cFF00FF00" .. (spellName or "Spell") .. "|r"
     elseif action == "macro" then

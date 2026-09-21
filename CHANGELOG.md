@@ -1,5 +1,31 @@
 # VoidBox
 
+## v1.12.0 (2026-09-21)
+
+- **Downranking (Forever/Vanilla)**: drag a lower rank from the spellbook onto a
+  click-cast slot and that exact rank is cast
+    - Vanilla ranks are separate spells (Rejuvenation rank 1 is 774, rank 2 is
+      1058). Bindings used to resolve the dragged spell ID to its bare name,
+      which always casts the top rank, so the rank was captured then thrown away.
+    - Only a rank lower than the best one known is pinned (`rankLocked`); it is
+      cast by numeric ID through the secure template's CastSpellByID path, so no
+      localized "(Rank N)" parsing is involved
+    - A top-rank binding stays name-based and follows the player up when the
+      next rank is learned
+    - The config list, the frame tooltip and the drop zone show
+      "Rejuvenation (Rank 1)" for pinned ranks and "Rejuvenation (Rank max)" for
+      top-rank bindings. The word for "rank" comes from the client's own
+      subtext; only "max" is translated.
+    - Known limit: keyboard bindings on Forever go through @mouseover macro
+      text, which only takes names, so pinned ranks are reliable on mouse
+      bindings only
+- **Spell inspector** (debug): `/vb spelllog` opens a copyable window logging
+  every spell cast and every spell picked up on the cursor (ID, name, rank
+  subtext, spellbook entry, link); `/vb spellranks <text>` lists every
+  spellbook rank matching a name. Registers no events while closed.
+- Localized the Forever login notice, both secure-snippet warnings and the
+  "max" rank word in all 11 supported locales
+
 ## v1.11.0 (2026-09-20)
 
 - **Aura rows now render through native AuraContainers, and work in combat again**

@@ -360,7 +360,9 @@ function VB:GetOrCreateBindingSlot(index)
         if spellID then
             binding.action = "spell"
             binding.value = spellID
-            binding.name = spellName
+            -- Dragging a lower rank than the best known one means "cast this rank"
+            binding.rankLocked = VB:IsDownrank(spellID) or nil
+            binding.name = VB:GetBindingSpellLabel(spellID, binding.rankLocked) or spellName
             VB:ApplyClickCastingsToAllFrames()
             VB:RefreshBindingsList()
             ClearCursor()
@@ -575,7 +577,9 @@ function VB:CreateAddBindingDialog()
             addDialog.actionDropdown.selectedValue = "spell"
             addDialog.actionDropdown.text:SetText(VB.L["ACTION_SPELL"])
             local iconStr = spellIcon and ("|T" .. spellIcon .. ":20|t ") or ""
-            dropText:SetText(iconStr .. spellName)
+            -- Say up front when this drop will pin a lower rank
+            local label = VB:GetBindingSpellLabel(spellID, VB:IsDownrank(spellID)) or spellName
+            dropText:SetText(iconStr .. label)
             ClearCursor()
             return
         end
@@ -659,7 +663,8 @@ function VB:ConfirmAddBinding()
     
     if actionType == "spell" then
         binding.value = addDialog.selectedSpell
-        binding.name = VB:GetSpellName(addDialog.selectedSpell)
+        binding.rankLocked = VB:IsDownrank(addDialog.selectedSpell) or nil
+        binding.name = VB:GetBindingSpellLabel(addDialog.selectedSpell, binding.rankLocked)
     elseif actionType == "macro" then
         binding.value = addDialog.selectedMacro.body
         binding.name = addDialog.selectedMacro.name

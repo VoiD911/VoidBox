@@ -1254,6 +1254,10 @@ SlashCmdList["VOIDBOX"] = function(msg)
             VB:Print(("  GetAuraDataBySpellName(%s) ok=%s %s"):format(probeName, tostring(ok),
                 ok and ("got=" .. tostring(aura ~= nil)) or "(raised)"))
         end
+    elseif msg == "spelllog" then
+        VB:SpellLogToggle()
+    elseif msg == "spellranks" or msg:find("^spellranks%s+") then
+        VB:SpellLogRanks(msg:match("^spellranks%s+(.+)$"))
     elseif msg == "debugcontainer" then
         -- Can this client do AuraContainers? They are the sanctioned way to show
         -- auras without reading them: the client tracks, filters and renders,
