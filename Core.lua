@@ -1254,6 +1254,44 @@ SlashCmdList["VOIDBOX"] = function(msg)
             VB:Print(("  GetAuraDataBySpellName(%s) ok=%s %s"):format(probeName, tostring(ok),
                 ok and ("got=" .. tostring(aura ~= nil)) or "(raised)"))
         end
+    elseif msg == "debugsnippets" then
+        -- Do secure snippets actually run on this client? The Forever fallback
+        -- keys off the loadstring_untainted global being absent, which was
+        -- measured on build 69893 - never on the current build. This makes the
+        -- client execute real snippets instead of checking for a global.
+        VB:Print("=== Debug secure snippets ===")
+        VB:Print("  loadstring_untainted global: " .. type(loadstring_untainted)
+            .. " - in combat: " .. tostring(InCombatLockdown())
+            .. " - VB.hasSecureSnippets: " .. tostring(VB.hasSecureSnippets))
+        if InCombatLockdown() then
+            VB:Print("  Run this out of combat.")
+            return
+        end
+
+        -- 1) _onattributechanged: the snippet fires when an attribute is set
+        local okF, f = pcall(CreateFrame, "Frame", nil, UIParent, "SecureHandlerAttributeTemplate")
+        if okF and f then
+            local okSet, errSet = pcall(f.SetAttribute, f, "_onattributechanged",
+                [[ if name == "vbping" then self:SetAttribute("vbpong", value) end ]])
+            local okPing, errPing = pcall(f.SetAttribute, f, "vbping", 42)
+            VB:Print(("  _onattributechanged: set=%s ping=%s pong=%s %s"):format(
+                tostring(okSet), tostring(okPing), tostring(f:GetAttribute("vbpong")),
+                (not okSet and tostring(errSet)) or (not okPing and tostring(errPing)) or ""))
+        else
+            VB:Print("  SecureHandlerAttributeTemplate: " .. tostring(f))
+        end
+
+        -- 2) SecureHandlerExecute: run a snippet directly
+        local okG, g = pcall(CreateFrame, "Frame", nil, UIParent, "SecureHandlerBaseTemplate")
+        if okG and g and SecureHandlerExecute then
+            local okE, errE = pcall(SecureHandlerExecute, g, [[ self:SetAttribute("vbexec", 7) ]])
+            VB:Print(("  SecureHandlerExecute: ok=%s result=%s %s"):format(
+                tostring(okE), tostring(g:GetAttribute("vbexec")), okE and "" or tostring(errE)))
+        end
+
+        -- Setting _onenter only stores text; compilation happens when a snippet
+        -- runs, so only the two executions above say anything.
+        VB:Print("  pong=42 and result=7 mean snippets compile and run here.")
     elseif msg == "spelllog" then
         VB:SpellLogToggle()
     elseif msg == "spellranks" or msg:find("^spellranks%s+") then

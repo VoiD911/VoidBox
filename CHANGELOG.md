@@ -1,5 +1,27 @@
 # VoidBox
 
+## v1.12.1 (2026-09-21)
+
+- **Downranking now covers keyboard bindings on Forever**
+    - Secure snippets are confirmed dead on build 69913 by real execution
+      (`_onattributechanged` and `SecureHandlerExecute` both fail inside
+      RestrictedExecution with `loadstring_untainted` nil), so keyboard bindings
+      use the global-override fallback, whose `@mouseover` macro only takes
+      spell names and cannot express a rank.
+    - A pinned rank on that path is now cast by ID through the proxy's `spell`
+      attribute with `unit = "mouseover"`, the same CastSpellByID route mouse
+      bindings use. Top-rank bindings keep the macro.
+    - Trade-off for pinned ranks only: no fallback to the current target when
+      nothing is hovered, and "auto-target on cast" does not apply.
+    - Retail, and Forever once snippets work again, keep the hover-scoped proxy
+      path unchanged; it already cast pinned ranks by ID.
+- Corrected a misleading comment: setting a snippet attribute succeeds even on a
+  build where snippets cannot run, so that `pcall` cannot detect a broken
+  snippet engine. Detection stays the `loadstring_untainted` check.
+- Added `/vb debugsnippets`, which makes the client actually execute two secure
+  snippets. Run it after client patches: two passing lines mean the snippet
+  path can come back.
+
 ## v1.12.0 (2026-09-21)
 
 - **Downranking (Forever/Vanilla)**: drag a lower rank from the spellbook onto a

@@ -243,7 +243,18 @@ function VB:ConfigureKBProxy(proxy, binding, mouseoverMode)
     if action == "spell" then
         local attrValue, spellName = VB:ResolveSpellForCast(binding.value, binding.rankLocked)
         if spellName then
-            if mouseoverMode then
+            if mouseoverMode and binding.rankLocked and type(attrValue) == "number" then
+                -- Macro text only takes names, and Forever does not parse the
+                -- "(Rank N)" form, so a pinned rank cannot go through /cast.
+                -- Cast it by ID through the spell attribute instead - the same
+                -- CastSpellByID path mouse bindings use - aimed at the unit under
+                -- the cursor. Trade-offs vs the macro: no fallback to the current
+                -- target when nothing is hovered, and no auto-target.
+                proxy:SetAttribute("type", "spell")
+                proxy:SetAttribute("spell", attrValue)
+                proxy:SetAttribute("unit", "mouseover")
+                proxy:SetAttribute("macrotext", nil)
+            elseif mouseoverMode then
                 proxy:SetAttribute("type", "macro")
                 if VB.config.autoTargetOnCast then
                     proxy:SetAttribute("macrotext",
@@ -429,8 +440,13 @@ function VB:SetupSecureBindings(button)
     
     -- Set the _onenter/_onleave attributes
     -- SecureHandlerEnterLeaveTemplate executes these in the restricted env
-    -- pcall: a build that advertises loadstring_untainted but still fails to
-    -- compile must not take the whole click-casting pass down with it.
+    -- Setting a snippet attribute only stores text: measured on Forever 69913,
+    -- SetAttribute("_onattributechanged", ...) succeeds even though snippets
+    -- cannot run there, and the failure only surfaces when the snippet
+    -- executes. So this pcall guards against SetAttribute itself raising, not
+    -- against a broken snippet engine - that case is what the
+    -- VB.hasSecureSnippets check (loadstring_untainted present) is for, and
+    -- /vb debugsnippets is how to verify it against a real execution.
     local compiled = pcall(button.SetAttribute, button, "_onenter", enterSnippet)
     if compiled then
         pcall(button.SetAttribute, button, "_onleave", leaveSnippet)
