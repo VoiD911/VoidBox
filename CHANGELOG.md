@@ -1,5 +1,37 @@
 # VoidBox
 
+## v1.12.3 (2026-09-22)
+
+- **`/vb debugmouseover` fixes and a ground-truth check.** A first pass only
+  hooked frames that already existed when the command was toggled, so a party
+  member's frame created afterwards went unwatched - explaining an
+  inconclusive first test (UPDATE_MOUSEOVER_UNIT fired correctly for the
+  player's own frame, with no data for anyone else). The hook now attaches
+  once at frame creation instead, so it is never missed.
+    - `CombatLogGetCurrentEventInfo` does not exist on Forever, so there is no
+      combat log to read for "who actually got healed". Instead, shortly after
+      every player cast, the tool re-reads HELPFUL|PLAYER auras on every
+      displayed unit and reports which one now carries the spell just cast -
+      the same mechanism VoidBox's own aura rows already rely on.
+    - Fixed a filter-string mismatch (`"HELPFUL|PLAYER"` where `VB:GetAuras`
+      expects space-separated `"HELPFUL PLAYER"`) caught before it shipped.
+
+## v1.12.2 (2026-09-22)
+
+- **Diagnostic for a reported bug: keyboard click-casting heals the player
+  instead of the hovered party member.** The fallback keyboard path (needed
+  because secure snippets are dead on Forever - see debugsnippets) casts via
+  `/cast [@mouseover,exists,nodead][] <spell>`. The trailing `[]` is an
+  unconditional fallback: if the client's "mouseover" unit token never
+  resolves to the hovered VoidBox frame, the cast silently falls through to
+  the current target, or self for a self-castable HoT - matching the report
+  exactly ("works if I preselect the target").
+    - Added `/vb debugmouseover`, which hooks OnEnter/OnLeave on VoidBox's own
+      frames (read-only, does not touch secure state) alongside
+      UPDATE_MOUSEOVER_UNIT, so whether the client's mouseover token actually
+      follows the mouse onto our frames can be checked directly instead of
+      guessed at.
+
 ## v1.12.1 (2026-09-21)
 
 - **Downranking now covers keyboard bindings on Forever**

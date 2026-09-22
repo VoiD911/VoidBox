@@ -1254,6 +1254,69 @@ SlashCmdList["VOIDBOX"] = function(msg)
             VB:Print(("  GetAuraDataBySpellName(%s) ok=%s %s"):format(probeName, tostring(ok),
                 ok and ("got=" .. tostring(aura ~= nil)) or "(raised)"))
         end
+    elseif msg == "debugmouseover" then
+        -- Reported bug: pressing a keyboard binding while hovering a party
+        -- member heals the player (or the current target) instead. The
+        -- fallback keyboard path (v1.10.1+, needed because secure snippets are
+        -- dead on this build - see debugsnippets) casts via a macro:
+        --   /cast [@mouseover,exists,nodead][] <spell>
+        -- The trailing "[]" is an unconditional fallback: if the client's
+        -- "mouseover" unit token never resolves to the hovered VoidBox frame,
+        -- the cast silently falls through to the current target (or self,
+        -- since HoTs are self-castable). A first pass (2026-09-21) showed
+        -- UPDATE_MOUSEOVER_UNIT firing correctly, but only for the player's own
+        -- frame (the only one hooked at the time) - inconclusive for other
+        -- party members. This version watches three signals together:
+        --   1. OnEnter/OnLeave on VoidBox's own frames (hooked once at frame
+        --      creation in UnitFrames.lua now, not scanned here, so frames
+        --      created after the toggle are covered too)
+        --   2. UPDATE_MOUSEOVER_UNIT, the client's own "mouseover" token
+        --   3. Ground truth: CombatLogGetCurrentEventInfo does not exist on
+        --      this client, so instead of reading the combat log, a short
+        --      delay after every player cast re-reads HELPFUL|PLAYER auras on
+        --      every displayed unit and reports which one(s) now carry the
+        --      spell just cast - i.e. who was actually healed
+        VB._debugMouseover = not VB._debugMouseover
+        VB:Print("Mouseover debug: " .. (VB._debugMouseover and "ON" or "OFF")
+            .. " - hover a party/raid frame, then press a keyboard binding.")
+
+        if VB._debugMouseover then
+            if not VB._mouseoverProbeFrame then
+                VB._mouseoverProbeFrame = CreateFrame("Frame")
+                VB._mouseoverProbeFrame:SetScript("OnEvent", function(_, event, ...)
+                    if event == "UPDATE_MOUSEOVER_UNIT" then
+                        local exists = UnitExists("mouseover")
+                        local name = exists and UnitName("mouseover") or nil
+                        VB:Print(("  [event] UPDATE_MOUSEOVER_UNIT -> exists=%s name=%s"):format(
+                            tostring(exists), tostring(name)))
+                    elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
+                        local unit, _, spellID = ...
+                        if unit ~= "player" or not VB._debugMouseover then return end
+                        VB:Print("  [cast] player cast spellID=" .. tostring(spellID)
+                            .. " - checking who has it in 0.3s...")
+                        C_Timer.After(0.3, function()
+                            local hits = {}
+                            for _, u in ipairs(VB:GetUnitsFlat()) do
+                                if UnitExists(u) then
+                                    for _, aura in ipairs(VB:GetAuras(u, "HELPFUL PLAYER")) do
+                                        local id = aura.spellId and VB:SafeSpellId(aura.spellId)
+                                        if id == spellID then
+                                            hits[#hits + 1] = (UnitName(u) or u) .. " (" .. u .. ")"
+                                        end
+                                    end
+                                end
+                            end
+                            VB:Print("  [ground truth] spell is now on: "
+                                .. (next(hits) and table.concat(hits, ", ") or "(nobody found - out of range of the scan, or already faded)"))
+                        end)
+                    end
+                end)
+            end
+            VB:SafeRegisterEvent(VB._mouseoverProbeFrame, "UPDATE_MOUSEOVER_UNIT")
+            VB:SafeRegisterEvent(VB._mouseoverProbeFrame, "UNIT_SPELLCAST_SUCCEEDED")
+        else
+            if VB._mouseoverProbeFrame then VB._mouseoverProbeFrame:UnregisterAllEvents() end
+        end
     elseif msg == "debugsnippets" then
         -- Do secure snippets actually run on this client? The Forever fallback
         -- keys off the loadstring_untainted global being absent, which was

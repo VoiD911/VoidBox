@@ -225,6 +225,20 @@ function VB:CreateUnitButton(unit, index)
     button:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
     button:SetBackdropBorderColor(0, 0, 0, 1)
 
+    -- Always attached (cheap runtime check), so /vb debugmouseover covers
+    -- frames created after the toggle - a scan done only at toggle time missed
+    -- frames for group members who joined afterwards.
+    button:HookScript("OnEnter", function(self)
+        if not VB._debugMouseover then return end
+        local top = GetMouseFoci and GetMouseFoci()[1]
+        VB:Print(("  [enter] %s unit=%s topFrame=%s"):format(
+            self:GetName() or "?", tostring(self.unit), tostring(top and top:GetName())))
+    end)
+    button:HookScript("OnLeave", function(self)
+        if not VB._debugMouseover then return end
+        VB:Print(("  [leave] %s unit=%s"):format(self:GetName() or "?", tostring(self.unit)))
+    end)
+
     local powerBarH = VB.config.showPowerBar and (S.powerBarH + 2) or 1
     local row1H = S.row1Font + 2
 
