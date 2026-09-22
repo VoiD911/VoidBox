@@ -185,7 +185,7 @@ function VB:CreateConfigTabs()
     local tabData = {
         { id = "bindings", text = VB.L["TAB_BINDINGS"] },
         { id = "appearance", text = VB.L["TAB_APPEARANCE"] },
-        { id = "debuffs", text = VB.L["TAB_DEBUFFS"] },
+        { id = "debuffs", text = VB.L["TAB_AURAS"] },
         { id = "profiles", text = VB.L["TAB_PROFILES"] },
     }
 
@@ -957,6 +957,117 @@ function VB:CreateDebuffsTab()
         for _, button in pairs(VB.unitButtons) do VB:UpdateAuras(button) end
         for _, button in pairs(VB.tankButtons) do VB:UpdateAuras(button) end
     end)
+
+    -- === Tracked buffs ===
+    local header = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    header:SetPoint("TOPLEFT", 5, -45)
+    header:SetText(VB.L["CUSTOM_BUFFS_HEADER"])
+
+    local help = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    help:SetPoint("TOPLEFT", 5, -65)
+    help:SetWidth(460)
+    help:SetJustifyH("LEFT")
+    help:SetText(VB.L["CUSTOM_BUFFS_HELP"])
+
+    local dropZone = CreateFrame("Button", nil, content, "BackdropTemplate")
+    dropZone:SetSize(460, 40)
+    dropZone:SetPoint("TOPLEFT", 5, -100)
+    dropZone:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+    })
+    dropZone:SetBackdropColor(0.2, 0.2, 0.3, 1)
+    dropZone:SetBackdropBorderColor(0.4, 0.4, 0.6, 1)
+    local dropText = dropZone:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    dropText:SetPoint("CENTER")
+    dropText:SetText("|cFFAAAAFF" .. VB.L["CUSTOM_BUFFS_DROP"] .. "|r")
+
+    -- Drop, or click while holding a spell on the cursor
+    local function acceptCursorSpell()
+        local spellID = VB:GetCursorSpell()
+        if spellID then
+            VB:AddCustomBuff(spellID)
+            ClearCursor()
+        end
+    end
+    dropZone:SetScript("OnReceiveDrag", acceptCursorSpell)
+    dropZone:SetScript("OnClick", acceptCursorSpell)
+
+    local scrollFrame = CreateFrame("ScrollFrame", nil, content, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT", 5, -150)
+    scrollFrame:SetPoint("BOTTOMRIGHT", -30, 10)
+    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
+    scrollChild:SetSize(440, 300)
+    scrollFrame:SetScrollChild(scrollChild)
+    content.buffScrollChild = scrollChild
+
+    VB:RefreshCustomBuffsList()
+end
+
+-------------------------------------------------
+-- Tracked buffs list
+-------------------------------------------------
+local customBuffSlots = {}
+
+local function GetOrCreateCustomBuffSlot(index)
+    if customBuffSlots[index] then return customBuffSlots[index] end
+
+    local slot = CreateFrame("Frame", nil, configFrame.debuffsContent.buffScrollChild, "BackdropTemplate")
+    slot:SetSize(440, 28)
+    slot:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+    })
+    slot:SetBackdropColor(0.15, 0.15, 0.15, 1)
+    slot:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
+
+    local icon = slot:CreateTexture(nil, "ARTWORK")
+    icon:SetSize(20, 20)
+    icon:SetPoint("LEFT", 6, 0)
+    slot.icon = icon
+
+    local nameText = slot:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    nameText:SetPoint("LEFT", 32, 0)
+    nameText:SetWidth(360)
+    nameText:SetJustifyH("LEFT")
+    slot.nameText = nameText
+
+    local deleteBtn = CreateFrame("Button", nil, slot)
+    deleteBtn:SetSize(20, 20)
+    deleteBtn:SetPoint("RIGHT", -5, 0)
+    deleteBtn:SetNormalTexture("Interface\\Buttons\\UI-StopButton")
+    deleteBtn:SetHighlightTexture("Interface\\Buttons\\UI-StopButton")
+    deleteBtn:GetHighlightTexture():SetVertexColor(1, 0, 0)
+    deleteBtn:SetScript("OnClick", function()
+        if slot.buffIndex then VB:RemoveCustomBuffAt(slot.buffIndex) end
+    end)
+
+    customBuffSlots[index] = slot
+    return slot
+end
+
+function VB:RefreshCustomBuffsList()
+    if not configFrame or not configFrame.debuffsContent
+       or not configFrame.debuffsContent.buffScrollChild then return end
+    local scrollChild = configFrame.debuffsContent.buffScrollChild
+
+    for _, slot in ipairs(customBuffSlots) do slot:Hide() end
+
+    local yOffset = 0
+    for i, spellID in ipairs(VB.customBuffs or {}) do
+        local slot = GetOrCreateCustomBuffSlot(i)
+        slot:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset)
+        -- Name without rank: every rank of the spell is tracked
+        slot.nameText:SetText("|cFF00FF00" .. (VB:GetSpellName(spellID)
+            or VB.L["DISPLAY_UNKNOWN_SPELL"]) .. "|r")
+        slot.icon:SetTexture(VB:GetSpellIcon(spellID))
+        slot.buffIndex = i
+        slot:Show()
+        yOffset = yOffset + 30
+    end
+    scrollChild:SetHeight(math.max(300, yOffset + 20))
 end
 
 -------------------------------------------------

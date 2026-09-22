@@ -56,6 +56,8 @@ adapts itself at login:
 - Aura indicators:
   - Debuffs (HARMFUL): up to 4 icons with stack count badges, centered row
   - HOTs/shields (player-cast only): up to 4 icons with stack badges, centered row
+  - Tracked buffs: add any spell (e.g. Thorns) from the Auras tab by dragging it
+    from your spellbook; it shows in the HoT row when you cast it
   - "+N" indicator for other healers' HOTs/shields on the target
   - Stack badges: dark background, gold text, red at 5+ stacks
 - Role icons (tank/heal/dps) — real atlas icons

@@ -300,6 +300,18 @@ function VB:OnAddonLoaded()
     
     -- Runtime reference to class-specific bindings
     VB.clickCastings = VoidBoxDB.classBindings[VB.playerClass]
+
+    -- === Tracked (custom) buffs per class ===
+    -- Spells are class-specific, so this follows click-castings rather than
+    -- profiles. Stored as the spell IDs the player dropped in; every rank of
+    -- each spell is resolved from the spellbook at runtime.
+    if not VoidBoxDB.classCustomBuffs then
+        VoidBoxDB.classCustomBuffs = {}
+    end
+    if not VoidBoxDB.classCustomBuffs[VB.playerClass] then
+        VoidBoxDB.classCustomBuffs[VB.playerClass] = {}
+    end
+    VB.customBuffs = VoidBoxDB.classCustomBuffs[VB.playerClass]
     
     VB:InitMinimapButton()
     

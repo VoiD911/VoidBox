@@ -192,15 +192,67 @@ local function ForEachKnownSpell(callback)
     end
 end
 
+-------------------------------------------------
+-- Tracked (custom) buffs
+--
+-- Spells the player chose to watch in the HoT row on top of the built-in heal
+-- list - e.g. a druid tracking Thorns. Same row, same PLAYER filter: only the
+-- player's own casts show. Matched by name so every rank counts, like HoTs.
+-------------------------------------------------
+VB.customBuffNames = {}
+VB.customBuffIDSet = {}
+
+function VB:BuildCustomBuffSets()
+    wipe(VB.customBuffNames)
+    wipe(VB.customBuffIDSet)
+    for _, id in ipairs(VB.customBuffs or {}) do
+        VB.customBuffIDSet[id] = true
+        local name = VB:GetSpellName(id)
+        if name then VB.customBuffNames[name] = true end
+    end
+end
+
+-- Returns true when added, false when the spell (any rank) is already tracked.
+function VB:AddCustomBuff(spellID)
+    if type(spellID) ~= "number" or not VB.customBuffs then return false end
+    local name = VB:GetSpellName(spellID)
+    for _, id in ipairs(VB.customBuffs) do
+        if id == spellID or (name and VB:GetSpellName(id) == name) then return false end
+    end
+    table.insert(VB.customBuffs, spellID)
+    VB:RefreshCustomBuffs()
+    return true
+end
+
+function VB:RemoveCustomBuffAt(index)
+    if not VB.customBuffs or not VB.customBuffs[index] then return end
+    table.remove(VB.customBuffs, index)
+    VB:RefreshCustomBuffs()
+end
+
+-- Rebuild the accepted-ID set and push it to every frame's HoT row.
+function VB:RefreshCustomBuffs()
+    VB:BuildHealBuffIDSet()
+    VB:RefreshAuraContainerFilters()
+    for _, group in ipairs({ VB.unitButtons, VB.tankButtons, VB.petButtons }) do
+        for _, button in pairs(group or {}) do VB:UpdateAuras(button) end
+    end
+    if VB.RefreshCustomBuffsList then VB:RefreshCustomBuffsList() end
+end
+
 function VB:BuildHealBuffIDSet()
+    VB:BuildCustomBuffSets()
+
     local ids = {}
     for id in pairs(VB.healBuffSpellIDs) do ids[id] = true end
+    -- The dropped IDs themselves: all a rank-less (Retail) client needs
+    for id in pairs(VB.customBuffIDSet) do ids[id] = true end
 
-    if VB.isForever and next(VB.healBuffNames) then
+    if VB.isForever and (next(VB.healBuffNames) or next(VB.customBuffNames)) then
         local found = 0
         ForEachKnownSpell(function(spellID, name)
             name = name or VB:GetSpellName(spellID)
-            if name and VB.healBuffNames[name] then
+            if name and (VB.healBuffNames[name] or VB.customBuffNames[name]) then
                 ids[spellID] = true
                 found = found + 1
             end

@@ -1,5 +1,22 @@
 # VoidBox
 
+## v1.13.0 (2026-09-22)
+
+- **Tracked buffs**: pick any spell to watch in the HoT row, e.g. a druid
+  tracking Thorns. Requested on CurseForge.
+    - Drop a spell from the spellbook into the new list in the **Auras** tab
+      (formerly "Debuffs"; the Sated/Exhaustion option is still there).
+    - Shown in the HoT row alongside the built-in heals, and like them only
+      when you cast it (server-side PLAYER filter). The row holds 4 icons,
+      shared between HoTs and tracked buffs.
+    - Stored per class, like click-castings.
+    - Every rank counts: the list stores the dropped spell, and on Forever
+      each rank the character knows is collected from the spellbook by name.
+      Dropping another rank of a spell already listed is ignored.
+    - Works on both aura paths: AuraContainer (candidate spell IDs) and the
+      legacy Lua path (`IsHealBuff`).
+    - Localized in all 11 supported locales.
+
 ## v1.12.3 (2026-09-22)
 
 - **`/vb debugmouseover` fixes and a ground-truth check.** A first pass only

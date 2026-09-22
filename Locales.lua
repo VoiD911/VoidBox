@@ -809,3 +809,62 @@ SetLocale("zhTW", "FOREVER_DETECTED", "偵測到 WoW Forever（介面 %d）- 已
 SetLocale("zhTW", "SNIPPETS_UNAVAILABLE", "此版本無法使用安全程式碼片段：鍵盤點擊施法改用全域滑鼠懸停快捷鍵。滑鼠點擊施法不受影響；滾輪快捷鍵已停用。")
 SetLocale("zhTW", "SNIPPETS_FAILED", "安全程式碼片段編譯失敗 - 鍵盤點擊施法已切換為全域滑鼠懸停快捷鍵。")
 SetLocale("zhTW", "RANK_MAX_WORD", "最高")
+
+-------------------------------------------------
+-- Tracked (custom) buffs (v1.13+)
+-- Defaults first: SetDefault overwrites unconditionally.
+-------------------------------------------------
+SetDefault("TAB_AURAS", "Auras")
+SetDefault("CUSTOM_BUFFS_HEADER", "Tracked buffs")
+SetDefault("CUSTOM_BUFFS_HELP", "Drag a spell from your spellbook here to show it in the HoT row when you cast it. The row holds 4 icons, shared with your HoTs.")
+SetDefault("CUSTOM_BUFFS_DROP", "Drop a spell here")
+
+SetLocale("frFR", "TAB_AURAS", "Auras")
+SetLocale("frFR", "CUSTOM_BUFFS_HEADER", "Buffs suivis")
+SetLocale("frFR", "CUSTOM_BUFFS_HELP", "Glissez un sort depuis votre grimoire pour l'afficher dans la rangée des HoT quand vous le lancez. La rangée contient 4 icônes, partagées avec vos HoT.")
+SetLocale("frFR", "CUSTOM_BUFFS_DROP", "Déposez un sort ici")
+
+SetLocale("deDE", "TAB_AURAS", "Auren")
+SetLocale("deDE", "CUSTOM_BUFFS_HEADER", "Verfolgte Buffs")
+SetLocale("deDE", "CUSTOM_BUFFS_HELP", "Ziehe einen Zauber aus deinem Zauberbuch hierher, um ihn in der HoT-Reihe anzuzeigen, wenn du ihn wirkst. Die Reihe fasst 4 Symbole, geteilt mit deinen HoTs.")
+SetLocale("deDE", "CUSTOM_BUFFS_DROP", "Zauber hier ablegen")
+
+SetLocale("esES", "TAB_AURAS", "Auras")
+SetLocale("esES", "CUSTOM_BUFFS_HEADER", "Beneficios seguidos")
+SetLocale("esES", "CUSTOM_BUFFS_HELP", "Arrastra un hechizo desde tu libro de hechizos para mostrarlo en la fila de HoT cuando lo lances. La fila tiene 4 iconos, compartidos con tus HoT.")
+SetLocale("esES", "CUSTOM_BUFFS_DROP", "Suelta un hechizo aquí")
+
+SetLocale("esMX", "TAB_AURAS", "Auras")
+SetLocale("esMX", "CUSTOM_BUFFS_HEADER", "Beneficios seguidos")
+SetLocale("esMX", "CUSTOM_BUFFS_HELP", "Arrastra un hechizo desde tu libro de hechizos para mostrarlo en la fila de HoT cuando lo lances. La fila tiene 4 iconos, compartidos con tus HoT.")
+SetLocale("esMX", "CUSTOM_BUFFS_DROP", "Suelta un hechizo aquí")
+
+SetLocale("ptBR", "TAB_AURAS", "Auras")
+SetLocale("ptBR", "CUSTOM_BUFFS_HEADER", "Bônus acompanhados")
+SetLocale("ptBR", "CUSTOM_BUFFS_HELP", "Arraste um feitiço do seu grimório para exibi-lo na linha de HoT quando você o lançar. A linha tem 4 ícones, compartilhados com seus HoTs.")
+SetLocale("ptBR", "CUSTOM_BUFFS_DROP", "Solte um feitiço aqui")
+
+SetLocale("itIT", "TAB_AURAS", "Aure")
+SetLocale("itIT", "CUSTOM_BUFFS_HEADER", "Buff monitorati")
+SetLocale("itIT", "CUSTOM_BUFFS_HELP", "Trascina un incantesimo dal tuo libro degli incantesimi per mostrarlo nella riga degli HoT quando lo lanci. La riga ha 4 icone, condivise con i tuoi HoT.")
+SetLocale("itIT", "CUSTOM_BUFFS_DROP", "Rilascia qui un incantesimo")
+
+SetLocale("ruRU", "TAB_AURAS", "Ауры")
+SetLocale("ruRU", "CUSTOM_BUFFS_HEADER", "Отслеживаемые баффы")
+SetLocale("ruRU", "CUSTOM_BUFFS_HELP", "Перетащите заклинание из книги заклинаний, чтобы показывать его в ряду HoT, когда вы его накладываете. В ряду 4 значка, общих с вашими HoT.")
+SetLocale("ruRU", "CUSTOM_BUFFS_DROP", "Перетащите заклинание сюда")
+
+SetLocale("koKR", "TAB_AURAS", "효과")
+SetLocale("koKR", "CUSTOM_BUFFS_HEADER", "추적할 강화 효과")
+SetLocale("koKR", "CUSTOM_BUFFS_HELP", "주문책에서 주문을 끌어다 놓으면 직접 시전했을 때 HoT 줄에 표시됩니다. 이 줄은 HoT와 공유하는 아이콘 4개를 표시합니다.")
+SetLocale("koKR", "CUSTOM_BUFFS_DROP", "여기에 주문을 놓으세요")
+
+SetLocale("zhCN", "TAB_AURAS", "光环")
+SetLocale("zhCN", "CUSTOM_BUFFS_HEADER", "追踪的增益")
+SetLocale("zhCN", "CUSTOM_BUFFS_HELP", "从法术书中拖入一个法术，你施放后它会显示在持续治疗一行。该行最多4个图标，与你的持续治疗共用。")
+SetLocale("zhCN", "CUSTOM_BUFFS_DROP", "将法术拖放到这里")
+
+SetLocale("zhTW", "TAB_AURAS", "光環")
+SetLocale("zhTW", "CUSTOM_BUFFS_HEADER", "追蹤的增益")
+SetLocale("zhTW", "CUSTOM_BUFFS_HELP", "從法術書拖入一個法術，你施放後它會顯示在持續治療一列。該列最多4個圖示，與你的持續治療共用。")
+SetLocale("zhTW", "CUSTOM_BUFFS_DROP", "將法術拖放到這裡")

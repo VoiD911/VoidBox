@@ -393,14 +393,16 @@ function VB:IsHealBuff(aura)
     if not aura then return false end
 
     local id = aura.spellId and VB:SafeSpellId(aura.spellId)
-    if id and VB.healBuffSpellIDs[id] then
+    if id and (VB.healBuffSpellIDs[id] or (VB.customBuffIDSet and VB.customBuffIDSet[id])) then
         return true
     end
 
     if aura.name then
-        -- aura.name can be a secret string, hence the pcall
+        -- aura.name can be a secret string, hence the pcall. Tracked buffs
+        -- (VB.customBuffNames) ride the same row as HoTs.
         local ok, isHealBuff = pcall(function()
             return VB.healBuffNames[aura.name]
+                or (VB.customBuffNames and VB.customBuffNames[aura.name])
         end)
         if ok and isHealBuff then
             return true
