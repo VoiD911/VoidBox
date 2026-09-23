@@ -1,5 +1,15 @@
 # VoidBox
 
+## v1.14.1 (2026-09-23)
+
+- **Fix: pet frames kept old click-cast bindings after they were changed.**
+  Pet buttons only received their bindings when created, and
+  `ApplyClickCastingsToAllFrames` walked group and tank buttons only. Replacing
+  a macro binding with a spell left the pet frame on the old macro until a
+  `/reload` - e.g. a targetless `/use Heal` that went to the player through
+  auto self-cast. Pet buttons are now updated with the others.
+- The debuff/HoT/dispel display toggles now refresh pet frames too.
+
 ## v1.14.0 (2026-09-23)
 
 - **Fix: Alt+Left (and any non-default combo) bound to Target did nothing.**

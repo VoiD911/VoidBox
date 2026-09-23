@@ -853,6 +853,7 @@ function VB:CreateAppearanceTab()
         VB.config.showDebuffs = self:GetChecked()
         for _, button in pairs(VB.unitButtons) do VB:UpdateAuras(button) end
         for _, button in pairs(VB.tankButtons) do VB:UpdateAuras(button) end
+        for _, button in pairs(VB.petButtons) do VB:UpdateAuras(button) end
     end)
     
     local debuffSizeSlider = CreateSimpleSlider(content, VB.L["DEBUFF_ICON_SIZE"], 6, 30, 1, VB.config.debuffIconSize or 21, function(value)
@@ -870,6 +871,7 @@ function VB:CreateAppearanceTab()
         VB.config.showBuffs = self:GetChecked()
         for _, button in pairs(VB.unitButtons) do VB:UpdateAuras(button) end
         for _, button in pairs(VB.tankButtons) do VB:UpdateAuras(button) end
+        for _, button in pairs(VB.petButtons) do VB:UpdateAuras(button) end
     end)
     
     local buffSizeSlider = CreateSimpleSlider(content, VB.L["BUFF_ICON_SIZE"], 6, 30, 1, VB.config.buffIconSize or 12, function(value)
@@ -887,6 +889,7 @@ function VB:CreateAppearanceTab()
         VB.config.showDispelHighlight = self:GetChecked()
         for _, button in pairs(VB.unitButtons) do VB:UpdateAuras(button) end
         for _, button in pairs(VB.tankButtons) do VB:UpdateAuras(button) end
+        for _, button in pairs(VB.petButtons) do VB:UpdateAuras(button) end
     end)
     yOffset = yOffset - 30
 
@@ -976,6 +979,7 @@ function VB:CreateDebuffsTab()
         VB.config.hideExhaustionDebuffs = self:GetChecked()
         for _, button in pairs(VB.unitButtons) do VB:UpdateAuras(button) end
         for _, button in pairs(VB.tankButtons) do VB:UpdateAuras(button) end
+        for _, button in pairs(VB.petButtons) do VB:UpdateAuras(button) end
     end)
 
     -- === Tracked buffs ===

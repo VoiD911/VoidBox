@@ -761,6 +761,11 @@ function VB:ApplyClickCastingsToAllFrames()
     for _, button in pairs(VB.tankButtons) do
         VB:ApplyClickCastings(button)
     end
+    -- Pet buttons only got their bindings at creation, so after editing a
+    -- binding the pet frame kept the old action until a /reload
+    for _, button in pairs(VB.petButtons) do
+        VB:ApplyClickCastings(button)
+    end
     VB:Debug("Click castings applied to all frames")
 end
 
