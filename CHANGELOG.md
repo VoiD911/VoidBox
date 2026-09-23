@@ -1,5 +1,16 @@
 # VoidBox
 
+## v1.15.0 (2026-09-23)
+
+- **Options to hide names and/or health %** (Options tab). Requested on
+  CurseForge. The `showName`/`showHealth` settings had existed for a long time
+  but were wired to nothing: no checkbox, and rendering never read them.
+    - Hiding health % keeps "Dead" and "Offline", which are states, not health
+    - With health % hidden, names get its space and are truncated less
+    - Applies to group, tank and pet frames at once
+    - Localized in all 11 supported locales
+- Config window is 60px taller: the Options tab was already full on Forever.
+
 ## v1.14.1 (2026-09-23)
 
 - **Fix: pet frames kept old click-cast bindings after they were changed.**

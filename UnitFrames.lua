@@ -107,6 +107,16 @@ function VB:BuildDispelColorCurve()
     VB:Debug("Dispel curve rebuilt for " .. (VB.playerClass or "?") .. " spec " .. tostring(VB.playerSpecID))
 end
 
+-- Re-render the name and HP% text of every frame (display toggles)
+function VB:RefreshFrameTexts()
+    for _, group in ipairs({ VB.unitButtons, VB.tankButtons, VB.petButtons }) do
+        for _, button in pairs(group) do
+            VB:UpdateName(button)
+            VB:UpdateHealthBar(button)
+        end
+    end
+end
+
 -- Base layout sizes at 100% (total = 11+2+20+1+12+1+4+2+2 = 55)
 local BASE_ROW1_FONT = 10
 local BASE_DEBUFF_SIZE = 21
@@ -493,7 +503,7 @@ end
 
 function VB:UpdateName(button)
     local unit = button.unit
-    if not unit or not UnitExists(unit) then
+    if not unit or not UnitExists(unit) or VB.config.showName == false then
         button.nameText:SetText("")
         return
     end
@@ -501,7 +511,9 @@ function VB:UpdateName(button)
     if name then
         local S = GetScaledSizes()
         local iconWidth = button.roleIcon:IsShown() and (S.row1Font + 3) or 0
-        local pctWidth = S.row1Font * 3  -- reserve space for "100%"
+        -- Reserve room for "100%" only when HP% is shown; otherwise the name
+        -- gets that space and is truncated less
+        local pctWidth = (VB.config.showHealth ~= false) and (S.row1Font * 3) or 0
         local availWidth = S.frameW - 6 - iconWidth - pctWidth
         local charWidth = math.max(4, math.floor(S.row1Font * 0.65))
         local maxChars = math.floor(availWidth / charWidth)

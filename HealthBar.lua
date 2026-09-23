@@ -107,6 +107,9 @@ function VB:UpdateHealthBar(button)
             pctText = VB.L["DEAD"]
         elseif not UnitIsConnected(unit) then
             pctText = VB.L["OFFLINE"]
+        elseif VB.config.showHealth == false then
+            -- HP% hidden by the player. Dead/offline above are states, not
+            -- health, so they keep showing.
         else
             local ok, r = pcall(function()
                 if UnitHealthPercent and C_CurveUtil and C_CurveUtil.CreateCurve then

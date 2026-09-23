@@ -135,7 +135,7 @@ end
 -------------------------------------------------
 function VB:CreateConfigFrame()
     configFrame = CreateFrame("Frame", "VoidBoxConfig", UIParent, "BackdropTemplate")
-    configFrame:SetSize(500, 700)
+    configFrame:SetSize(500, 760)
     configFrame:SetPoint("CENTER")
     configFrame:SetBackdrop({
         bgFile = "Interface\\Buttons\\WHITE8x8",
@@ -823,6 +823,26 @@ function VB:CreateAppearanceTab()
     classColorsCB:SetScript("OnClick", function(self)
         VB.config.classColors = self:GetChecked()
         for _, button in pairs(VB.unitButtons) do VB:UpdateHealthBar(button) end
+    end)
+    yOffset = yOffset - 30
+
+    -- Name / HP% text, side by side to spare a row in a full tab
+    local showNameCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    showNameCB:SetPoint("TOPLEFT", 10, yOffset)
+    showNameCB.text:SetText(VB.L["SHOW_NAME"])
+    showNameCB:SetChecked(VB.config.showName ~= false)
+    showNameCB:SetScript("OnClick", function(self)
+        VB.config.showName = self:GetChecked()
+        VB:RefreshFrameTexts()
+    end)
+
+    local showHealthCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    showHealthCB:SetPoint("TOPLEFT", 250, yOffset)
+    showHealthCB.text:SetText(VB.L["SHOW_HEALTH"])
+    showHealthCB:SetChecked(VB.config.showHealth ~= false)
+    showHealthCB:SetScript("OnClick", function(self)
+        VB.config.showHealth = self:GetChecked()
+        VB:RefreshFrameTexts()
     end)
     yOffset = yOffset - 30
     
