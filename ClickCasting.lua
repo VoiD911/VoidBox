@@ -275,12 +275,12 @@ function VB:ConfigureKBProxy(proxy, binding, mouseoverMode)
         proxy:SetAttribute("type", "macro")
         proxy:SetAttribute("macrotext", binding.value)
     elseif action == "target" then
-        if mouseoverMode then
-            proxy:SetAttribute("type", "macro")
-            proxy:SetAttribute("macrotext", "/target [@mouseover,exists]")
-        else
-            proxy:SetAttribute("type", "target")
-        end
+        -- Always a macro: proxies are SecureUnitButtons too, and a key bound with
+        -- a modifier (Alt+F1...) reaches SecureUnitButton_OnClick with that
+        -- modifier held, where type=target is dropped unless Blizzard's own
+        -- click-binding profile has a matching interaction.
+        proxy:SetAttribute("type", "macro")
+        proxy:SetAttribute("macrotext", "/target [@mouseover,exists]")
     elseif action == "focus" then
         if mouseoverMode then
             proxy:SetAttribute("type", "macro")
@@ -305,13 +305,129 @@ function VB:ConfigureKBProxy(proxy, binding, mouseoverMode)
 end
 
 -------------------------------------------------
+-- Mouse wheel helpers (fallback path)
+-------------------------------------------------
+-- True when the unit under the cursor is NOT a living friendly unit.
+-- Not [party]/[raid]: /vb debugwheel showed both evaluate false on Forever
+-- IN COMBAT even over a group member (exists/help stay true), which stopped
+-- every wheel cast in combat. [help] is the narrowest filter that holds there;
+-- it also matches friendly players and NPCs outside the group, and the
+-- player's own 3D model.
+local WHEEL_BLOCKED = "[@mouseover,noexists][@mouseover,dead][@mouseover,nohelp]"
+
+-- Did the gate get past its /stopmacro? The gate's last line /clicks this
+-- marker, so it only fires when the action ran. The decision is the secure
+-- macro engine's own: re-evaluating the conditions from addon code with
+-- SecureCmdOptionParse disagreed in combat (unit identity is hidden from
+-- tainted code there), and zoomed on top of a successful cast.
+local wheelActionRan = false
+local WHEEL_MARKER = "VoidBoxWheelMarker"
+
+local function EnsureWheelMarker()
+    if _G[WHEEL_MARKER] then return end
+    -- Plain, non-secure button: shown (off-screen, invisible) because hidden
+    -- buttons may not take clicks
+    local marker = CreateFrame("Button", WHEEL_MARKER, UIParent)
+    marker:SetSize(1, 1)
+    marker:SetPoint("TOPLEFT", UIParent, "TOPLEFT", -200, 200)
+    marker:SetAlpha(0)
+    marker:EnableMouse(false)
+    marker:RegisterForClicks("AnyUp", "AnyDown")
+    marker:SetScript("OnClick", function() wheelActionRan = true end)
+end
+
+-- /vb debugwheel: which @mouseover conditionals does the SECURE macro engine
+-- consider true? Evaluating them from addon code is exactly what misreports in
+-- combat, so each one gets a marker button the gate /clicks when it holds.
+local WHEEL_PROBES = { "exists", "help", "dead", "party", "raid" }
+local wheelProbeHits = {}
+
+local function EnsureWheelProbes()
+    for _, cond in ipairs(WHEEL_PROBES) do
+        local name = "VoidBoxWheelProbe_" .. cond
+        if not _G[name] then
+            local b = CreateFrame("Button", name, UIParent)
+            b:SetSize(1, 1)
+            b:SetPoint("TOPLEFT", UIParent, "TOPLEFT", -200, 200)
+            b:SetAlpha(0)
+            b:EnableMouse(false)
+            b:RegisterForClicks("AnyUp", "AnyDown")
+            b:SetScript("OnClick", function() wheelProbeHits[cond] = true end)
+        end
+    end
+end
+
+local function WheelProbeLines()
+    local lines = {}
+    for _, cond in ipairs(WHEEL_PROBES) do
+        lines[#lines + 1] = "/click [@mouseover," .. cond .. "] VoidBoxWheelProbe_" .. cond
+    end
+    return table.concat(lines, "\n") .. "\n"
+end
+
+-- Runs after a wheel gate's secure handler. If the action did not run, the
+-- wheel did nothing, so give the camera its zoom back.
+local function ReplayWheelZoom(self)
+    if VB._debugWheel then
+        local parts = {}
+        for _, cond in ipairs(WHEEL_PROBES) do
+            parts[#parts + 1] = cond .. "=" .. tostring(wheelProbeHits[cond] == true)
+        end
+        VB:Print(("  [wheel] combat=%s %s -> action ran=%s"):format(
+            tostring(InCombatLockdown()), table.concat(parts, " "), tostring(wheelActionRan)))
+        wipe(wheelProbeHits)
+    end
+    if not self._vbZoomDir then return end
+    local ran = wheelActionRan
+    wheelActionRan = false
+    if ran then return end
+    -- Proxies take both press and release; zoom once
+    local now = GetTime()
+    if self._vbLastZoom == now then return end
+    self._vbLastZoom = now
+    if self._vbZoomDir > 0 then CameraZoomIn(1) else CameraZoomOut(1) end
+end
+
+-- Macro lines performing a binding's action on @mouseover, for a wheel gate.
+-- newProxy() allocates a proxy when one is needed (pinned ranks only).
+function VB:BuildWheelActionText(binding, newProxy)
+    local action = binding.action
+    if action == "spell" then
+        local attrValue, spellName = VB:ResolveSpellForCast(binding.value, binding.rankLocked)
+        if not spellName then return nil end
+        local prefix = VB.config.autoTargetOnCast and "/target [@mouseover]\n" or ""
+        if binding.rankLocked and type(attrValue) == "number" then
+            -- A pinned rank needs the ID, which macro text cannot carry; a
+            -- type=spell button is not a macro, so /clicking it is fine.
+            local proxy = newProxy()
+            proxy:SetAttribute("type", "spell")
+            proxy:SetAttribute("spell", attrValue)
+            proxy:SetAttribute("unit", "mouseover")
+            proxy:SetAttribute("macrotext", nil)
+            return prefix .. "/click " .. proxy:GetName()
+        end
+        return prefix .. "/cast [@mouseover] " .. spellName
+    elseif action == "target" then
+        return "/target [@mouseover]"
+    elseif action == "focus" then
+        return "/focus [@mouseover]"
+    elseif action == "assist" then
+        return "/assist [@mouseover]"
+    elseif action == "macro" then
+        return binding.value
+    end
+    return nil
+end
+
+-------------------------------------------------
 -- Fallback keyboard bindings (no secure snippets)
 --
 -- Forever builds without loadstring_untainted cannot compile _onenter/_onleave,
 -- so hover-scoped bindings are impossible. Instead we install global override
 -- bindings onto @mouseover proxy buttons - the classic mouseover-macro approach.
 -- Trade-offs: bindings are global rather than frame-scoped, and scroll-wheel
--- click-casting is dropped (overriding MOUSEWHEEL globally would eat camera zoom).
+-- click-casting is off by default (overriding MOUSEWHEEL globally would eat
+-- camera zoom); the opt-in wheel path below gates it and re-emits the zoom.
 -------------------------------------------------
 function VB:ApplyFallbackKeyBindings()
     if InCombatLockdown() then
@@ -324,6 +440,10 @@ function VB:ApplyFallbackKeyBindings()
     end
     ClearOverrideBindings(VB._bindingOwner)
 
+    for _, proxy in pairs(VB._kbProxies) do
+        proxy._vbZoomDir = nil
+    end
+
     local index = 0
     for _, binding in ipairs(VB.clickCastings) do
         if binding.combo then
@@ -335,7 +455,68 @@ function VB:ApplyFallbackKeyBindings()
         end
     end
 
-    VB:Debug("Fallback keyboard bindings applied: " .. index)
+    -- Mouse wheel, opt-in (VB.config.fallbackWheelBindings).
+    --
+    -- On Retail the wheel is bound on hover by the _onenter snippet. Without
+    -- snippets it can only be a global binding, which would steal the wheel
+    -- everywhere - so each wheel binding is a gate macro:
+    --   /stopmacro <unit under the cursor is not a living friendly unit>
+    --   <the action itself>
+    -- (see WHEEL_BLOCKED for why this is [help] and not [party]/[raid])
+    --
+    -- The action is written into the gate itself rather than /clicking another
+    -- macro button: a macro started from inside a macro does not run, so a
+    -- nested /target or /cast was silently dropped. Pinned ranks still /click a
+    -- proxy, but that proxy is type=spell, not a macro.
+    --
+    -- When the gate stops, the camera zoom it swallowed is replayed from a Lua
+    -- hook; the gate's final /click on a marker button tells the hook the
+    -- action ran. Not a /run line: since 10.1 any /run in a macro pops
+    -- Blizzard's "allow custom scripts" warning.
+    local wheels = 0
+    if VB.config.fallbackWheelBindings then
+        for _, binding in ipairs(VB.clickCastings) do
+            if not binding.combo
+               and (binding.mouse == "ScrollUp" or binding.mouse == "ScrollDown") then
+                local actionText = VB:BuildWheelActionText(binding, function()
+                    index = index + 1
+                    return VB:GetOrCreateKBProxy(index, binding)
+                end)
+                -- togglemenu has no macro form: leave that wheel unbound
+                if actionText then
+                    local up = binding.mouse == "ScrollUp"
+                    local mods = binding.mods or ""
+
+                    index = index + 1
+                    local gate = VB:GetOrCreateKBProxy(index, binding)
+                    gate:SetAttribute("type", "macro")
+                    -- The marker comes last: the action has already gone out
+                    -- before anything else runs.
+                    EnsureWheelMarker()
+                    local probes = ""
+                    if VB._debugWheel then
+                        EnsureWheelProbes()
+                        probes = WheelProbeLines()
+                    end
+                    gate:SetAttribute("macrotext", probes
+                        .. "/stopmacro " .. WHEEL_BLOCKED .. "\n" .. actionText
+                        .. "\n/click " .. WHEEL_MARKER)
+                    -- Modified wheels have no default action to replay
+                    gate._vbZoomDir = (mods == "") and (up and 1 or -1) or nil
+                    if not gate._vbZoomHooked then
+                        gate._vbZoomHooked = true
+                        gate:HookScript("OnClick", ReplayWheelZoom)
+                    end
+
+                    local wheelKey = VB:BuildWoWBindingString(mods, up and "MOUSEWHEELUP" or "MOUSEWHEELDOWN")
+                    SetOverrideBindingClick(VB._bindingOwner, true, wheelKey, gate:GetName(), "LeftButton")
+                    wheels = wheels + 1
+                end
+            end
+        end
+    end
+
+    VB:Debug("Fallback bindings applied: " .. index .. " proxies, " .. wheels .. " wheel")
     return true
 end
 
@@ -510,7 +691,19 @@ function VB:SetButtonAttribute(button, attrKey, actionType, actionValue, rankLoc
         local macroKey = attrKey:gsub("type", "macrotext")
         button:SetAttribute(macroKey, actionValue)
     elseif actionType == "target" then
-        button:SetAttribute(attrKey, "target")
+        -- Blizzard's SecureUnitButton_OnClick (Retail 10.0+, Forever) throws away
+        -- a type=target click unless its OWN click-binding profile has a
+        -- "target" interaction on that exact button+modifiers. The default
+        -- profile only has one on plain Left, so Alt+Left, Middle, etc. did
+        -- nothing. Macros are not subject to that check, and hovering one of
+        -- our frames reliably sets @mouseover (verified with /vb debugmouseover).
+        if attrKey == "type1" then
+            button:SetAttribute(attrKey, "target")
+        else
+            button:SetAttribute(attrKey, "macro")
+            local macroKey = attrKey:gsub("type", "macrotext")
+            button:SetAttribute(macroKey, "/target [@mouseover,exists]")
+        end
     elseif actionType == "focus" then
         button:SetAttribute(attrKey, "focus")
     elseif actionType == "togglemenu" then

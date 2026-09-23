@@ -65,6 +65,7 @@ VB.defaults = {
     keepGroupsTogether = false,
     hideWhenSolo = false,
     autoTargetOnCast = false,
+    fallbackWheelBindings = false,  -- opt-in, see ApplyFallbackKeyBindings
     position = { point = "CENTER", x = 0, y = 0 },
     clickCastings = {},
 }
@@ -207,6 +208,7 @@ VB.profileKeys = {
     "keepGroupsTogether",
     "hideWhenSolo",
     "autoTargetOnCast",
+    "fallbackWheelBindings",
 }
 
 -------------------------------------------------
@@ -1329,6 +1331,19 @@ SlashCmdList["VOIDBOX"] = function(msg)
         else
             if VB._mouseoverProbeFrame then VB._mouseoverProbeFrame:UnregisterAllEvents() end
         end
+    elseif msg == "debugwheel" then
+        -- Scroll on a group member IN COMBAT with this on: the chat shows which
+        -- @mouseover conditionals the secure macro engine sees as true, and
+        -- whether the gate's action ran. Rebuilds the wheel gates, so out of
+        -- combat only.
+        if InCombatLockdown() then
+            VB:Print(VB.L["CANNOT_BIND_COMBAT"])
+            return
+        end
+        VB._debugWheel = not VB._debugWheel
+        VB:Print("Wheel debug: " .. (VB._debugWheel and "ON" or "OFF")
+            .. " - needs the wheel option enabled and a spell bound to the wheel.")
+        VB:ApplyClickCastingsToAllFrames()
     elseif msg == "debugsnippets" then
         -- Do secure snippets actually run on this client? The Forever fallback
         -- keys off the loadstring_untainted global being absent, which was

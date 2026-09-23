@@ -1,5 +1,42 @@
 # VoidBox
 
+## v1.14.0 (2026-09-23)
+
+- **Fix: Alt+Left (and any non-default combo) bound to Target did nothing.**
+  Blizzard's `SecureUnitButton_OnClick` (Retail 10.0+, Forever) drops a
+  `type=target`, `menu` or `togglemenu` click unless its own click-binding
+  profile has a matching interaction on that exact button and modifiers. The
+  default profile only has plain Left (target) and plain Right (menu), so every
+  other Target binding was silently discarded - on mouse and on modified
+  keyboard keys alike. Target now goes through `/target [@mouseover,exists]`
+  on anything but plain Left; macros are not subject to that check. Menu on
+  non-default combos is still dropped (no macro can open the unit menu).
+- **Mouse wheel bindings on Forever, opt-in** (Options tab, off by default).
+  Without secure snippets the wheel cannot be bound on hover, only globally.
+  The global binding goes through a gate macro: a `/stopmacro` line that stops
+  unless the unit under the cursor is a living friendly unit, then the action
+  itself. When it stops, the swallowed camera zoom is replayed (plain wheel
+  only; modified wheels have no default action).
+    - Filter is `[@mouseover,help,nodead]`, not `[party]`/`[raid]`: in-game
+      probing (`/vb debugwheel`) showed party and raid evaluate false on
+      Forever in combat even over a group member, which stopped every wheel
+      cast in combat. Trade-off: friendly players and NPCs outside the group,
+      and your own 3D model, also take the cast when under the cursor.
+    - The action is written into the gate rather than `/click`ing another
+      macro button: a macro started from inside a macro does not run, which
+      silently dropped a first version's Target. Pinned ranks `/click` a
+      `type=spell` proxy, which is not a macro.
+    - The zoom is replayed from an addon hook, not from a `/run` line: since
+      10.1 any `/run` in a macro triggers Blizzard's "allow custom scripts"
+      warning. The gate's last line `/click`s a marker button, so the hook
+      knows the action ran from the secure macro engine itself. Re-evaluating
+      the conditions from addon code with `SecureCmdOptionParse` disagreed in
+      combat, where unit identity is hidden from tainted code, and zoomed on
+      top of the cast.
+    - Menu has no macro form, so a wheel bound to Menu stays unbound
+- The Forever login notice now says wheel bindings are off unless enabled.
+  Localized in all 11 supported locales.
+
 ## v1.13.0 (2026-09-22)
 
 - **Tracked buffs**: pick any spell to watch in the HoT row, e.g. a druid

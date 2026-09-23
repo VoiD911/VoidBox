@@ -906,7 +906,27 @@ function VB:CreateAppearanceTab()
     autoTargetCB:SetScript("OnClick", function(self)
         VB.config.autoTargetOnCast = self:GetChecked()
     end)
-    yOffset = yOffset - 40
+    yOffset = yOffset - 30
+
+    -- Only meaningful where secure snippets are dead (Forever): elsewhere the
+    -- wheel is bound on hover and needs no opt-in.
+    if not VB.hasSecureSnippets then
+        local wheelCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+        wheelCB:SetPoint("TOPLEFT", 10, yOffset)
+        wheelCB.text:SetText(VB.L["WHEEL_FALLBACK"])
+        wheelCB:SetChecked(VB.config.fallbackWheelBindings or false)
+        wheelCB:SetScript("OnClick", function(self)
+            if InCombatLockdown() then
+                self:SetChecked(not self:GetChecked())
+                VB:Print(VB.L["CANNOT_BIND_COMBAT"])
+                return
+            end
+            VB.config.fallbackWheelBindings = self:GetChecked()
+            VB:ApplyClickCastingsToAllFrames()
+        end)
+        yOffset = yOffset - 30
+    end
+    yOffset = yOffset - 10
     
     local lockBtn = CreateFrame("Button", nil, content, "BackdropTemplate")
     lockBtn:SetSize(150, 25)

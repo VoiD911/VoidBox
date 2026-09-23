@@ -19,7 +19,9 @@ adapts itself at login:
   `loadstring_untainted` is missing, the client cannot compile secure snippets,
   so keyboard bindings switch to global override bindings on `@mouseover` proxy
   buttons. VoidBox prints a notice at login when that happens. Scroll-wheel
-  click-casting is unavailable on that path.
+  click-casting is off on that path unless enabled in Options: it then casts
+  on the friendly unit under the cursor (including your own character and
+  players outside your group) and zooms the camera anywhere else.
 - **Aura rows use native AuraContainers.** Addon code cannot read auras in
   combat any more (enumeration raises, per-spell lookups answer nil), so the
   debuff, HoT and dispel rows are rendered by the client itself: VoidBox
