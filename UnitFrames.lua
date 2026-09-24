@@ -119,7 +119,7 @@ end
 
 -- Base layout sizes at 100% (total = 11+2+20+1+12+1+4+2+2 = 55)
 local BASE_ROW1_FONT = 10
-local BASE_DEBUFF_SIZE = 21
+local BASE_DEBUFF_SIZE = 18   -- what the old 1/3-height cap actually displayed
 local BASE_BUFF_SIZE = 12
 local BASE_POWERBAR_H = 4
 
@@ -132,9 +132,12 @@ local function GetScaledSizes()
     local sw = (VB.config.scaleWidth or 100) / 100
     local sh = (VB.config.scaleHeight or 100) / 100
     local baseFrameH = math.floor(BASE_HEIGHT * sh)
-    local maxIconSize = math.floor(baseFrameH / 3)
-    local baseDebuff = VB.config.debuffIconSize or BASE_DEBUFF_SIZE
-    local baseBuff = VB.config.buffIconSize or BASE_BUFF_SIZE
+    -- Icon sizes are taken as set. They used to be capped at a third of the
+    -- frame height (18px at 100%), so any slider value above that did nothing;
+    -- the frame now grows instead, like it does for a taller mana bar.
+    local debuffSize = math.max(6, VB.config.debuffIconSize or BASE_DEBUFF_SIZE)
+    local buffSize = math.max(6, VB.config.buffIconSize or BASE_BUFF_SIZE)
+    local row1Font = math.max(7, math.floor(BASE_ROW1_FONT * sh))
 
     -- Mana bar height (Options slider). A taller bar grows the frame rather
     -- than eating into the health bar: the aura rows are laid out from the
@@ -147,12 +150,19 @@ local function GetScaledSizes()
         frameH = frameH + math.max(0, powerBarH - defaultPowerH)
     end
 
+    -- Height the three rows need inside the health bar: 1px top border, row 1
+    -- (name/health), 2px gap, debuff row, 1px gap, HoT row, 1px margin, then
+    -- the mana bar area below the health bar (same insets as CreateUnitButton).
+    local bottomInset = VB.config.showPowerBar and (powerBarH + 2) or 1
+    local needed = 1 + (row1Font + 2) + 2 + debuffSize + 1 + buffSize + 1 + bottomInset
+    frameH = math.max(frameH, needed)
+
     return {
         frameW     = math.floor(BASE_WIDTH * sw),
         frameH     = frameH,
-        row1Font   = math.max(7, math.floor(BASE_ROW1_FONT * sh)),
-        debuffSize = math.min(maxIconSize, math.max(6, baseDebuff)),
-        buffSize   = math.min(maxIconSize, math.max(6, baseBuff)),
+        row1Font   = row1Font,
+        debuffSize = debuffSize,
+        buffSize   = buffSize,
         powerBarH  = powerBarH,
     }
 end

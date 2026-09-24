@@ -57,7 +57,7 @@ VB.defaults = {
     petFramePosition = nil,
     showDebuffs = true,
     showBuffs = true,
-    debuffIconSize = 21,
+    debuffIconSize = 18,
     buffIconSize = 12,
     hideExhaustionDebuffs = true,
     showDispelHighlight = true,
@@ -262,6 +262,20 @@ function VB:OnAddonLoaded()
                 profile.font = localeFont
             end
         end
+    end
+
+    -- v1.18.2: aura icons were silently capped at a third of the frame height
+    -- (18px at 100%). The cap is gone and frames grow to fit instead, so bring
+    -- every stored size down to what was actually displayed: nothing changes on
+    -- screen at update, and the sliders work from there.
+    if not VoidBoxDB.auraSizeCapMigrated then
+        for _, profile in pairs(VoidBoxDB.profiles) do
+            local sh = (profile.scaleHeight or 100) / 100
+            local oldCap = math.floor(math.floor(55 * sh) / 3)
+            profile.debuffIconSize = math.min(oldCap, math.max(6, profile.debuffIconSize or 21))
+            profile.buffIconSize = math.min(oldCap, math.max(6, profile.buffIconSize or 12))
+        end
+        VoidBoxDB.auraSizeCapMigrated = true
     end
 
     -- Merge defaults into active profile for any missing keys

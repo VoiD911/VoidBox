@@ -124,9 +124,14 @@ local function NewContainer(parent, key, filter, maxCount, size, isDebuff)
     pcall(container.SetFlowLayoutPadding, container, 0, 0, 0, 0)
     pcall(container.SetFlowLayoutMaximumLineSize, container, parent:GetWidth())
 
+    -- The client calls initializeFrame once per AuraButton it creates, possibly
+    -- long after this: read the size at that moment, not the one at creation.
+    container._iconSize = size
     local added = pcall(container.AddAuraGroup, container, key, filter, {
         maxFrameCount = maxCount,
-        initializeFrame = function(button) StyleAuraButton(size, isDebuff, button) end,
+        initializeFrame = function(button)
+            StyleAuraButton(container._iconSize or size, isDebuff, button)
+        end,
     })
     if not added then return nil end
 
@@ -218,6 +223,24 @@ function VB:SetupButtonAuraContainers(button, S, maxDebuffs, maxBuffs)
     return true
 end
 
+-- Resize the AuraButtons a container already made. They are styled once, when
+-- the client creates them, so without this a new icon size only showed after a
+-- /reload. Our buttons are the children that carry .icon (set in StyleAuraButton).
+local function ResizeAuraButtons(container, size)
+    if not container then return end
+    local ok, children = pcall(function() return { container:GetChildren() } end)
+    if not ok then return end
+    for _, child in ipairs(children) do
+        if child.icon then
+            pcall(child.SetSize, child, size, size)
+            if child.count then
+                pcall(child.count.SetFont, child.count, VB.config.font,
+                      math.max(7, math.floor(size * 0.5)), "OUTLINE")
+            end
+        end
+    end
+end
+
 -- Position and size both rows; called on creation and on every scale change.
 function VB:AnchorAuraContainers(button, S)
     local parent = button.healthBar
@@ -229,6 +252,7 @@ function VB:AnchorAuraContainers(button, S)
         button.debuffContainer:SetPoint("TOP", parent, "TOP", 0, -(button._row2Top or 14))
         button.debuffContainer:SetHeight(S.debuffSize)
         button.debuffContainer._iconSize = S.debuffSize
+        ResizeAuraButtons(button.debuffContainer, S.debuffSize)
         FitToContents(button.debuffContainer)
     end
     if button.buffContainer then
@@ -236,6 +260,7 @@ function VB:AnchorAuraContainers(button, S)
         button.buffContainer:SetPoint("TOP", parent, "TOP", 0, -(button._row3Top or 36))
         button.buffContainer:SetHeight(S.buffSize)
         button.buffContainer._iconSize = S.buffSize
+        ResizeAuraButtons(button.buffContainer, S.buffSize)
         FitToContents(button.buffContainer)
     end
 end

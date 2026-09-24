@@ -1,5 +1,20 @@
 # VoidBox
 
+## v1.18.2 (2026-09-24)
+
+- **Fix: the debuff (DoT) and HoT icon size sliders often did nothing.**
+  Reported on CurseForge.
+    - Icons were silently capped at a third of the frame height (18px at 100%)
+      while the sliders went up to 30, and the debuff default (21) was already
+      above the cap. The cap is gone: frames now grow to fit bigger icons, like
+      they do for a taller mana bar.
+    - With the client's native aura rows (Forever, Retail 12.1+), icons were
+      sized once when created, so a new size only showed after a `/reload`.
+      Existing icons are now resized immediately.
+    - One-time migration: stored sizes are set to what was actually displayed,
+      so nothing changes on screen at update. The debuff default is now 18,
+      the size it always showed at 100%.
+
 ## v1.18.1 (2026-09-24)
 
 - **Fix: the Follow action said "Unknown unit".** `/follow` is a plain slash

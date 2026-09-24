@@ -885,7 +885,7 @@ function VB:CreateAppearanceTab()
         for _, button in pairs(VB.petButtons) do VB:UpdateAuras(button) end
     end)
     
-    local debuffSizeSlider = CreateSimpleSlider(content, VB.L["DEBUFF_ICON_SIZE"], 6, 30, 1, VB.config.debuffIconSize or 21, function(value)
+    local debuffSizeSlider = CreateSimpleSlider(content, VB.L["DEBUFF_ICON_SIZE"], 6, 30, 1, VB.config.debuffIconSize or 18, function(value)
         VB.config.debuffIconSize = value
         if not InCombatLockdown() then VB:UpdateAllFrames() end
     end)
