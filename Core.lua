@@ -613,8 +613,7 @@ function VB:UpdateAllFrames()
     -- Compute scaled frame size
     local sw = (VB.config.scaleWidth or 100) / 100
     local sh = (VB.config.scaleHeight or 100) / 100
-    local width = math.floor(80 * sw)
-    local height = math.floor(55 * sh)
+    local width, height = VB:GetFrameSize()
     local spacing = VB.config.frameSpacing or 2
     local vertical = VB.config.orientation == "VERTICAL"
     
@@ -951,8 +950,7 @@ function VB:UpdateTankFrame()
     -- Compute sizes
     local sw = (VB.config.scaleWidth or 100) / 100
     local sh = (VB.config.scaleHeight or 100) / 100
-    local width = math.floor(80 * sw)
-    local height = math.floor(55 * sh)
+    local width, height = VB:GetFrameSize()
     local spacing = VB.config.frameSpacing or 2
     
     -- Layout tanks vertically
@@ -1131,8 +1129,7 @@ function VB:UpdatePetFrame()
     -- Compute sizes
     local sw = (VB.config.scaleWidth or 100) / 100
     local sh = (VB.config.scaleHeight or 100) / 100
-    local width = math.floor(80 * sw)
-    local height = math.floor(55 * sh)
+    local width, height = VB:GetFrameSize()
     local spacing = VB.config.frameSpacing or 2
 
     -- Layout pets vertically

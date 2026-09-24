@@ -131,18 +131,37 @@ local AURA_ICON_SPACING = 1
 local function GetScaledSizes()
     local sw = (VB.config.scaleWidth or 100) / 100
     local sh = (VB.config.scaleHeight or 100) / 100
-    local frameH = math.floor(BASE_HEIGHT * sh)
-    local maxIconSize = math.floor(frameH / 3)
+    local baseFrameH = math.floor(BASE_HEIGHT * sh)
+    local maxIconSize = math.floor(baseFrameH / 3)
     local baseDebuff = VB.config.debuffIconSize or BASE_DEBUFF_SIZE
     local baseBuff = VB.config.buffIconSize or BASE_BUFF_SIZE
+
+    -- Mana bar height (Options slider). A taller bar grows the frame rather
+    -- than eating into the health bar: the aura rows are laid out from the
+    -- top of the health bar and the HoT row would otherwise overflow onto the
+    -- mana bar. At the default height nothing changes.
+    local defaultPowerH = math.max(2, math.floor(BASE_POWERBAR_H * sh))
+    local powerBarH = math.max(2, math.floor((VB.config.powerBarHeight or BASE_POWERBAR_H) * sh))
+    local frameH = baseFrameH
+    if VB.config.showPowerBar then
+        frameH = frameH + math.max(0, powerBarH - defaultPowerH)
+    end
+
     return {
         frameW     = math.floor(BASE_WIDTH * sw),
         frameH     = frameH,
         row1Font   = math.max(7, math.floor(BASE_ROW1_FONT * sh)),
         debuffSize = math.min(maxIconSize, math.max(6, baseDebuff)),
         buffSize   = math.min(maxIconSize, math.max(6, baseBuff)),
-        powerBarH  = math.max(2, math.floor(BASE_POWERBAR_H * sh)),
+        powerBarH  = powerBarH,
     }
+end
+
+-- Frame size for the grid layouts in Core, so they agree with the buttons
+-- (the mana bar slider can make frames taller than the base 55px).
+function VB:GetFrameSize()
+    local S = GetScaledSizes()
+    return S.frameW, S.frameH
 end
 
 -------------------------------------------------

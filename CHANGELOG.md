@@ -1,5 +1,19 @@
 # VoidBox
 
+## v1.16.0 (2026-09-24)
+
+- **Mana bar height slider** (Options tab, 2-12, default 4), next to the "Show
+  mana bar" checkbox. Requested on CurseForge. The `powerBarHeight` setting
+  had existed but the layout used a hard-coded 4px and never read it.
+    - A taller bar grows the frame instead of shrinking the health bar: the
+      aura rows are laid out from the top of the health bar, and the HoT row
+      would otherwise overflow onto the mana bar. At the default height frames
+      are unchanged.
+    - Core's grid layouts (group, tank, pet) recomputed the frame size on their
+      own; they now share `VB:GetFrameSize()` with the buttons, so taller
+      frames do not overlap.
+    - Localized in all 11 supported locales.
+
 ## v1.15.0 (2026-09-23)
 
 - **Options to hide names and/or health %** (Options tab). Requested on

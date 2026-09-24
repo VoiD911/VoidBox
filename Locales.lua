@@ -909,3 +909,18 @@ SetLocale("zhCN", "SHOW_NAME", "显示名字")
 SetLocale("zhCN", "SHOW_HEALTH", "显示生命值 %")
 SetLocale("zhTW", "SHOW_NAME", "顯示名字")
 SetLocale("zhTW", "SHOW_HEALTH", "顯示生命值 %")
+
+-------------------------------------------------
+-- Mana bar height slider (v1.16+)
+-------------------------------------------------
+SetDefault("POWER_BAR_HEIGHT", "Mana bar height")
+SetLocale("frFR", "POWER_BAR_HEIGHT", "Hauteur barre de mana")
+SetLocale("deDE", "POWER_BAR_HEIGHT", "Höhe der Manaleiste")
+SetLocale("esES", "POWER_BAR_HEIGHT", "Altura barra de maná")
+SetLocale("esMX", "POWER_BAR_HEIGHT", "Altura barra de maná")
+SetLocale("ptBR", "POWER_BAR_HEIGHT", "Altura da barra de mana")
+SetLocale("itIT", "POWER_BAR_HEIGHT", "Altezza barra mana")
+SetLocale("ruRU", "POWER_BAR_HEIGHT", "Высота полосы маны")
+SetLocale("koKR", "POWER_BAR_HEIGHT", "마나 바 높이")
+SetLocale("zhCN", "POWER_BAR_HEIGHT", "法力条高度")
+SetLocale("zhTW", "POWER_BAR_HEIGHT", "法力條高度")

@@ -854,7 +854,14 @@ function VB:CreateAppearanceTab()
         VB.config.showPowerBar = self:GetChecked()
         VB:Print(VB.L["RELOAD_REQUIRED"])
     end)
-    yOffset = yOffset - 30
+    -- Same checkbox + slider row pattern as the debuff icon size
+    local powerHeightSlider = CreateSimpleSlider(content, VB.L["POWER_BAR_HEIGHT"], 2, 12, 1,
+        VB.config.powerBarHeight or 4, function(value)
+        VB.config.powerBarHeight = value
+        if not InCombatLockdown() then VB:UpdateAllFrames() end
+    end)
+    powerHeightSlider:SetPoint("TOPLEFT", 200, yOffset + 5)
+    yOffset = yOffset - 45
     
     local minimapCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
     minimapCB:SetPoint("TOPLEFT", 10, yOffset)
