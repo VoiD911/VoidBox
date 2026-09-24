@@ -1383,6 +1383,8 @@ SlashCmdList["VOIDBOX"] = function(msg)
         VB:SpellLogToggle()
     elseif msg == "spellranks" or msg:find("^spellranks%s+") then
         VB:SpellLogRanks(msg:match("^spellranks%s+(.+)$"))
+    elseif msg == "rezdebug" then
+        VB:SpellLogRez()
     elseif msg == "debugcontainer" then
         -- Can this client do AuraContainers? They are the sanctioned way to show
         -- auras without reading them: the client tracks, filters and renders,

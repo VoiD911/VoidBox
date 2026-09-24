@@ -8,7 +8,7 @@
         combo    = "CTRL-F1",           -- WoW key string (for keyboard) or nil (for mouse)
         mouse    = "Left",              -- mouse button name or nil (for keyboard)
         mods     = "ctrl-shift",        -- modifier string (sorted: alt-ctrl-shift)
-        action   = "spell",             -- spell/macro/target/focus/togglemenu/assist
+        action   = "spell",             -- spell/macro/target/focus/togglemenu/assist/rez
         value    = 12345,               -- spellID, macro body, or nil
         display  = "Ctrl + F1",         -- human-readable combo text
         name     = "Renew",             -- display name for the action
@@ -231,6 +231,68 @@ function VB:ResolveSpellForCast(value, rankLocked)
     return name, name
 end
 
+-- Resurrection spells per class for the "rez" action (Retail / Midnight IDs).
+-- Forever has its own table, VB.FOREVER_REZ_SPELLS. First known ID of each list
+-- wins. normal = usable out of combat, combat = battle res. Where a class'
+-- only res works both ways (Rebirth, Raise Ally, Soulstone) it is listed under
+-- combat and also serves as the out-of-combat one.
+VB.REZ_SPELLS = {
+    PRIEST      = { normal = { 2006 } },                       -- Resurrection
+    PALADIN     = { normal = { 7328 }, combat = { 391054 } },  -- Redemption, Intercession
+    SHAMAN      = { normal = { 2008 } },                       -- Ancestral Spirit
+    DRUID       = { normal = { 50769 }, combat = { 20484 } },  -- Revive, Rebirth
+    MONK        = { normal = { 115178 } },                     -- Resuscitate
+    EVOKER      = { normal = { 361227 } },                     -- Return
+    DEATHKNIGHT = { combat = { 61999 } },                      -- Raise Ally
+    WARLOCK     = { combat = { 20707 } },                      -- Soulstone
+}
+
+-- Localized name of the first known spell in an ID list, or nil
+local function FirstKnownSpellName(ids)
+    if not ids then return nil end
+    for _, id in ipairs(ids) do
+        -- Forever: a higher rank may be known without its rank 1 ID being
+        local known = VB:IsSpellKnownByID(id)
+            or (VB.isForever and VB.GetHighestKnownRank and VB:GetHighestKnownRank(id) ~= nil)
+        if known then
+            local name = VB:GetSpellName(id)
+            if name then return name end
+        end
+    end
+    return nil
+end
+
+-- { normal = name, combat = name } for the player's class; parts are nil when
+-- the class has no such spell or it is not known. Not cached: the answer
+-- changes as spells are learned.
+function VB:GetRezSpells()
+    local class = VB.playerClass or select(2, UnitClass("player"))
+    local data = VB.isForever and VB.FOREVER_REZ_SPELLS or VB.REZ_SPELLS
+    local list = data and data[class]
+    if not list then return { normal = nil, combat = nil } end
+    return {
+        normal = FirstKnownSpellName(list.normal),
+        combat = FirstKnownSpellName(list.combat),
+    }
+end
+
+-- Macro text resurrecting the dead unit under the cursor, or nil when the
+-- player knows no resurrection spell.
+function VB:BuildRezMacro()
+    local spells = VB:GetRezSpells()
+    -- A combat res that works out of combat too stands in for a missing normal one
+    local normal = spells.normal or spells.combat
+    local clauses = {}
+    if spells.combat then
+        clauses[#clauses + 1] = "[@mouseover,dead,combat] " .. spells.combat
+    end
+    if normal then
+        clauses[#clauses + 1] = "[@mouseover,dead,nocombat] " .. normal
+    end
+    if #clauses == 0 then return nil end
+    return "/cast " .. table.concat(clauses, "; ")
+end
+
 -- mouseoverMode: no secure snippet is available to push the hovered unit into
 -- the proxy's "unit" attribute, so the proxy has to resolve @mouseover itself.
 function VB:ConfigureKBProxy(proxy, binding, mouseoverMode)
@@ -300,6 +362,16 @@ function VB:ConfigureKBProxy(proxy, binding, mouseoverMode)
             proxy:SetAttribute("macrotext", "/assist [@mouseover,exists]")
         else
             proxy:SetAttribute("type", "assist")
+        end
+    elseif action == "rez" then
+        local macro = VB:BuildRezMacro()
+        if macro then
+            proxy:SetAttribute("type", "macro")
+            proxy:SetAttribute("macrotext", macro)
+        else
+            -- No rez spell known: leave the proxy inert (may hold an old one)
+            proxy:SetAttribute("type", nil)
+            proxy:SetAttribute("macrotext", nil)
         end
     end
 end
@@ -416,6 +488,8 @@ function VB:BuildWheelActionText(binding, newProxy)
     elseif action == "macro" then
         return binding.value
     end
+    -- "rez" has no wheel form: the gate stops on a dead @mouseover, which is
+    -- exactly what a rez needs, so that wheel is left unbound (like togglemenu).
     return nil
 end
 
@@ -710,6 +784,13 @@ function VB:SetButtonAttribute(button, attrKey, actionType, actionValue, rankLoc
         button:SetAttribute(attrKey, "togglemenu")
     elseif actionType == "assist" then
         button:SetAttribute(attrKey, "assist")
+    elseif actionType == "rez" then
+        local macro = VB:BuildRezMacro()
+        if macro then
+            button:SetAttribute(attrKey, "macro")
+            local macroKey = attrKey:gsub("type", "macrotext")
+            button:SetAttribute(macroKey, macro)
+        end
     end
 end
 
@@ -858,6 +939,8 @@ function VB:GetActionDisplayText(binding)
         return "|cFF888888" .. VB.L["DISPLAY_MENU"] .. "|r"
     elseif action == "assist" then
         return "|cFFFF00FF" .. VB.L["DISPLAY_ASSIST"] .. "|r"
+    elseif action == "rez" then
+        return "|cFF00FFFF" .. VB.L["DISPLAY_REZ"] .. "|r"
     end
     return action or "?"
 end

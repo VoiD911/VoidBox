@@ -117,6 +117,25 @@ VB.FOREVER_DISPEL_SPELLS = {
     [475]  = 2,  -- Remove Lesser Curse
 }
 
+-- Resurrection spells per class for the "rez" click-cast action. Rank 1 IDs:
+-- every rank shares one localized name, so casting by that name fires the
+-- highest known rank. First known ID of each list wins.
+-- normal = usable out of combat, combat = battle res. No Vanilla paladin
+-- battle res exists.
+-- The druid out-of-combat "Revive" is a Forever-only spell with its own ID:
+-- 437138 (read from a level 14 druid's spellbook with /vb rezdebug, shown as
+-- "Ressusciter" Rang 1 on frFR). The Retail ID 50769 does not exist here.
+-- Rebirth (20484, level 20) is the battle res and covers both when Revive is
+-- not known.
+-- No warlock: Vanilla Soulstone is cast on a LIVING player (self-res later),
+-- not on a corpse. Add it only if Forever is confirmed to change that.
+VB.FOREVER_REZ_SPELLS = {
+    PRIEST  = { normal = { 2006 } },                       -- Resurrection
+    PALADIN = { normal = { 7328 } },                       -- Redemption
+    SHAMAN  = { normal = { 2008 } },                       -- Ancestral Spirit
+    DRUID   = { normal = { 437138 }, combat = { 20484 } }, -- Revive (Forever), Rebirth
+}
+
 -- Spells that clear more than one school
 VB.FOREVER_DISPEL_EXTRA = {
     [1152] = { 4 },     -- Purify also clears Poison
@@ -146,11 +165,7 @@ local function spellExists(id)
 end
 
 local function spellKnown(id)
-    local fn = (C_SpellBook and C_SpellBook.IsSpellKnown) or _G.IsSpellKnown
-    if type(fn) ~= "function" then return false end
-    local ok, known = pcall(fn, id)
-    if ok then return VB:SafeBool(known) end
-    return false
+    return VB:IsSpellKnownByID(id)
 end
 
 -- Build VB.healBuffNames from the base IDs above.

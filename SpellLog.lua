@@ -259,3 +259,65 @@ function VB:SpellLogRanks(query)
     end
     Append(("RANKS   %d match(es). If only one rank shows, the spellbook hides lower ranks."):format(found))
 end
+
+-- Why does the "rez" action do (or not do) what it does? Dumps what the client says about
+-- every candidate spell, what VoidBox concluded, the macro it built, and the whole spellbook
+-- so the real resurrection spell can be identified.
+function VB:SpellLogRez()
+    if not window then CreateWindow() end
+    window:Show()
+
+    local class = VB.playerClass or select(2, UnitClass("player"))
+    local data = VB.isForever and VB.FOREVER_REZ_SPELLS or VB.REZ_SPELLS
+    Append(("REZ     class=%s level=%s forever=%s locale=%s tocVersion=%s"):format(
+        show(class), show(UnitLevel("player")), show(VB.isForever), show(GetLocale()), show(VB.tocVersion)))
+
+    local list = data and data[class]
+    if not list then
+        Append("REZ     no candidate table for this class on this client")
+    else
+        for _, slotName in ipairs({ "normal", "combat" }) do
+            for _, id in ipairs(list[slotName] or {}) do
+                Append(("REZ     candidate %s  isKnownByID=%s  highestRank=%s"):format(
+                    slotName, show(VB:IsSpellKnownByID(id)),
+                    show(VB.GetHighestKnownRank and VB:GetHighestKnownRank(id))))
+                Append("REZ       " .. DescribeSpell(id))
+            end
+        end
+    end
+
+    local spells = VB:GetRezSpells()
+    Append(("REZ     resolved: normal=%q combat=%q"):format(show(spells.normal), show(spells.combat)))
+    Append(("REZ     macro: %s"):format(show(VB:BuildRezMacro())))
+
+    -- Every rez binding currently configured, and what is actually set on a frame
+    local n = 0
+    for _, b in ipairs(VB.clickCastings or {}) do
+        if b.action == "rez" then
+            n = n + 1
+            Append(("REZ     binding: mouse=%s combo=%s mods=%q display=%q"):format(
+                show(b.mouse), show(b.combo), show(b.mods), show(b.display)))
+        end
+    end
+    Append(("REZ     %d rez binding(s) configured"):format(n))
+
+    -- The whole spellbook: name / rank text / id
+    local bank = (Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player) or 0
+    local numLines = try(C_SpellBook and C_SpellBook.GetNumSpellBookSkillLines) or 0
+    Append("BOOK    --- full spellbook ---")
+    for line = 1, numLines do
+        local lineInfo = try(C_SpellBook.GetSpellBookSkillLineInfo, line)
+        if type(lineInfo) == "table" and lineInfo.numSpellBookItems then
+            Append(("BOOK    [%s]"):format(show(lineInfo.name)))
+            local offset = lineInfo.itemIndexOffset or 0
+            for i = 1, lineInfo.numSpellBookItems do
+                local item = try(C_SpellBook.GetSpellBookItemInfo, offset + i, bank)
+                if type(item) == "table" and item.name and not isSecret(item.name) then
+                    Append(("BOOK    %s  subName=%q  id=%s"):format(
+                        show(item.name), show(item.subName), show(item.spellID)))
+                end
+            end
+        end
+    end
+    Append("REZ     done - Select all, Ctrl+C, and paste it back.")
+end

@@ -116,6 +116,16 @@ function VB:GetSpellIcon(spellID)
     return icon
 end
 
+-- True when the player knows this exact spell ID. Guarded: each client only
+-- has some of these APIs, and they may raise on an ID they do not know.
+function VB:IsSpellKnownByID(spellID)
+    local fn = (C_SpellBook and C_SpellBook.IsSpellKnown) or _G.IsSpellKnown or _G.IsPlayerSpell
+    if type(fn) ~= "function" then return false end
+    local ok, known = pcall(fn, spellID)
+    if ok then return VB:SafeBool(known) end
+    return false
+end
+
 -------------------------------------------------
 -- Cursor Info Wrapper
 -- GetCursorInfo for spells returns: "spell", spellIndex, bookType, spellID

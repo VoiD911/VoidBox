@@ -1,5 +1,32 @@
 # VoidBox
 
+## v1.17.0 (2026-09-24)
+
+- **New click-cast action: Resurrect.** Requested on CurseForge. Bound to a
+  click or key, it resurrects the dead unit under the cursor with the right
+  spell for your class, using a battle res when you are in combat.
+    - Built as a `@mouseover` macro:
+      `/cast [@mouseover,dead,combat] <battle res>; [@mouseover,dead,nocombat] <res>`.
+      Spell names are resolved from spell IDs at runtime, so it works in every
+      locale; a class with no known res spell simply gets no action
+    - Where a class' only res works in and out of combat (Rebirth, Raise Ally,
+      Soulstone) it is used for both clauses
+    - Forever: rank 1 IDs are resolved to the shared name, so the highest known
+      rank is cast. Druids use Forever's own out-of-combat "Revive" (ID 437138,
+      not the Retail one) and Rebirth in combat
+    - Re-applied with the other bindings when spells or talents change
+    - New `VB:IsSpellKnownByID()` in Compat.lua, shared with Forever.lua's
+      dispel detection
+    - Not available on the opt-in mouse wheel fallback: that gate stops on a
+      dead unit, which is what a resurrect needs
+    - Forever has no warlock entry: Soulstone Resurrection is not a spellbook
+      spell there (it comes from the Soulstone item)
+    - New `/vb rezdebug` command: dumps, in the copyable spell window, what
+      the client says about each candidate res spell, the macro that was
+      built and the whole spellbook. Handy to report a class that gets no res
+    - Localized: English default, French and German (other locales fall back to
+      English, like the other action names)
+
 ## v1.16.0 (2026-09-24)
 
 - **Mana bar height slider** (Options tab, 2-12, default 4), next to the "Show

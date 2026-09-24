@@ -545,6 +545,7 @@ function VB:CreateAddBindingDialog()
         { text = VB.L["ACTION_FOCUS"], value = "focus" },
         { text = VB.L["ACTION_MENU"], value = "togglemenu" },
         { text = VB.L["ACTION_ASSIST"], value = "assist" },
+        { text = VB.L["ACTION_REZ"], value = "rez" },
     }, VB.L["ACTION_SPELL"])
     actionDropdown:SetPoint("TOPLEFT", 15, -133)
     addDialog.actionDropdown = actionDropdown
