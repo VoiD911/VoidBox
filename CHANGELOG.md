@@ -1,5 +1,12 @@
 # VoidBox
 
+## v1.18.0 (2026-09-24)
+
+- **New click-cast action: Follow.** Bound to a click, key or wheel, it follows
+  the player under the cursor (`/follow [@mouseover,exists]`).
+    - Always a macro: WoW has no secure "follow" action type, unlike Assist
+    - Localized: English default, French and German, like the other actions
+
 ## v1.17.0 (2026-09-24)
 
 - **New click-cast action: Resurrect.** Requested on CurseForge. Bound to a

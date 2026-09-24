@@ -8,7 +8,7 @@
         combo    = "CTRL-F1",           -- WoW key string (for keyboard) or nil (for mouse)
         mouse    = "Left",              -- mouse button name or nil (for keyboard)
         mods     = "ctrl-shift",        -- modifier string (sorted: alt-ctrl-shift)
-        action   = "spell",             -- spell/macro/target/focus/togglemenu/assist/rez
+        action   = "spell",             -- spell/macro/target/focus/togglemenu/assist/follow/rez
         value    = 12345,               -- spellID, macro body, or nil
         display  = "Ctrl + F1",         -- human-readable combo text
         name     = "Renew",             -- display name for the action
@@ -363,6 +363,10 @@ function VB:ConfigureKBProxy(proxy, binding, mouseoverMode)
         else
             proxy:SetAttribute("type", "assist")
         end
+    elseif action == "follow" then
+        -- No secure "follow" action type exists: always a macro, in both modes
+        proxy:SetAttribute("type", "macro")
+        proxy:SetAttribute("macrotext", "/follow [@mouseover,exists]")
     elseif action == "rez" then
         local macro = VB:BuildRezMacro()
         if macro then
@@ -485,6 +489,8 @@ function VB:BuildWheelActionText(binding, newProxy)
         return "/focus [@mouseover]"
     elseif action == "assist" then
         return "/assist [@mouseover]"
+    elseif action == "follow" then
+        return "/follow [@mouseover]"
     elseif action == "macro" then
         return binding.value
     end
@@ -784,6 +790,10 @@ function VB:SetButtonAttribute(button, attrKey, actionType, actionValue, rankLoc
         button:SetAttribute(attrKey, "togglemenu")
     elseif actionType == "assist" then
         button:SetAttribute(attrKey, "assist")
+    elseif actionType == "follow" then
+        button:SetAttribute(attrKey, "macro")
+        local macroKey = attrKey:gsub("type", "macrotext")
+        button:SetAttribute(macroKey, "/follow [@mouseover,exists]")
     elseif actionType == "rez" then
         local macro = VB:BuildRezMacro()
         if macro then
@@ -939,6 +949,8 @@ function VB:GetActionDisplayText(binding)
         return "|cFF888888" .. VB.L["DISPLAY_MENU"] .. "|r"
     elseif action == "assist" then
         return "|cFFFF00FF" .. VB.L["DISPLAY_ASSIST"] .. "|r"
+    elseif action == "follow" then
+        return "|cFF88FF88" .. VB.L["DISPLAY_FOLLOW"] .. "|r"
     elseif action == "rez" then
         return "|cFF00FFFF" .. VB.L["DISPLAY_REZ"] .. "|r"
     end
