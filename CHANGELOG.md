@@ -1,5 +1,12 @@
 # VoidBox
 
+## v1.18.1 (2026-09-24)
+
+- **Fix: the Follow action said "Unknown unit".** `/follow` is a plain slash
+  command that hands its text straight to `FollowUnit()`: unlike `/assist` it
+  does not understand `[@mouseover,exists]`, which it took as a unit name. The
+  macro is now `/follow mouseover`.
+
 ## v1.18.0 (2026-09-24)
 
 - **New click-cast action: Follow.** Bound to a click, key or wheel, it follows

@@ -364,9 +364,11 @@ function VB:ConfigureKBProxy(proxy, binding, mouseoverMode)
             proxy:SetAttribute("type", "assist")
         end
     elseif action == "follow" then
-        -- No secure "follow" action type exists: always a macro, in both modes
+        -- No secure "follow" action type exists: always a macro, in both modes.
+        -- /follow is a plain slash command, FollowUnit(msg): it does NOT parse
+        -- [@unit] conditionals ("[@mouseover,exists]" gave "Unknown unit").
         proxy:SetAttribute("type", "macro")
-        proxy:SetAttribute("macrotext", "/follow [@mouseover,exists]")
+        proxy:SetAttribute("macrotext", "/follow mouseover")
     elseif action == "rez" then
         local macro = VB:BuildRezMacro()
         if macro then
@@ -490,7 +492,7 @@ function VB:BuildWheelActionText(binding, newProxy)
     elseif action == "assist" then
         return "/assist [@mouseover]"
     elseif action == "follow" then
-        return "/follow [@mouseover]"
+        return "/follow mouseover"
     elseif action == "macro" then
         return binding.value
     end
@@ -793,7 +795,7 @@ function VB:SetButtonAttribute(button, attrKey, actionType, actionValue, rankLoc
     elseif actionType == "follow" then
         button:SetAttribute(attrKey, "macro")
         local macroKey = attrKey:gsub("type", "macrotext")
-        button:SetAttribute(macroKey, "/follow [@mouseover,exists]")
+        button:SetAttribute(macroKey, "/follow mouseover")   -- no conditionals, see above
     elseif actionType == "rez" then
         local macro = VB:BuildRezMacro()
         if macro then
