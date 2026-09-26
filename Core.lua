@@ -147,6 +147,12 @@ for _, event in ipairs({
     "PLAYER_SPECIALIZATION_CHANGED",
     "PLAYER_TALENT_UPDATE",
     "LEARNED_SPELL_IN_TAB",
+    -- LEARNED_SPELL_IN_TAB is the pre-11.0 name; modern clients (Forever
+    -- included) fire LEARNED_SPELL_IN_SKILL_LINE instead, and SPELLS_CHANGED
+    -- covers trainer ranks. Without them a rank learned mid-session (Regrowth
+    -- rank 2) stayed out of the HoT row until a /reload.
+    "LEARNED_SPELL_IN_SKILL_LINE",
+    "SPELLS_CHANGED",
     "PLAYER_REGEN_ENABLED",
 }) do
     VB:SafeRegisterEvent(eventFrame, event)
@@ -178,6 +184,8 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
                 VB:UpdateRole(button)
             end
         end
+    elseif event == "LEARNED_SPELL_IN_SKILL_LINE" or event == "SPELLS_CHANGED" then
+        VB:OnSpellsChanged()
     elseif event == "PLAYER_REGEN_ENABLED" then
         if VB.pendingUpdate then
             VB.pendingUpdate = false
@@ -474,6 +482,34 @@ end
 function VB:OnGroupRosterUpdate()
     VB:UpdateGroupType()
     VB:UpdateAllFrames()
+end
+
+-- The spellbook changed (new spell or rank). SPELLS_CHANGED is noisy - a druid
+-- fires it on every shapeshift - so coalesce bursts into one rebuild, and only
+-- push the HoT filter to the frames when the accepted set actually changed.
+local function SameIDSet(a, b)
+    if a == b then return true end
+    if not a or not b then return false end
+    for k in pairs(a) do if not b[k] then return false end end
+    for k in pairs(b) do if not a[k] then return false end end
+    return true
+end
+
+function VB:OnSpellsChanged()
+    if VB._spellsChangedPending then return end
+    VB._spellsChangedPending = true
+    C_Timer.After(1, function()
+        VB._spellsChangedPending = false
+        local before = VB.healBuffIDs
+        VB:BuildForeverHealBuffNames()
+        VB:BuildHealBuffIDSet()
+        if not SameIDSet(before, VB.healBuffIDs) then
+            VB:RefreshAuraContainerFilters()
+            for _, group in ipairs({ VB.unitButtons, VB.tankButtons, VB.petButtons }) do
+                for _, button in pairs(group or {}) do VB:UpdateAuras(button) end
+            end
+        end
+    end)
 end
 
 function VB:OnSpecChanged()

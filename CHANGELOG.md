@@ -1,5 +1,17 @@
 # VoidBox
 
+## v1.18.3 (2026-09-26)
+
+- **Fix: a HoT rank learned mid-session did not show in the HoT row until a
+  `/reload`** (e.g. Regrowth rank 2 bought from the trainer on Forever).
+    - The row only accepts the ranks found in the spellbook, and that list was
+      rebuilt on `LEARNED_SPELL_IN_TAB`, an event modern clients (Forever
+      included) no longer fire. It is now also rebuilt on
+      `LEARNED_SPELL_IN_SKILL_LINE` and `SPELLS_CHANGED`.
+    - Bursts are coalesced into one rebuild a second later, and frames are only
+      refreshed when the list actually changed (druids fire `SPELLS_CHANGED` on
+      every shapeshift).
+
 ## v1.18.2 (2026-09-24)
 
 - **Fix: the debuff (DoT) and HoT icon size sliders often did nothing.**
