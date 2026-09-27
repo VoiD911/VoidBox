@@ -1,5 +1,14 @@
 # VoidBox
 
+## v1.19.1 (2026-09-27)
+
+- **Fix: unrelated buffs appearing in the HoT row on Forever**, such as
+  Find Herbs on a paladin. Finding no matching healing/protection spells in
+  the character's spellbook no longer disables the aura filter. Built-in
+  HoTs/protection buffs and explicitly tracked buffs remain allowed, with
+  learned ranks still added automatically. Confirmed in-game on the affected
+  paladin.
+
 ## v1.19.0 (2026-09-27)
 
 - **First Burning Crusade Classic Anniversary support** (Interface 20506,

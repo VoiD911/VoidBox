@@ -286,13 +286,9 @@ function VB:BuildHealBuffIDSet()
                 found = found + 1
             end
         end)
-        -- If the spellbook gave us nothing, applying this set as a filter would
-        -- blank the row entirely. Better unfiltered than empty.
-        if found == 0 then
-            VB.healBuffIDs = nil
-            VB:Debug("Heal buff ID set: spellbook walk found nothing, filter disabled")
-            return
-        end
+        -- Zero matching ranks is valid: a character may not know any of the
+        -- built-in healing/protection buffs yet. Keep the base and custom IDs
+        -- collected above; disabling the filter would display every own buff.
         VB:Debug("Heal buff ID set: " .. found .. " ranks from spellbook")
     end
 
