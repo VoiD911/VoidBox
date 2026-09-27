@@ -504,7 +504,7 @@ end
 -------------------------------------------------
 -- Fallback keyboard bindings (no secure snippets)
 --
--- Forever builds without loadstring_untainted cannot compile _onenter/_onleave,
+-- Forever builds that fail the execution probe cannot run _onenter/_onleave,
 -- so hover-scoped bindings are impossible. Instead we install global override
 -- bindings onto @mouseover proxy buttons - the classic mouseover-macro approach.
 -- Trade-offs: bindings are global rather than frame-scoped, and scroll-wheel
@@ -613,8 +613,8 @@ function VB:SetupSecureBindings(button)
     local btnName = button:GetName()
     if not btnName then return end
 
-    -- Without loadstring_untainted the client cannot compile snippets at all,
-    -- so setting _onenter would be a silent no-op. Take the fallback path.
+    -- Use global fallback bindings only when the actual snippet execution
+    -- probe failed; a missing loadstring_untainted global is not sufficient.
     if not VB.hasSecureSnippets then
         button:EnableMouseWheel(false)
         return VB:ApplyFallbackKeyBindings()
@@ -708,7 +708,7 @@ function VB:SetupSecureBindings(button)
     -- cannot run there, and the failure only surfaces when the snippet
     -- executes. So this pcall guards against SetAttribute itself raising, not
     -- against a broken snippet engine - that case is what the
-    -- VB.hasSecureSnippets check (loadstring_untainted present) is for, and
+    -- VB.hasSecureSnippets execution probe is for, and
     -- /vb debugsnippets is how to verify it against a real execution.
     local compiled = pcall(button.SetAttribute, button, "_onenter", enterSnippet)
     if compiled then

@@ -1,5 +1,14 @@
 # VoidBox
 
+## v1.19.2 (2026-09-27)
+
+- **Fix: keyboard bindings staying global on compatible Forever clients.**
+  Secure script support is now detected by executing a small handler rather
+  than checking whether `loadstring_untainted` is exposed to addons. Clients
+  that support secure handlers use bindings active only while hovering a
+  VoidBox unit frame, releasing them when the cursor leaves. The existing
+  fallback remains available for clients where secure scripts cannot run.
+
 ## v1.19.1 (2026-09-27)
 
 - **Fix: unrelated buffs appearing in the HoT row on Forever**, such as

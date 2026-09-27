@@ -1392,10 +1392,8 @@ SlashCmdList["VOIDBOX"] = function(msg)
             .. " - needs the wheel option enabled and a spell bound to the wheel.")
         VB:ApplyClickCastingsToAllFrames()
     elseif msg == "debugsnippets" then
-        -- Do secure snippets actually run on this client? The Forever fallback
-        -- keys off the loadstring_untainted global being absent, which was
-        -- measured on build 69893 - never on the current build. This makes the
-        -- client execute real snippets instead of checking for a global.
+        -- Repeat the startup execution probe and report the selected mode.
+        -- A missing loadstring_untainted global does not imply broken snippets.
         VB:Print("=== Debug secure snippets ===")
         VB:Print("  loadstring_untainted global: " .. type(loadstring_untainted)
             .. " - in combat: " .. tostring(InCombatLockdown())

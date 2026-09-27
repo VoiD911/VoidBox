@@ -7,7 +7,7 @@
       * there are no specializations (GetSpecialization & friends are gone,
         only C_SpecializationInfo survives and returns nil)
       * spell content is Vanilla: Retail spell IDs simply do not exist
-      * secure snippets only compile when loadstring_untainted is present
+      * secure snippet support must be checked by executing a snippet
       * registering an event the client does not know aborts the whole file
 
     Loaded right after Compat.lua. On Retail everything here stays inert.
@@ -38,9 +38,26 @@ VB.isForever = (VB.tocVersion > 0 and VB.tocVersion < 20000
 VB.hasRankedSpellbook = VB.isForever
     or not (C_UnitAuras and C_UnitAuras.GetUnitAuras)
 
--- Secure snippets (_onenter/_onleave/_onstate-*) need loadstring_untainted.
--- It is missing on early Forever builds, which silently kills every snippet.
-VB.hasSecureSnippets = (type(loadstring_untainted) == "function")
+-- Forever can execute secure snippets even when loadstring_untainted is not
+-- exposed to addons. Storing snippet text alone also proves nothing: execute
+-- an attribute handler and verify its result before selecting hover bindings.
+local function ProbeSecureSnippets()
+    local probe
+    local ok, supported = pcall(function()
+        probe = CreateFrame("Frame", nil, UIParent, "SecureHandlerAttributeTemplate")
+        probe:SetAttribute("_onattributechanged",
+            [[ if name == "vbping" then self:SetAttribute("vbpong", value) end ]])
+        probe:SetAttribute("vbping", 42)
+        return probe:GetAttribute("vbpong") == 42
+    end)
+    if probe then
+        pcall(probe.SetAttribute, probe, "_onattributechanged", nil)
+        pcall(probe.Hide, probe)
+    end
+    return ok and supported == true
+end
+
+VB.hasSecureSnippets = ProbeSecureSnippets()
 
 -------------------------------------------------
 -- Safe event registration
