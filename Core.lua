@@ -1305,12 +1305,12 @@ SlashCmdList["VOIDBOX"] = function(msg)
             VB:Print(("  ShouldSpellAuraBeSecret(%d)=%s/%s  GetSpellAuraSecrecy=%s/%s"):format(
                 probeID, tostring(ok1), tostring(secret1), tostring(ok2), tostring(level)))
         end
-        if C_UnitAuras.GetUnitAuraBySpellID then
+        if C_UnitAuras and C_UnitAuras.GetUnitAuraBySpellID then
             local ok, aura = pcall(C_UnitAuras.GetUnitAuraBySpellID, unit, probeID)
             VB:Print(("  GetUnitAuraBySpellID(%d) ok=%s %s"):format(probeID, tostring(ok),
                 ok and ("got=" .. tostring(aura ~= nil)) or "(raised)"))
         end
-        if C_UnitAuras.GetAuraDataBySpellName and probeName then
+        if C_UnitAuras and C_UnitAuras.GetAuraDataBySpellName and probeName then
             local ok, aura = pcall(C_UnitAuras.GetAuraDataBySpellName, unit, probeName, "HELPFUL")
             VB:Print(("  GetAuraDataBySpellName(%s) ok=%s %s"):format(probeName, tostring(ok),
                 ok and ("got=" .. tostring(aura ~= nil)) or "(raised)"))

@@ -636,6 +636,12 @@ function VB:FindRangeCheckSpell()
     local candidates = VB:GetRangeSpellCandidates(VB.playerClass, rangeCheckCandidates)
     if not candidates or #candidates == 0 then return end
     
+    -- C_Spell.IsSpellInRange is Dragonflight+ only. Indexing a nil C_Spell would
+    -- error before pcall can catch it, so check it exists first (Retail/Forever
+    -- have it; BCC Anniversary and other legacy-API clients do not - the range
+    -- check is simply unavailable there).
+    if not (C_Spell and C_Spell.IsSpellInRange) then return end
+
     for _, spellID in ipairs(candidates) do
         local name = VB:GetSpellName(spellID)
         if name then

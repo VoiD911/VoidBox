@@ -26,6 +26,18 @@ VB.tocVersion = tonumber(tocVersion) or 0
 VB.isForever = (VB.tocVersion > 0 and VB.tocVersion < 20000
                 and C_Secrets ~= nil and C_Secrets.HasSecretRestrictions ~= nil) or false
 
+-- Any client whose spells still have their own per-rank ID (Vanilla, TBC/BCC
+-- Anniversary, Forever...) needs auras matched by localized NAME instead of
+-- ID: only rank 1 of a spell tends to share the Retail ID the rest of the
+-- addon is keyed on (see VB.healBuffSpellIDs). C_UnitAuras.GetUnitAuras is
+-- the Dragonflight+ unified aura reader; its absence is what actually causes
+-- the multi-rank problem, on any client - not being "Forever" specifically.
+-- (Forever itself already satisfies this, since a client that new would
+-- otherwise have GetUnitAuras; kept explicit so isForever changing shape
+-- later can't silently drop this.)
+VB.hasRankedSpellbook = VB.isForever
+    or not (C_UnitAuras and C_UnitAuras.GetUnitAuras)
+
 -- Secure snippets (_onenter/_onleave/_onstate-*) need loadstring_untainted.
 -- It is missing on early Forever builds, which silently kills every snippet.
 VB.hasSecureSnippets = (type(loadstring_untainted) == "function")
@@ -168,9 +180,11 @@ local function spellKnown(id)
     return VB:IsSpellKnownByID(id)
 end
 
--- Build VB.healBuffNames from the base IDs above.
+-- Build VB.healBuffNames from the base IDs above. Despite the name this also
+-- runs on any other ranked-spellbook client (see VB.hasRankedSpellbook): the
+-- base IDs are old rank-1 IDs that stayed stable from Vanilla through TBC.
 function VB:BuildForeverHealBuffNames()
-    if not VB.isForever then return end
+    if not VB.hasRankedSpellbook then return end
     wipe(VB.healBuffNames)
     for _, id in ipairs(VB.FOREVER_HEAL_BUFF_BASE_IDS) do
         local name = VB:GetSpellName(id)
@@ -263,7 +277,7 @@ function VB:BuildHealBuffIDSet()
     -- The dropped IDs themselves: all a rank-less (Retail) client needs
     for id in pairs(VB.customBuffIDSet) do ids[id] = true end
 
-    if VB.isForever and (next(VB.healBuffNames) or next(VB.customBuffNames)) then
+    if VB.hasRankedSpellbook and (next(VB.healBuffNames) or next(VB.customBuffNames)) then
         local found = 0
         ForEachKnownSpell(function(spellID, name)
             name = name or VB:GetSpellName(spellID)

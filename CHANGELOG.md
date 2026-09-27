@@ -1,5 +1,25 @@
 # VoidBox
 
+## v1.19.0 (2026-09-27)
+
+- **First Burning Crusade Classic Anniversary support** (Interface 20506,
+  added to the `.toc`). This is a first cut, not yet confirmed in-game by the
+  author - please report bugs on CurseForge.
+    - Core frames, health/power bars and click-casting use the same secure
+      templates and defensive API fallbacks already shared with Retail and
+      WoW Forever, so they are expected to work out of the box.
+    - HoT tracking: the multi-rank matching added for Forever in v1.18.3 (a
+      spell keeps one localized name across every rank, only rank 1 tends to
+      share the modern ID) now also applies to BCC Anniversary and any other
+      client without the unified Dragonflight+ aura API
+      (`VB.hasRankedSpellbook`, generalized from `VB.isForever`).
+    - **Known gap:** dispel-highlight border colors depend on Dragonflight+
+      APIs (`C_CurveUtil`, `C_UnitAuras.GetAuraDispelTypeColor`) that BCC
+      Anniversary does not have, so the feature is unavailable there for now
+      rather than showing wrong colors. The range-check spell is picked from
+      the Retail candidate list and self-verified before use, so it is simply
+      left unset (no range check) when none of those spells exist on BCC.
+
 ## v1.18.3 (2026-09-26)
 
 - **Fix: a HoT rank learned mid-session did not show in the HoT row until a

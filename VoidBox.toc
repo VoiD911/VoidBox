@@ -1,4 +1,4 @@
-﻿## Interface: 120000, 16001
+﻿## Interface: 120000, 16001, 20506
 ## Title: VoidBox
 ## Notes: Minimalist healer raid frames with click-casting - Cell/VuhDo style
 ## Notes-frFR: Raid frames minimalistes pour healers avec click-casting - Style Cell/VuhDo
@@ -11,7 +11,7 @@
 ## Notes-koKR: 미니멀리스트 힐러 레이드 프레임 - Cell/VuhDo 스타일
 ## Notes-itIT: Raid frame minimalisti per healer con click-casting - Stile Cell/VuhDo
 ## Author: VoiD911
-## Version: 1.18.3
+## Version: 1.19.0
 ## SavedVariables: VoidBoxDB
 ## IconTexture: Interface\Icons\Spell_Holy_Heal
 ## X-Curse-Project-ID: 1459481
