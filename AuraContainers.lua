@@ -166,7 +166,7 @@ end
 
 -- Re-apply after the spellbook changes (new rank learned, spec swap).
 function VB:RefreshAuraContainerFilters()
-    for _, group in ipairs({ VB.unitButtons, VB.tankButtons, VB.petButtons }) do
+    for _, group in ipairs({ VB.unitButtons, VB.tankButtons, VB.petButtons, VB.targetButtons }) do
         for _, button in pairs(group or {}) do
             if button.buffContainer then
                 VB:ApplyAuraContainerFilters(button.buffContainer)

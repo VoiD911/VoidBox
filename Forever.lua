@@ -280,7 +280,7 @@ end
 function VB:RefreshCustomBuffs()
     VB:BuildHealBuffIDSet()
     VB:RefreshAuraContainerFilters()
-    for _, group in ipairs({ VB.unitButtons, VB.tankButtons, VB.petButtons }) do
+    for _, group in ipairs({ VB.unitButtons, VB.tankButtons, VB.petButtons, VB.targetButtons }) do
         for _, button in pairs(group or {}) do VB:UpdateAuras(button) end
     end
     if VB.RefreshCustomBuffsList then VB:RefreshCustomBuffsList() end

@@ -1,5 +1,21 @@
 # VoidBox
 
+## v1.20.0 (2026-09-28)
+
+- Optional independent target/focus frame (disabled by default), available in
+  Appearance. Target, target of target and focus boxes can be enabled separately;
+  only Target is selected initially. Uses existing click-cast bindings and
+  appearance settings, including for units outside the party. Tracks changes
+  in combat and hides missing units without moving the remaining boxes.
+  Position and selected boxes are saved per profile. Unlock frames and drag
+  its handle to move it. Remains available when group frames are hidden solo.
+  Hostile targets retain full opacity; healing-range dimming applies to
+  assistable units in these boxes.
+  Choose a horizontal or vertical layout independently of the group frames;
+  the selection is saved per profile and defaults to horizontal.
+- Compact target/focus options: box selection on one row, orientation on the
+  next, with contextual help available from the question-mark tooltip.
+
 ## v1.19.2 (2026-09-27)
 
 - **Fix: keyboard bindings staying global on compatible Forever clients.**

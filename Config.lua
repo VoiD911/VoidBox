@@ -682,10 +682,16 @@ end
 -- Appearance Tab
 -------------------------------------------------
 function VB:CreateAppearanceTab()
-    local content = CreateFrame("Frame", nil, configFrame.content)
-    content:SetAllPoints()
-    content:Hide()
-    configFrame.appearanceContent = content
+    local panel = CreateFrame("Frame", nil, configFrame.content)
+    panel:SetAllPoints()
+    panel:Hide()
+    configFrame.appearanceContent = panel
+    local scroll = CreateFrame("ScrollFrame", nil, panel, "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT")
+    scroll:SetPoint("BOTTOMRIGHT", -25, 0)
+    local content = CreateFrame("Frame", nil, scroll)
+    content:SetSize(455, 1000)
+    scroll:SetScrollChild(content)
     
     local yOffset = -10
     
@@ -818,6 +824,79 @@ function VB:CreateAppearanceTab()
     end)
     yOffset = yOffset - 30
 
+    local targetOptions = {}
+    local function RefreshTargetOptions()
+        for _, cb in ipairs(targetOptions) do
+            cb:SetEnabled(VB.config.showTargetFrame == true)
+            cb:SetAlpha(VB.config.showTargetFrame and 1 or 0.5)
+            if cb.menu and not VB.config.showTargetFrame then
+                cb.menu:Hide()
+                cb.isOpen = false
+            end
+        end
+    end
+    local targetFrameCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    targetFrameCB:SetPoint("TOPLEFT", 10, yOffset)
+    targetFrameCB.text:SetText(VB.L["SHOW_TARGET_FRAME"])
+    targetFrameCB:SetChecked(VB.config.showTargetFrame or false)
+    targetFrameCB:SetScript("OnClick", function(self)
+        VB.config.showTargetFrame = self:GetChecked()
+        RefreshTargetOptions()
+        VB:UpdateTargetFrame()
+    end)
+    yOffset = yOffset - 30
+
+    for _, option in ipairs({
+        { key = "targetFrameShowTarget", label = "TARGET_FRAME", x = 30, width = 85 },
+        { key = "targetFrameShowTargetTarget", label = "TARGET_OF_TARGET", x = 145, width = 160 },
+        { key = "targetFrameShowFocus", label = "FOCUS_FRAME", x = 335, width = 85 },
+    }) do
+        local key = option.key
+        local cb = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+        cb:SetPoint("TOPLEFT", option.x, yOffset)
+        cb.text:SetText(VB.L[option.label])
+        cb.text:SetWidth(option.width)
+        cb.text:SetJustifyH("LEFT")
+        cb:SetChecked(VB.config[key] == true)
+        targetOptions[#targetOptions + 1] = cb
+        cb:SetScript("OnClick", function(self)
+            VB.config[key] = self:GetChecked()
+            VB:UpdateTargetFrame()
+        end)
+    end
+    yOffset = yOffset - 30
+    local targetOrientLabel = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    targetOrientLabel:SetPoint("TOPLEFT", 30, yOffset - 6)
+    targetOrientLabel:SetText(VB.L["ORIENTATION"])
+    local targetOrientation = CreateSimpleDropdown(content, 170, {
+        { text = VB.L["ORIENTATION_H"], value = "HORIZONTAL" },
+        { text = VB.L["ORIENTATION_V"], value = "VERTICAL" },
+    }, VB.config.targetFrameOrientation == "VERTICAL" and VB.L["ORIENTATION_V"] or VB.L["ORIENTATION_H"])
+    targetOrientation:SetPoint("TOPLEFT", 160, yOffset)
+    targetOrientation.selectedValue = VB.config.targetFrameOrientation or "HORIZONTAL"
+    for _, item in ipairs({ targetOrientation.menu:GetChildren() }) do
+        item:HookScript("OnClick", function()
+            VB.config.targetFrameOrientation = targetOrientation.selectedValue
+            VB:UpdateTargetFrame()
+        end)
+    end
+    targetOptions[#targetOptions + 1] = targetOrientation
+    yOffset = yOffset - 35
+    RefreshTargetOptions()
+    local targetHelp = CreateFrame("Button", nil, content)
+    targetHelp:SetSize(22, 22)
+    targetHelp:SetPoint("LEFT", targetOrientation, "RIGHT", 8, 0)
+    local helpText = targetHelp:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    helpText:SetPoint("CENTER")
+    helpText:SetText("?")
+    targetHelp:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(VB.L["TARGETS_FRAME"])
+        GameTooltip:AddLine(VB.L["TARGET_FRAME_HELP"], 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    targetHelp:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
     local classColorsCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
     classColorsCB:SetPoint("TOPLEFT", 10, yOffset)
     classColorsCB.text:SetText(VB.L["CLASS_COLORS"])
@@ -825,6 +904,7 @@ function VB:CreateAppearanceTab()
     classColorsCB:SetScript("OnClick", function(self)
         VB.config.classColors = self:GetChecked()
         for _, button in pairs(VB.unitButtons) do VB:UpdateHealthBar(button) end
+        for _, button in pairs(VB.targetButtons) do VB:UpdateHealthBar(button) end
     end)
     yOffset = yOffset - 30
 
@@ -883,6 +963,7 @@ function VB:CreateAppearanceTab()
         for _, button in pairs(VB.unitButtons) do VB:UpdateAuras(button) end
         for _, button in pairs(VB.tankButtons) do VB:UpdateAuras(button) end
         for _, button in pairs(VB.petButtons) do VB:UpdateAuras(button) end
+        for _, button in pairs(VB.targetButtons) do VB:UpdateAuras(button) end
     end)
     
     local debuffSizeSlider = CreateSimpleSlider(content, VB.L["DEBUFF_ICON_SIZE"], 6, 30, 1, VB.config.debuffIconSize or 18, function(value)
@@ -901,6 +982,7 @@ function VB:CreateAppearanceTab()
         for _, button in pairs(VB.unitButtons) do VB:UpdateAuras(button) end
         for _, button in pairs(VB.tankButtons) do VB:UpdateAuras(button) end
         for _, button in pairs(VB.petButtons) do VB:UpdateAuras(button) end
+        for _, button in pairs(VB.targetButtons) do VB:UpdateAuras(button) end
     end)
     
     local buffSizeSlider = CreateSimpleSlider(content, VB.L["BUFF_ICON_SIZE"], 6, 30, 1, VB.config.buffIconSize or 12, function(value)
@@ -919,6 +1001,7 @@ function VB:CreateAppearanceTab()
         for _, button in pairs(VB.unitButtons) do VB:UpdateAuras(button) end
         for _, button in pairs(VB.tankButtons) do VB:UpdateAuras(button) end
         for _, button in pairs(VB.petButtons) do VB:UpdateAuras(button) end
+        for _, button in pairs(VB.targetButtons) do VB:UpdateAuras(button) end
     end)
     yOffset = yOffset - 30
 
@@ -987,8 +1070,10 @@ function VB:CreateAppearanceTab()
         VB.config.locked = not VB.config.locked
         if VB.frames.main then VB.frames.main:EnableMouse(not VB.config.locked) end
         if VB.frames.handle then VB.frames.handle:SetShown(not VB.config.locked) end
+        VB:UpdateTargetFrame()
         UpdateLockButton()
     end)
+    content:SetHeight(-yOffset + 45)
 end
 
 -------------------------------------------------
@@ -1009,6 +1094,7 @@ function VB:CreateDebuffsTab()
         for _, button in pairs(VB.unitButtons) do VB:UpdateAuras(button) end
         for _, button in pairs(VB.tankButtons) do VB:UpdateAuras(button) end
         for _, button in pairs(VB.petButtons) do VB:UpdateAuras(button) end
+        for _, button in pairs(VB.targetButtons) do VB:UpdateAuras(button) end
     end)
 
     -- === Tracked buffs ===

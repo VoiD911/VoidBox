@@ -109,7 +109,7 @@ end
 
 -- Re-render the name and HP% text of every frame (display toggles)
 function VB:RefreshFrameTexts()
-    for _, group in ipairs({ VB.unitButtons, VB.tankButtons, VB.petButtons }) do
+    for _, group in ipairs({ VB.unitButtons, VB.tankButtons, VB.petButtons, VB.targetButtons }) do
         for _, button in pairs(group) do
             VB:UpdateName(button)
             VB:UpdateHealthBar(button)
@@ -666,8 +666,18 @@ function VB:UpdateRange(button)
     if unit == "player" then return end
     
     local inRange = true
+    local checkHealRange = true
+    if unit == "target" or unit == "targettarget" or unit == "focus" then
+        -- A healing spell cannot measure distance to a hostile target. Keep
+        -- these boxes opaque unless the unit is known to be assistable.
+        -- Evaluate inside pcall in case the client protects the relationship.
+        local ok, canAssist = pcall(function()
+            return UnitCanAssist("player", unit) and true or false
+        end)
+        checkHealRange = ok and canAssist
+    end
     
-    if VB._rangeSpellID and C_Spell and C_Spell.IsSpellInRange then
+    if checkHealRange and VB._rangeSpellID and C_Spell and C_Spell.IsSpellInRange then
         local ok, result = pcall(C_Spell.IsSpellInRange, VB._rangeSpellID, unit)
         if ok then
             if result == nil then

@@ -11,6 +11,7 @@ VB.frames = {}
 VB.unitButtons = {}
 VB.tankButtons = {}
 VB.petButtons = {}
+VB.targetButtons = {}
 VB.config = {}
 VB.clickCastings = {}
 
@@ -55,6 +56,12 @@ VB.defaults = {
     tankFramePosition = nil,
     showPetFrame = false,
     petFramePosition = nil,
+    showTargetFrame = false,
+    targetFrameOrientation = "HORIZONTAL",
+    targetFrameShowTarget = true,
+    targetFrameShowTargetTarget = false,
+    targetFrameShowFocus = false,
+    targetFramePosition = nil,
     showDebuffs = true,
     showBuffs = true,
     debuffIconSize = 18,
@@ -209,6 +216,9 @@ VB.profileKeys = {
     "classColors", "locked", "position",
     "showTankFrame", "tankFramePosition",
     "showPetFrame", "petFramePosition",
+    "showTargetFrame", "targetFramePosition",
+    "targetFrameOrientation",
+    "targetFrameShowTarget", "targetFrameShowTargetTarget", "targetFrameShowFocus",
     "showDebuffs", "showBuffs",
     "debuffIconSize", "buffIconSize",
     "showDispelHighlight",
@@ -505,7 +515,7 @@ function VB:OnSpellsChanged()
         VB:BuildHealBuffIDSet()
         if not SameIDSet(before, VB.healBuffIDs) then
             VB:RefreshAuraContainerFilters()
-            for _, group in ipairs({ VB.unitButtons, VB.tankButtons, VB.petButtons }) do
+            for _, group in ipairs({ VB.unitButtons, VB.tankButtons, VB.petButtons, VB.targetButtons }) do
                 for _, button in pairs(group or {}) do VB:UpdateAuras(button) end
             end
         end
@@ -640,6 +650,9 @@ function VB:UpdateAllFrames()
         return
     end
     
+    -- The target frame is useful while levelling, even with the group hidden.
+    VB:UpdateTargetFrame()
+
     -- Hide when solo
     if VB.config.hideWhenSolo and VB.groupType == "solo" then
         if VB.frames.main then VB.frames.main:Hide() end
@@ -1220,6 +1233,7 @@ SlashCmdList["VOIDBOX"] = function(msg)
         if VB.frames.petFrame then VB.frames.petFrame:EnableMouse(false) end
         if VB.frames.petFrame and VB.frames.petFrame.handle then VB.frames.petFrame.handle:Hide() end
         VB:Print(VB.L["FRAMES_LOCKED"])
+        VB:UpdateTargetFrame()
     elseif msg == "unlock" then
         VB.config.locked = false
         VB.frames.main:EnableMouse(true)
@@ -1229,6 +1243,7 @@ SlashCmdList["VOIDBOX"] = function(msg)
         if VB.frames.petFrame then VB.frames.petFrame:EnableMouse(true) end
         if VB.frames.petFrame and VB.frames.petFrame.handle then VB.frames.petFrame.handle:Show() end
         VB:Print(VB.L["FRAMES_UNLOCKED"])
+        VB:UpdateTargetFrame()
     elseif msg == "reset" then
         VB.config.position = { point = "CENTER", x = 0, y = 0 }
         VB.frames.main:ClearAllPoints()
@@ -1249,6 +1264,12 @@ SlashCmdList["VOIDBOX"] = function(msg)
     elseif msg == "profile" or msg == "profiles" then
         VB:Print(VB.L["ACTIVE_PROFILE"] .. ": |cFF9966FF" .. VB:GetActiveProfileName() .. "|r")
         VB:Print(VB.L["PROFILES"] .. ": " .. table.concat(VB:GetProfileList(), ", "))
+    elseif msg == "debugtarget" then
+        if VB.DebugTargetFrame then
+            VB:DebugTargetFrame()
+        else
+            VB:Print("TargetFrame.lua is not loaded. Restart the game client to refresh the addon file list.")
+        end
     elseif msg == "debugauras" or msg:find("^debugauras%s+") then
         -- Probe which aura enumeration actually yields data on this client.
         -- Defaults to a friendly unit VoidBox displays, since in combat the
