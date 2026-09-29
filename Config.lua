@@ -173,7 +173,24 @@ function VB:CreateConfigFrame()
     VB:CreateProfilesTab()
     VB:ShowConfigTab("bindings")
     
-    tinsert(UISpecialFrames, "VoidBoxConfig")
+    if VB.tocVersion > 0 and VB.tocVersion < 100000 then
+        -- Classic clients call CloseSpecialWindows when the spellbook opens,
+        -- which would close the config while picking spells. Handle Escape
+        -- ourselves and let every other key through.
+        configFrame:EnableKeyboard(true)
+        configFrame:SetPropagateKeyboardInput(true)
+        configFrame:SetScript("OnKeyDown", function(self, key)
+            if key == "ESCAPE" then
+                self:SetPropagateKeyboardInput(false)
+                self:Hide()
+            else
+                self:SetPropagateKeyboardInput(true)
+            end
+        end)
+        configFrame:SetScript("OnShow", function(self) self:SetPropagateKeyboardInput(true) end)
+    else
+        tinsert(UISpecialFrames, "VoidBoxConfig")
+    end
 end
 
 -------------------------------------------------

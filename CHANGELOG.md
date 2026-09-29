@@ -1,5 +1,10 @@
 # VoidBox
 
+## v1.20.1 (2026-09-29)
+
+- **Fix: configuration window closing when the spellbook is opened** on
+  Classic clients (Forever, Burning Crusade Classic). Escape still closes it.
+
 ## v1.20.0 (2026-09-28)
 
 - Optional independent target/focus frame (disabled by default), available in
