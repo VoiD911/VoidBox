@@ -1,5 +1,12 @@
 # VoidBox
 
+## v1.22.0 (2026-09-30)
+
+- Eating/drinking indicator: while a group member eats or drinks, the food or
+  drink icon shows in the middle of their frame (dead and offline icons keep
+  priority). Works in the client's language on Retail, Burning Crusade
+  Classic and Forever. Toggle in Appearance, enabled by default.
+
 ## v1.21.0 (2026-09-30)
 
 - **Fix: dispellable debuff colours on Burning Crusade Classic.** The dispel

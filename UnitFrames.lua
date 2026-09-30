@@ -472,6 +472,7 @@ function VB:RegisterUnitButtonEvents(button)
             VB:UpdatePowerBar(self)
         elseif event == "UNIT_AURA" then
             VB:UpdateAuras(self)
+            VB:UpdateStatus(self)
         elseif event == "UNIT_NAME_UPDATE" then
             VB:UpdateName(self)
         elseif event == "UNIT_CONNECTION" then
@@ -567,9 +568,51 @@ function VB:UpdateStatus(button)
         statusIcon:SetTexture("Interface\\CharacterFrame\\Disconnect-Icon")
         statusIcon:Show()
         healthBar:SetStatusBarColor(0.3, 0.3, 0.3)
+    elseif VB.config.showEatDrink ~= false and VB:GetEatDrinkIcon(unit) then
+        statusIcon:SetTexture(VB:GetEatDrinkIcon(unit))
+        statusIcon:Show()
     else
         statusIcon:Hide()
     end
+end
+
+-- Food / drink buffs share one localized name per kind on every client
+-- (checked on Wowhead 2026-09-30 for Forever, TBC and Retail):
+--   433 Food ("Nourriture"), 430 Drink ("Boisson"),
+--   167152 Refreshment ("Rafraîchissement", Forever and Retail only).
+-- Names are resolved from these IDs so the client's own language is used.
+local EAT_DRINK_IDS = { 430, 433, 167152 }
+local eatDrinkNames
+
+local function GetEatDrinkNames()
+    if eatDrinkNames then return eatDrinkNames end
+    local list = {}
+    for _, id in ipairs(EAT_DRINK_IDS) do
+        local name = VB:GetSpellName(id)
+        if name then list[#list + 1] = { name = name, icon = VB:GetSpellIcon(id) } end
+    end
+    -- Spell data may not be loaded yet at login: only cache a real answer
+    if #list > 0 then eatDrinkNames = list end
+    return list
+end
+
+-- Icon of the food/drink buff on unit, or nil. Eating and drinking happen out
+-- of combat, when auras are readable; while they are secret the lookup is
+-- refused or returns a secret, and nothing is shown.
+function VB:GetEatDrinkIcon(unit)
+    if not (C_UnitAuras and C_UnitAuras.GetAuraDataBySpellName) then return nil end
+    for _, entry in ipairs(GetEatDrinkNames()) do
+        local ok, aura = pcall(C_UnitAuras.GetAuraDataBySpellName, unit, entry.name, "HELPFUL")
+        -- Secret check first: comparing a secret value, even to nil, raises
+        if ok and not (issecretvalue and issecretvalue(aura)) and aura ~= nil then
+            local icon = entry.icon
+            pcall(function()
+                if not (issecretvalue and issecretvalue(aura.icon)) and aura.icon then icon = aura.icon end
+            end)
+            return icon or 134062
+        end
+    end
+    return nil
 end
 
 local roleAtlasNames = {

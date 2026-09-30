@@ -1020,6 +1020,17 @@ function VB:CreateAppearanceTab()
         for _, button in pairs(VB.petButtons) do VB:UpdateAuras(button) end
         for _, button in pairs(VB.targetButtons) do VB:UpdateAuras(button) end
     end)
+
+    local eatDrinkCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    eatDrinkCB:SetPoint("TOPLEFT", 250, yOffset)
+    eatDrinkCB.text:SetText(VB.L["SHOW_EAT_DRINK"])
+    eatDrinkCB:SetChecked(VB.config.showEatDrink ~= false)
+    eatDrinkCB:SetScript("OnClick", function(self)
+        VB.config.showEatDrink = self:GetChecked()
+        for _, group in ipairs({ VB.unitButtons, VB.tankButtons, VB.petButtons, VB.targetButtons }) do
+            for _, button in pairs(group) do VB:UpdateStatus(button) end
+        end
+    end)
     yOffset = yOffset - 30
 
     local tooltipBindingsCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
