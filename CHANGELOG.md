@@ -1,5 +1,26 @@
 # VoidBox
 
+## v1.21.0 (2026-09-30)
+
+- **Fix: dispellable debuff colours on Burning Crusade Classic.** The dispel
+  schools a character can remove are now read from the spellbook, as on
+  Forever, instead of a Retail specialisation table. A paladin with Cleanse
+  now sees Magic as well as Disease and Poison.
+- **Fix: no dispel border on Forever.** Forever hides every aura from addons
+  in combat, so the frame border could not be coloured. The client now draws
+  it: a hidden aura container limited to debuffs you can dispel tints a ring
+  around the frame with the debuff's colour (green for poison, brown for
+  disease...), in combat too. Technique as used by Forever Unit Frames.
+- New `/vb dispeldebug` command listing the known dispel spells, the schools
+  they cover, the state of the dispel border, and the debuffs (with their
+  dispel type) on you, your target and your party when they are readable.
+- **Fix: incoming heals never visible.** The green incoming-heal bar had no
+  width and was drawn at zero size. It now spans the health
+  bar and is clipped at its right edge.
+- New `/vb healdebug` command watching incoming-heal data for 20 seconds
+  (availability of the API, value returned, whether the green bar is shown),
+  to diagnose missing incoming heals.
+
 ## v1.20.1 (2026-09-29)
 
 - **Fix: configuration window closing when the spellbook is opened** on

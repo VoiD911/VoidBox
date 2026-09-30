@@ -24,6 +24,14 @@ function VB:CreateHealthBar(parent)
     healPrediction:SetStatusBarColor(0, 0.8, 0, 0.5)
     healPrediction:SetPoint("TOPLEFT", healthBar:GetStatusBarTexture(), "TOPRIGHT")
     healPrediction:SetPoint("BOTTOMLEFT", healthBar:GetStatusBarTexture(), "BOTTOMRIGHT")
+    -- Two left anchors leave the width undefined (zero), which made the bar
+    -- invisible. Give it the full bar width so incoming/max maps to the right
+    -- length; whatever passes the right edge is clipped by the health bar.
+    healPrediction:SetWidth(math.max(1, healthBar:GetWidth()))
+    healthBar:SetClipsChildren(true)
+    healthBar:HookScript("OnSizeChanged", function(_, w)
+        if w and w > 0 then healPrediction:SetWidth(w) end
+    end)
     healPrediction:SetMinMaxValues(0, 1)
     healPrediction:SetValue(0)
     healPrediction:Hide()

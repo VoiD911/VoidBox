@@ -193,6 +193,96 @@ local function FitToContents(container)
     pcall(container.SetFlowLayoutMaximumLineSize, container, width)
 end
 
+-------------------------------------------------
+-- Dispel ring (Forever)
+--
+-- Forever refuses every aura read in combat, so the frame border cannot be
+-- coloured from our own data. Instead a third container, filtered "HARMFUL|RAID"
+-- (harmful auras the player can dispel), holds a single invisible 1px button.
+-- That button owns four edge textures placed around the unit frame and
+-- registered as its dispel type textures: the client shows the button - and
+-- with it the ring - only while such a debuff exists, and tints the edges from
+-- the debuff's dispel type through our curve. Nothing is read by the addon.
+-- Technique as used by Forever Unit Frames (github.com/StephanRosin).
+-------------------------------------------------
+local RING_SIZE = 4
+local RING_COLORS = {
+    [1] = { 0.2, 0.6, 1 },   -- Magic
+    [2] = { 0.6, 0.2, 1 },   -- Curse
+    [3] = { 0.6, 0.4, 0 },   -- Disease
+    [4] = { 0, 0.6, 0.1 },   -- Poison
+    [9] = { 1, 0.2, 0 },     -- Enrage
+}
+local ringCurve
+
+-- Fixed curve: the RAID filter already keeps only what the player can dispel,
+-- so every type gets its colour and the curve never needs rebuilding.
+local function GetRingCurve()
+    if ringCurve then return ringCurve end
+    if not (C_CurveUtil and C_CurveUtil.CreateColorCurve) then return nil end
+    ringCurve = C_CurveUtil.CreateColorCurve()
+    if Enum and Enum.LuaCurveType then ringCurve:SetType(Enum.LuaCurveType.Step) end
+    for _, id in ipairs({ 0, 1, 2, 3, 4, 9 }) do
+        local c = RING_COLORS[id]
+        ringCurve:AddPoint(id, c and CreateColor(c[1], c[2], c[3], 1) or CreateColor(0, 0, 0, 0))
+    end
+    return ringCurve
+end
+
+local function InitRingButton(frame, auraButton)
+    pcall(auraButton.SetMouseClickEnabled, auraButton, false)
+    pcall(auraButton.SetMouseMotionEnabled, auraButton, false)
+    local options = { customDispelColorCurve = GetRingCurve() }
+    if Enum and Enum.CustomAuraButtonDispelTypeTextureStyle then
+        options.style = Enum.CustomAuraButtonDispelTypeTextureStyle.PreserveAsset
+    end
+    for side = 1, 4 do
+        local edge = auraButton:CreateTexture(nil, "OVERLAY", nil, 7)
+        edge:SetColorTexture(1, 1, 1, 1)
+        if side == 1 then
+            edge:SetPoint("TOPLEFT", frame, "TOPLEFT")
+            edge:SetPoint("TOPRIGHT", frame, "TOPRIGHT")
+            edge:SetHeight(RING_SIZE)
+        elseif side == 2 then
+            edge:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT")
+            edge:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT")
+            edge:SetHeight(RING_SIZE)
+        elseif side == 3 then
+            edge:SetPoint("TOPLEFT", frame, "TOPLEFT")
+            edge:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT")
+            edge:SetWidth(RING_SIZE)
+        else
+            edge:SetPoint("TOPRIGHT", frame, "TOPRIGHT")
+            edge:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT")
+            edge:SetWidth(RING_SIZE)
+        end
+        pcall(auraButton.AddDispelTypeTexture, auraButton, edge, options)
+    end
+end
+
+function VB:SetupDispelRing(button)
+    if button.dispelRing or not GetRingCurve() then return end
+    local ok, container = pcall(function()
+        local c = CreateFrame("AuraContainer", nil, button, "CustomAuraContainerTemplate")
+        pcall(c.SetEditModePreviewEnabled, c, false)
+        c:AddAuraGroup("vbDispelRing", "HARMFUL|RAID", {
+            maxFrameCount = 1,
+            layout = { elementWidth = 1, elementHeight = 1 },
+            initializeFrame = function(auraButton) InitRingButton(button, auraButton) end,
+        })
+        pcall(c.SetAuraGroupMaxFrameCount, c, "vbDispelRing", 1)
+        c:SetSize(1, 1)
+        c:SetPoint("TOPLEFT", button, "TOPLEFT")
+        c:SetFrameLevel(button:GetFrameLevel() + 10)
+        return c
+    end)
+    if ok and container then
+        button.dispelRing = container
+    else
+        VB:Debug("Dispel ring unavailable: " .. tostring(container))
+    end
+end
+
 -- Build the two rows on a unit button. Returns true when both were created.
 function VB:SetupButtonAuraContainers(button, S, maxDebuffs, maxBuffs)
     if not VB:HasAuraContainers() then return false end
@@ -220,6 +310,7 @@ function VB:SetupButtonAuraContainers(button, S, maxDebuffs, maxBuffs)
     button.debuffContainer = debuffs
     button.buffContainer = buffs
     VB:AnchorAuraContainers(button, S)
+    if VB.isForever then VB:SetupDispelRing(button) end
     return true
 end
 
@@ -270,6 +361,12 @@ end
 function VB:UpdateAuraContainers(button)
     local unit = button.unit
     if not unit then return end
+
+    local ring = button.dispelRing
+    if ring then
+        ring:SetShown(VB.config.showDispelHighlight ~= false)
+        if ring:GetUnit() ~= unit then pcall(ring.SetUnit, ring, unit) end
+    end
 
     for _, container in ipairs({ button.debuffContainer, button.buffContainer }) do
         if container:GetUnit() ~= unit then

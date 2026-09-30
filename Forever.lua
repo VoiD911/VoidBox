@@ -379,9 +379,10 @@ function VB:GetBindingSpellLabel(spellID, rankLocked)
 end
 
 -- Dispel types the player can actually remove, read from the spellbook.
--- Returns a { [typeID] = true } set, or nil when this is not Forever.
+-- Returns a { [typeID] = true } set, or nil on Retail.
 function VB:GetForeverDispelTypes()
-    if not VB.isForever then return nil end
+    -- Forever and Burning Crusade Classic: no specs, dispels come from the spellbook
+    if not (VB.isForever or (VB.tocVersion > 0 and VB.tocVersion < 100000)) then return nil end
 
     local canDispel = {}
     for id, dispelType in pairs(VB.FOREVER_DISPEL_SPELLS) do
@@ -421,4 +422,103 @@ function VB:ForeverStartupNotice()
     if not VB.hasSecureSnippets then
         VB:Print("|cffffcc00" .. VB.L["SNIPPETS_UNAVAILABLE"] .. "|r")
     end
+end
+
+-- /vb dispeldebug: what the addon believes about dispels on this client
+function VB:DispelDebug()
+    VB:Print("=== Dispel debug ===")
+    VB:Print(("  toc=%s forever=%s class=%s"):format(tostring(VB.tocVersion),
+        tostring(VB.isForever), tostring(VB.playerClass)))
+    VB:Print("  GetAuraDispelTypeColor: "
+        .. tostring(C_UnitAuras ~= nil and C_UnitAuras.GetAuraDispelTypeColor ~= nil)
+        .. "  CreateColorCurve: " .. tostring(C_CurveUtil ~= nil))
+
+    local names = { [1] = "Magic", [2] = "Curse", [3] = "Disease", [4] = "Poison" }
+    local ids = {}
+    for id in pairs(VB.FOREVER_DISPEL_SPELLS) do ids[#ids + 1] = id end
+    table.sort(ids)
+    for _, id in ipairs(ids) do
+        if spellKnown(id) then
+            VB:Print(("  known: %s (%d) -> %s"):format(VB:GetSpellName(id) or "?", id,
+                names[VB.FOREVER_DISPEL_SPELLS[id]] or "?"))
+        end
+    end
+
+    local can = VB:GetForeverDispelTypes()
+    if can then
+        local list = {}
+        for t = 1, 4 do if can[t] then list[#list + 1] = names[t] end end
+        VB:Print("  can dispel: " .. (#list > 0 and table.concat(list, ", ") or "nothing"))
+    else
+        VB:Print("  can dispel: (Retail table, not spellbook)")
+    end
+
+    if VB.DispelCurveDebug and UnitExists("player") then VB:DispelCurveDebug("player") end
+
+    local units = { "player", "target", "party1", "party2", "party3", "party4" }
+    for _, unit in ipairs(units) do
+        if UnitExists(unit) then
+            for _, d in ipairs(VB:GetUnitDebuffs(unit, 40)) do
+                local ok, line = pcall(function()
+                    return ("  %s: %s type=%s id=%s"):format(unit, tostring(d.name),
+                        tostring(d.dispelType), tostring(d.spellID))
+                end)
+                VB:Print(ok and line or ("  " .. unit .. ": (secret aura)"))
+            end
+        end
+    end
+end
+
+-- /vb healdebug: watch incoming-heal data for 20 seconds. Cast a heal (or have
+-- someone heal you) while it runs. Prints only when a value changes.
+function VB:HealDebug()
+    if VB._healDebugTicker then VB._healDebugTicker:Cancel() end
+    VB:Print("=== Heal debug (20s) - cast a heal now ===")
+    VB:Print(("  toc=%s forever=%s"):format(tostring(VB.tocVersion), tostring(VB.isForever)))
+    VB:Print("  UnitGetIncomingHeals: " .. tostring(UnitGetIncomingHeals ~= nil)
+        .. "  UnitGetTotalAbsorbs: " .. tostring(UnitGetTotalAbsorbs ~= nil)
+        .. "  HealComm lib: " .. tostring(LibStub ~= nil and LibStub("LibHealComm-4.0", true) ~= nil))
+
+    -- Anything secret is reported as a word: formatting or comparing it would error
+    local function safe(v)
+        if issecretvalue and issecretvalue(v) then return "secret" end
+        if type(v) == "number" then return ("%.0f"):format(v) end
+        return tostring(v)
+    end
+
+    local last = {}
+    local units = { "player", "target", "party1", "party2", "party3", "party4" }
+    local ticks = 0
+    VB._healDebugTicker = C_Timer.NewTicker(0.25, function(t)
+        ticks = ticks + 1
+        for _, unit in ipairs(units) do
+            if UnitExists(unit) and UnitGetIncomingHeals then
+                local ok, val = pcall(UnitGetIncomingHeals, unit)
+                local secret = ok and issecretvalue and issecretvalue(val) or false
+                local text
+                if not ok then text = "error"
+                elseif secret then text = "secret"
+                else text = tostring(val) end
+                local btn = VB.unitButtons and VB.unitButtons[unit]
+                local bar = btn and btn.healthBar and btn.healthBar.healPrediction
+                text = text .. " bar=" .. tostring(bar and bar:IsShown() or false)
+                if bar then
+                    local okv, v = pcall(bar.GetValue, bar)
+                    text = text .. " w=" .. safe(bar:GetWidth())
+                        .. " h=" .. safe(bar:GetHeight())
+                        .. " visible=" .. safe(bar:IsVisible())
+                        .. " value=" .. (okv and safe(v) or "err")
+                end
+                if last[unit] ~= text then
+                    last[unit] = text
+                    VB:Print(("  %s: incoming=%s"):format(unit, text))
+                end
+            end
+        end
+        if ticks >= 80 then
+            t:Cancel()
+            VB._healDebugTicker = nil
+            VB:Print("=== Heal debug done ===")
+        end
+    end)
 end

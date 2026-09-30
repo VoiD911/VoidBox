@@ -57,8 +57,6 @@ local CLASS_DISPEL_TYPES = {
 -- Types the player CAN dispel → visible color; others → transparent (alpha=0)
 -- Step curve: must explicitly map ALL known IDs to avoid fallback to nearest lower point
 function VB:BuildDispelColorCurve()
-    if not C_CurveUtil or not C_CurveUtil.CreateColorCurve then return end
-
     local classData = CLASS_DISPEL_TYPES[VB.playerClass]
     local canDispel = VB:GetForeverDispelTypes()
 
@@ -88,6 +86,8 @@ function VB:BuildDispelColorCurve()
     for id, color in pairs(DISPEL_COLORS) do
         VB.dispelColorMap[id] = canDispel[id] and color or DISPEL_TRANSPARENT
     end
+
+    if not C_CurveUtil or not C_CurveUtil.CreateColorCurve then return end
 
     dispelColorCurve = C_CurveUtil.CreateColorCurve()
     dispelColorCurve:SetType(Enum.LuaCurveType.Step)
@@ -930,6 +930,61 @@ local function SetAuraFrame(frame, aura)
     frame:Show()
 end
 
+-- /vb dispeldebug helper: state of the frame-level dispel border
+function VB:DispelCurveDebug(unit)
+    local btn = VB.unitButtons and VB.unitButtons[unit]
+    VB:Print("  curve built: " .. tostring(dispelColorCurve ~= nil)
+        .. "  highlight enabled: " .. tostring(VB.config.showDispelHighlight ~= false)
+        .. "  auras secret: " .. tostring(VB:AurasAreSecret()))
+    VB:Print("  dispel ring container: " .. tostring(btn and btn.dispelRing ~= nil)
+        .. (btn and btn.dispelRing and (" shown=" .. tostring(btn.dispelRing:IsShown())
+            .. " unit=" .. tostring(btn.dispelRing:GetUnit())) or ""))
+end
+
+-- Frame-level dispel border. Needs the aura instance IDs of the HARMFUL list;
+-- the colour comes from the client, so it works with secret auras too.
+function VB:UpdateDispelHighlight(button, unit, harmful)
+    local dispelEnabled = VB.config.showDispelHighlight ~= false
+    local hasAPI = dispelColorCurve and C_UnitAuras and C_UnitAuras.GetAuraDispelTypeColor
+    
+    if dispelEnabled and hasAPI then
+        local foundDispel = false
+        for _, aura in ipairs(harmful) do
+            local ok, color = pcall(C_UnitAuras.GetAuraDispelTypeColor, unit, aura.auraInstanceID, dispelColorCurve)
+            if ok and color then
+                -- Check if any RGBA component is secret (combat) or if alpha > 0 (out of combat)
+                local isDispellable = false
+                local compOk, compResult = pcall(function()
+                    local r, g, b, a = color:GetRGBA()
+                    -- If we can read them, check alpha > 0
+                    if issecretvalue and (issecretvalue(r) or issecretvalue(a)) then
+                        return "secret"
+                    end
+                    return a > 0
+                end)
+                if compOk then
+                    if compResult == "secret" or compResult == true then
+                        isDispellable = true
+                    end
+                end
+                if isDispellable then
+                    VB:ShowDispelBorder(button, color)
+                    foundDispel = true
+                    break
+                end
+            end
+        end
+        button._hasDispelHighlight = foundDispel
+        if not foundDispel then
+            VB:HideDispelBorder(button)
+            VB:UpdateThreat(button)
+        end
+    else
+        button._hasDispelHighlight = false
+        VB:HideDispelBorder(button)
+    end
+end
+
 function VB:UpdateAuras(button)
     local unit = button.unit
     if not unit or not UnitExists(unit) then return end
@@ -1029,44 +1084,5 @@ function VB:UpdateAuras(button)
         end
     end
 
-    -- === Dispel highlight (border color) ===
-    local dispelEnabled = VB.config.showDispelHighlight ~= false
-    local hasAPI = dispelColorCurve and C_UnitAuras and C_UnitAuras.GetAuraDispelTypeColor
-    
-    if dispelEnabled and hasAPI then
-        local foundDispel = false
-        for _, aura in ipairs(harmful) do
-            local ok, color = pcall(C_UnitAuras.GetAuraDispelTypeColor, unit, aura.auraInstanceID, dispelColorCurve)
-            if ok and color then
-                -- Check if any RGBA component is secret (combat) or if alpha > 0 (out of combat)
-                local isDispellable = false
-                local compOk, compResult = pcall(function()
-                    local r, g, b, a = color:GetRGBA()
-                    -- If we can read them, check alpha > 0
-                    if issecretvalue and (issecretvalue(r) or issecretvalue(a)) then
-                        return "secret"
-                    end
-                    return a > 0
-                end)
-                if compOk then
-                    if compResult == "secret" or compResult == true then
-                        isDispellable = true
-                    end
-                end
-                if isDispellable then
-                    VB:ShowDispelBorder(button, color)
-                    foundDispel = true
-                    break
-                end
-            end
-        end
-        button._hasDispelHighlight = foundDispel
-        if not foundDispel then
-            VB:HideDispelBorder(button)
-            VB:UpdateThreat(button)
-        end
-    else
-        button._hasDispelHighlight = false
-        VB:HideDispelBorder(button)
-    end
+    VB:UpdateDispelHighlight(button, unit, harmful)
 end

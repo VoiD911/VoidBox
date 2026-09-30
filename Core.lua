@@ -1452,6 +1452,10 @@ SlashCmdList["VOIDBOX"] = function(msg)
         VB:SpellLogToggle()
     elseif msg == "spellranks" or msg:find("^spellranks%s+") then
         VB:SpellLogRanks(msg:match("^spellranks%s+(.+)$"))
+    elseif msg == "healdebug" then
+        VB:HealDebug()
+    elseif msg == "dispeldebug" then
+        VB:DispelDebug()
     elseif msg == "rezdebug" then
         VB:SpellLogRez()
     elseif msg == "debugcontainer" then
