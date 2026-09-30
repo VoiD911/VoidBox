@@ -35,7 +35,11 @@ VB.isForever = (VB.tocVersion > 0 and VB.tocVersion < 20000
 -- (Forever itself already satisfies this, since a client that new would
 -- otherwise have GetUnitAuras; kept explicit so isForever changing shape
 -- later can't silently drop this.)
+-- Burning Crusade Classic Anniversary has GetUnitAuras yet still ranks its
+-- spells (Renew rank 10 is not spell 139), so any pre-Legion interface number
+-- counts as ranked too.
 VB.hasRankedSpellbook = VB.isForever
+    or (VB.tocVersion > 0 and VB.tocVersion < 100000)
     or not (C_UnitAuras and C_UnitAuras.GetUnitAuras)
 
 -- Forever can execute secure snippets even when loadstring_untainted is not
@@ -180,6 +184,9 @@ VB.FOREVER_HEAL_BUFF_BASE_IDS = {
     17,    -- Power Word: Shield
     1022,  -- Blessing of Protection
     6940,  -- Blessing of Sacrifice
+    974,   -- Earth Shield
+    33763, -- Lifebloom (BCC only; ignored where the ID does not exist)
+    33076, -- Prayer of Mending (BCC only)
 }
 
 -- Filled at login: localized spell name -> true

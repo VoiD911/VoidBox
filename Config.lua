@@ -319,6 +319,19 @@ function VB:RefreshBindingsList()
         slot:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset)
         slot.keyText:SetText(VB:GetBindingDisplayText(binding))
         slot.actionText:SetText(VB:GetActionDisplayText(binding))
+        local icon = binding.action == "spell" and type(binding.value) == "number"
+            and VB:GetSpellIcon(binding.value) or nil
+        slot.actionText:ClearAllPoints()
+        if icon then
+            slot.actionIcon:SetTexture(icon)
+            slot.actionIcon:Show()
+            slot.actionText:SetPoint("LEFT", 194, 0)
+            slot.actionText:SetWidth(176)
+        else
+            slot.actionIcon:Hide()
+            slot.actionText:SetPoint("LEFT", 170, 0)
+            slot.actionText:SetWidth(200)
+        end
         slot.bindingIndex = i
         slot:Show()
         yOffset = yOffset + 30
@@ -347,6 +360,14 @@ function VB:GetOrCreateBindingSlot(index)
     keyText:SetJustifyH("LEFT")
     slot.keyText = keyText
     
+    -- Spell icon in front of the action name (spells only)
+    local actionIcon = slot:CreateTexture(nil, "ARTWORK")
+    actionIcon:SetSize(20, 20)
+    actionIcon:SetPoint("LEFT", 170, 0)
+    actionIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    actionIcon:Hide()
+    slot.actionIcon = actionIcon
+
     local actionText = slot:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     actionText:SetPoint("LEFT", 170, 0)
     actionText:SetWidth(200)

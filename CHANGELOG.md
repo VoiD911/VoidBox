@@ -1,5 +1,13 @@
 # VoidBox
 
+## v1.22.1 (2026-09-30)
+
+- **Fix: no HoTs or shields on Burning Crusade Classic.** Higher ranks of
+  Renew, Power Word: Shield, Rejuvenation and the like were not recognised
+  because BCC was not treated as a client with ranked spells. Lifebloom,
+  Prayer of Mending and Earth Shield are now tracked too.
+- The bindings list now shows the spell's icon next to its name.
+
 ## v1.22.0 (2026-09-30)
 
 - Eating/drinking indicator: while a group member eats or drinks, the food or
