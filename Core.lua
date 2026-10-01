@@ -103,7 +103,8 @@ end
 
 -- Get class color
 function VB:GetClassColor(class)
-    if class and RAID_CLASS_COLORS[class] then
+    -- A hostile unit's class is secret in dungeons and cannot be a table key
+    if class and not (issecretvalue and issecretvalue(class)) and RAID_CLASS_COLORS[class] then
         local c = RAID_CLASS_COLORS[class]
         return c.r, c.g, c.b
     end

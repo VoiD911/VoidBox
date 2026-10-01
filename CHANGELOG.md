@@ -1,5 +1,11 @@
 # VoidBox
 
+## v1.22.3 (2026-10-01)
+
+- **Fix: Lua error when targeting an enemy in a dungeon** (class colour).
+  A hostile unit's class is secret there and could not be looked up. The
+  target frame now shows enemies in red when their class is hidden.
+
 ## v1.22.2 (2026-09-30)
 
 - **Fix: Lua error when targeting an enemy in a dungeon** with the separate

@@ -83,9 +83,17 @@ function VB:UpdateHealthBar(button)
     -- Class colors
     if VB.config.classColors then
         local _, class = UnitClass(unit)
-        if class then
+        if class and not (issecretvalue and issecretvalue(class)) then
             local r, g, b = VB:GetClassColor(class)
             healthBar:SetStatusBarColor(r, g, b)
+        else
+            -- Class hidden (hostile unit in a dungeon): colour by reaction
+            local okAtk, canAttack = pcall(UnitCanAttack, "player", unit)
+            if okAtk and VB:SafeBool(canAttack) then
+                healthBar:SetStatusBarColor(0.8, 0.15, 0.15)
+            else
+                healthBar:SetStatusBarColor(0.5, 0.5, 0.5)
+            end
         end
     else
         local ok = pcall(function()
