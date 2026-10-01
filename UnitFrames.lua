@@ -538,6 +538,13 @@ function VB:UpdateName(button)
         return
     end
     local name = UnitName(unit)
+    -- Names of hostile units are secret in dungeons: they cannot be measured
+    -- or cut, only handed to SetText. The name text is anchored between the
+    -- role icon and the health text with word wrap off, so it clips by itself.
+    if name and issecretvalue and issecretvalue(name) then
+        button.nameText:SetText(name)
+        return
+    end
     if name then
         local S = GetScaledSizes()
         local iconWidth = button.roleIcon:IsShown() and (S.row1Font + 3) or 0

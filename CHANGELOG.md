@@ -1,5 +1,11 @@
 # VoidBox
 
+## v1.22.2 (2026-09-30)
+
+- **Fix: Lua error when targeting an enemy in a dungeon** with the separate
+  target frame enabled. Hostile names are secret there and could not be
+  shortened; they are now shown as the game gives them.
+
 ## v1.22.1 (2026-09-30)
 
 - **Fix: no HoTs or shields on Burning Crusade Classic.** Higher ranks of
