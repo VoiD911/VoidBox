@@ -119,9 +119,9 @@ function VB:UpdateHealthBar(button)
     if button.healthText then
         local pctText = ""
         
-        if UnitIsDeadOrGhost(unit) then
+        if VB:BoolOr(UnitIsDeadOrGhost, unit, false) then
             pctText = VB.L["DEAD"]
-        elseif not UnitIsConnected(unit) then
+        elseif not VB:BoolOr(UnitIsConnected, unit, true) then
             pctText = VB.L["OFFLINE"]
         elseif VB.config.showHealth == false then
             -- HP% hidden by the player. Dead/offline above are states, not

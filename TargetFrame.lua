@@ -12,10 +12,15 @@ local function IsSelected(slot)
     return VB.config[slot.key] == true
 end
 
-local function RefreshButton(button)
-    -- Tokens stay constant while the underlying units change.
-    for _, container in pairs({ button.debuffContainer, button.buffContainer }) do
-        pcall(container.UpdateAllAuras, container)
+-- fullAuras rebuilds the aura rows from scratch. Tokens stay constant while
+-- the underlying units change, so that is needed when the unit changes - but
+-- doing it on every refresh made the icons flicker and slide sideways (the rows
+-- are emptied and re-laid out each time).
+local function RefreshButton(button, fullAuras)
+    if fullAuras then
+        for _, container in pairs({ button.debuffContainer, button.buffContainer }) do
+            pcall(container.UpdateAllAuras, container)
+        end
     end
     VB:UpdateUnitButton(button)
     VB:UpdateThreat(button)
@@ -26,7 +31,7 @@ function VB:RefreshTargetUnit()
     for _, slot in ipairs(slots) do
         local button = VB.targetButtons[slot.unit]
         if button and IsSelected(slot) and UnitExists(slot.unit) then
-            RefreshButton(button)
+            RefreshButton(button, true)
         end
     end
 end
@@ -106,7 +111,16 @@ function VB:UpdateTargetFrame()
                         self.targetRefreshElapsed = (self.targetRefreshElapsed or 0) + elapsed
                         if self.targetRefreshElapsed < 0.2 then return end
                         self.targetRefreshElapsed = 0
-                        if UnitExists("targettarget") then RefreshButton(self) end
+                        if not UnitExists("targettarget") then return end
+                        -- Rebuild the aura rows only when the unit behind the
+                        -- token really changed (UNIT_TARGET also covers it)
+                        local okG, guid = pcall(UnitGUID, "targettarget")
+                        local changed = false
+                        if okG and guid ~= nil and not (issecretvalue and issecretvalue(guid)) then
+                            changed = guid ~= self.targetGUID
+                            self.targetGUID = guid
+                        end
+                        RefreshButton(self, changed)
                     end)
                 end
             end

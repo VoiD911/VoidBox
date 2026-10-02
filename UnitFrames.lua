@@ -567,11 +567,11 @@ function VB:UpdateStatus(button)
     if not unit or not UnitExists(unit) then return end
     local statusIcon = button.statusIcon
     local healthBar = button.healthBar
-    if UnitIsDeadOrGhost(unit) then
+    if VB:BoolOr(UnitIsDeadOrGhost, unit, false) then
         statusIcon:SetTexture("Interface\\TargetingFrame\\UI-TargetingFrame-Skull")
         statusIcon:Show()
         healthBar:SetStatusBarColor(0.3, 0.3, 0.3)
-    elseif not UnitIsConnected(unit) then
+    elseif not VB:BoolOr(UnitIsConnected, unit, true) then
         statusIcon:SetTexture("Interface\\CharacterFrame\\Disconnect-Icon")
         statusIcon:Show()
         healthBar:SetStatusBarColor(0.3, 0.3, 0.3)
@@ -633,7 +633,9 @@ function VB:UpdateRole(button)
     if not unit or not UnitExists(unit) then return end
     local roleIcon = button.roleIcon
     local role = UnitGroupRolesAssigned(unit)
-    if (not role or role == "NONE") and UnitIsUnit(unit, "player") then
+    -- Hostile units report a secret role in dungeons: no role icon for them
+    if role ~= nil and issecretvalue and issecretvalue(role) then role = nil end
+    if (not role or role == "NONE") and VB:SafeBool(UnitIsUnit(unit, "player")) then
         role = VB:GetPlayerSpecRole() or role
     end
     local atlas = roleAtlasNames[role]

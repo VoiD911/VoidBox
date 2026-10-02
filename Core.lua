@@ -91,6 +91,15 @@ function VB:Debug(msg)
     end
 end
 
+-- Boolean from a unit query that may come back secret (hostile units in
+-- dungeons): `if secretBool then` raises, so evaluate inside pcall and fall
+-- back to `default` when it cannot be read.
+function VB:BoolOr(fn, unit, default)
+    local ok, v = pcall(function() return fn(unit) and true or false end)
+    if ok then return v end
+    return default
+end
+
 -- Deep copy table
 function VB:CopyTable(src)
     if type(src) ~= "table" then return src end

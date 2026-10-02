@@ -1,5 +1,14 @@
 # VoidBox
 
+## v1.22.4 (2026-10-02)
+
+- **Fix: HoT and DoT icons flickering and sliding sideways on the target of
+  target box.** That box refreshed every 0.2 s and rebuilt its aura rows each
+  time. The rows are now rebuilt only when the target of target changes.
+- **Fix: more Lua errors targeting an enemy in a dungeon.** The role, dead
+  and online checks on hostile units could hit secret values; they now fall
+  back to safe defaults (no role icon for enemies).
+
 ## v1.22.3 (2026-10-01)
 
 - **Fix: Lua error when targeting an enemy in a dungeon** (class colour).
