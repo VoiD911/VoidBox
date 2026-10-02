@@ -13,7 +13,7 @@ local bindingSlots = {}
 -- UI Helpers (dropdown, slider) — must be defined
 -- before any function that uses them
 -------------------------------------------------
-local function CreateSimpleDropdown(parent, width, items, defaultText)
+local function CreateSimpleDropdown(parent, width, items, defaultText, onSelect)
     local dropdown = CreateFrame("Button", nil, parent, "BackdropTemplate")
     dropdown:SetSize(width, 25)
     dropdown:SetBackdrop({
@@ -57,6 +57,7 @@ local function CreateSimpleDropdown(parent, width, items, defaultText)
             text:SetText(item.text)
             menu:Hide()
             dropdown.isOpen = false
+            if onSelect then onSelect(item.value) end
         end)
         btn:SetScript("OnEnter", function(self)
             self:SetBackdrop({bgFile = "Interface\\Buttons\\WHITE8x8"})
@@ -170,8 +171,11 @@ function VB:CreateConfigFrame()
     VB:CreateBindingsTab()
     VB:CreateAppearanceTab()
     VB:CreateDebuffsTab()
+    VB:CreateScreenAurasTab()
     VB:CreateProfilesTab()
     VB:ShowConfigTab("bindings")
+    -- Aura placement previews only live while the Auras tab is on screen
+    configFrame:HookScript("OnHide", function() VB:SetScreenAuraPreview(false) end)
     
     if VB.tocVersion > 0 and VB.tocVersion < 100000 then
         -- Classic clients call CloseSpecialWindows when the spellbook opens,
@@ -202,7 +206,8 @@ function VB:CreateConfigTabs()
     local tabData = {
         { id = "bindings", text = VB.L["TAB_BINDINGS"] },
         { id = "appearance", text = VB.L["TAB_APPEARANCE"] },
-        { id = "debuffs", text = VB.L["TAB_AURAS"] },
+        { id = "debuffs", text = VB.L["TAB_BUFFS"] },
+        { id = "auras", text = VB.L["TAB_AURAS"] },
         { id = "profiles", text = VB.L["TAB_PROFILES"] },
     }
 
@@ -253,6 +258,11 @@ function VB:ShowConfigTab(tabId)
     if configFrame.bindingsContent then configFrame.bindingsContent:SetShown(tabId == "bindings") end
     if configFrame.appearanceContent then configFrame.appearanceContent:SetShown(tabId == "appearance") end
     if configFrame.debuffsContent then configFrame.debuffsContent:SetShown(tabId == "debuffs") end
+    if configFrame.aurasContent then
+        configFrame.aurasContent:SetShown(tabId == "auras")
+        VB:SetScreenAuraPreview(tabId == "auras")
+        if tabId == "auras" then VB:RefreshScreenAurasTab() end
+    end
     if configFrame.profilesContent then
         configFrame.profilesContent:SetShown(tabId == "profiles")
         if tabId == "profiles" then VB:RefreshProfilesTab() end
@@ -1256,6 +1266,381 @@ function VB:RefreshCustomBuffsList()
         yOffset = yOffset + 30
     end
     scrollChild:SetHeight(math.max(300, yOffset + 20))
+end
+
+-------------------------------------------------
+-- Auras Tab (icons / drawings on screen, see Auras.lua)
+-------------------------------------------------
+local auraSlots = {}
+local selectedAura = nil   -- index in VB.screenAuras
+
+local function SetDropdownValue(dropdown, items, value)
+    for _, item in ipairs(items) do
+        if item.value == value then
+            dropdown.selectedValue = value
+            dropdown.text:SetText(item.text)
+            return
+        end
+    end
+end
+
+local function TextOf(items, value)
+    for _, item in ipairs(items) do
+        if item.value == value then return item.text end
+    end
+    return ""
+end
+
+local auraUnitItems, auraKindItems, auraDisplayItems, auraColorItems, auraSoundItems
+
+local function BuildAuraItems()
+    local L = VB.L
+    auraUnitItems = {
+        { value = "player", text = L["AURA_UNIT_PLAYER"] },
+        { value = "target", text = L["AURA_UNIT_TARGET"] },
+    }
+    auraKindItems = {
+        { value = "HELPFUL", text = L["AURA_KIND_HELPFUL"] },
+        { value = "HARMFUL", text = L["AURA_KIND_HARMFUL"] },
+    }
+    auraDisplayItems = {
+        { value = "icon", text = L["AURA_DISPLAY_ICON"] },
+        { value = "frame", text = L["AURA_DISPLAY_FRAME"] },
+        { value = "disc", text = L["AURA_DISPLAY_DISC"] },
+    }
+    auraColorItems = {}
+    for _, c in ipairs(VB.AURA_COLORS) do
+        auraColorItems[#auraColorItems + 1] = { value = c.value, text = L["AURA_COLOR_" .. c.value:upper()] }
+    end
+    auraSoundItems = {}
+    for _, snd in ipairs(VB.AURA_SOUNDS) do
+        auraSoundItems[#auraSoundItems + 1] = { value = snd.value, text = L["AURA_SOUND_" .. snd.value:upper()] }
+    end
+end
+
+local function AuraSummary(entry)
+    return TextOf(auraUnitItems, entry.unit) .. " - " .. TextOf(auraKindItems, entry.kind)
+        .. " - " .. TextOf(auraDisplayItems, entry.display)
+end
+
+local function LabelAbove(parent, frame, text)
+    local label = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    label:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", 2, 2)
+    label:SetText(text)
+    return label
+end
+
+function VB:CreateScreenAurasTab()
+    local L = VB.L
+    BuildAuraItems()
+
+    local content = CreateFrame("Frame", nil, configFrame.content)
+    content:SetAllPoints()
+    content:Hide()
+    configFrame.aurasContent = content
+
+    local help = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    help:SetPoint("TOPLEFT", 5, -5)
+    help:SetWidth(460)
+    help:SetJustifyH("LEFT")
+    help:SetText(L["SCREEN_AURAS_HELP"])
+
+    -- === Add by name, ID or drag ===
+    local function AddSpell(spellID)
+        if not spellID or not VB:GetSpellName(spellID) then
+            VB:Print(L["SCREEN_AURA_UNKNOWN"])
+            return
+        end
+        table.insert(VB.screenAuras, VB:NewScreenAura(spellID))
+        selectedAura = #VB.screenAuras
+        VB:RebuildScreenAuras()
+        VB:RefreshScreenAurasTab()
+    end
+
+    -- Procs are states, not spells the player casts: the client cannot find
+    -- them by name, so a few common ones are listed by ID (wowhead, Forever,
+    -- 2026-10-02) and matched against their localized name.
+    -- Same name across classes (Clearcasting), so the player's class goes first.
+    local KNOWN_PROCS = {
+        DRUID = { 16870 },            -- Clearcasting
+        MAGE = { 12536 },             -- Clearcasting
+        SHAMAN = { 16246 },           -- Clearcasting
+        ROGUE = { 457342, 467735 },   -- Clearcasting
+    }
+    local function KnownProcIDs()
+        local list = {}
+        for _, id in ipairs(KNOWN_PROCS[VB.playerClass] or {}) do list[#list + 1] = id end
+        for class, ids in pairs(KNOWN_PROCS) do
+            if class ~= VB.playerClass then
+                for _, id in ipairs(ids) do list[#list + 1] = id end
+            end
+        end
+        return list
+    end
+
+    local function ResolveInput(text)
+        local id = tonumber(text)
+        if id then return id end
+        local wanted = text:lower()
+        local function same(name)
+            return type(name) == "string" and name:lower() == wanted
+        end
+
+        -- 1. Spells the client knows (spellbook, cache)
+        if C_Spell and C_Spell.GetSpellInfo then
+            local ok, info = pcall(C_Spell.GetSpellInfo, text)
+            if ok and type(info) == "table" and info.spellID then return info.spellID end
+        end
+        -- 2. Spellbook, ignoring case
+        local found
+        VB:ForEachKnownSpell(function(spellID, name)
+            if not found and same(name or VB:GetSpellName(spellID)) then found = spellID end
+        end)
+        if found then return found end
+        -- 3. Auras up right now on me or my target (readable out of combat)
+        for _, unit in ipairs({ "player", "target" }) do
+            for _, filter in ipairs({ "HELPFUL", "HARMFUL" }) do
+                for _, a in ipairs(VB:GetAuras(unit, filter)) do
+                    local ok, match = pcall(function() return same(a.name) and a.spellId end)
+                    if ok and match then return match end
+                end
+            end
+        end
+        -- 4. Known procs
+        for _, spellID in ipairs(KnownProcIDs()) do
+            if same(VB:GetSpellName(spellID)) then return spellID end
+        end
+        return nil
+    end
+
+    local input = CreateFrame("EditBox", nil, content, "InputBoxTemplate")
+    input:SetSize(190, 22)
+    input:SetPoint("TOPLEFT", 12, -62)
+    input:SetAutoFocus(false)
+
+    local addBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+    addBtn:SetSize(80, 22)
+    addBtn:SetPoint("LEFT", input, "RIGHT", 8, 0)
+    addBtn:SetText(L["SCREEN_AURA_ADD"])
+
+    local function SubmitInput()
+        local text = strtrim(input:GetText() or "")
+        input:SetText("")
+        input:ClearFocus()
+        if text ~= "" then AddSpell(ResolveInput(text)) end
+    end
+    addBtn:SetScript("OnClick", SubmitInput)
+    input:SetScript("OnEnterPressed", SubmitInput)
+    input:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+
+    local dropZone = CreateFrame("Button", nil, content, "BackdropTemplate")
+    dropZone:SetSize(165, 22)
+    dropZone:SetPoint("LEFT", addBtn, "RIGHT", 8, 0)
+    dropZone:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+    })
+    dropZone:SetBackdropColor(0.2, 0.2, 0.3, 1)
+    dropZone:SetBackdropBorderColor(0.4, 0.4, 0.6, 1)
+    local dropText = dropZone:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    dropText:SetPoint("CENTER")
+    dropText:SetText("|cFFAAAAFF" .. L["CUSTOM_BUFFS_DROP"] .. "|r")
+    local function AcceptCursorSpell()
+        local spellID = VB:GetCursorSpell()
+        if spellID then
+            ClearCursor()
+            AddSpell(spellID)
+        end
+    end
+    dropZone:SetScript("OnReceiveDrag", AcceptCursorSpell)
+    dropZone:SetScript("OnClick", AcceptCursorSpell)
+
+    -- === List ===
+    local scrollFrame = CreateFrame("ScrollFrame", nil, content, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT", 5, -95)
+    scrollFrame:SetSize(440, 180)
+    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
+    scrollChild:SetSize(440, 180)
+    scrollFrame:SetScrollChild(scrollChild)
+    content.auraScrollChild = scrollChild
+
+    -- === Editor for the selected aura ===
+    local editor = CreateFrame("Frame", nil, content)
+    editor:SetPoint("TOPLEFT", 5, -290)
+    editor:SetSize(470, 330)
+    editor:Hide()
+    content.editor = editor
+
+    local header = editor:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    header:SetPoint("TOPLEFT", 0, 0)
+    editor.header = header
+
+    -- Apply a change to the selected entry. Rebuilds are debounced so a
+    -- slider drag does not create a new set of frames on every step.
+    local rebuildToken = 0
+    local function Change(key, value)
+        local entry = selectedAura and VB.screenAuras[selectedAura]
+        if not entry or editor.loading then return end
+        entry[key] = value
+        rebuildToken = rebuildToken + 1
+        local token = rebuildToken
+        C_Timer.After(0.3, function()
+            if token ~= rebuildToken then return end
+            VB:RebuildScreenAuras()
+            VB:RefreshScreenAurasTab()
+        end)
+    end
+
+    local unitDD = CreateSimpleDropdown(editor, 140, auraUnitItems, "", function(v) Change("unit", v) end)
+    unitDD:SetPoint("TOPLEFT", 0, -40)
+    LabelAbove(editor, unitDD, L["AURA_UNIT"])
+    editor.unitDD = unitDD
+
+    local kindDD = CreateSimpleDropdown(editor, 140, auraKindItems, "", function(v) Change("kind", v) end)
+    kindDD:SetPoint("TOPLEFT", 155, -40)
+    LabelAbove(editor, kindDD, L["AURA_KIND"])
+    editor.kindDD = kindDD
+
+    local mineCB = CreateFrame("CheckButton", nil, editor, "UICheckButtonTemplate")
+    mineCB:SetPoint("TOPLEFT", 310, -38)
+    mineCB.text:SetText(L["AURA_MINE"])
+    mineCB:SetScript("OnClick", function(self) Change("mine", self:GetChecked() and true or false) end)
+    editor.mineCB = mineCB
+
+    local displayDD = CreateSimpleDropdown(editor, 140, auraDisplayItems, "", function(v) Change("display", v) end)
+    displayDD:SetPoint("TOPLEFT", 0, -95)
+    LabelAbove(editor, displayDD, L["AURA_DISPLAY"])
+    editor.displayDD = displayDD
+
+    local colorDD = CreateSimpleDropdown(editor, 140, auraColorItems, "", function(v) Change("color", v) end)
+    colorDD:SetPoint("TOPLEFT", 155, -95)
+    LabelAbove(editor, colorDD, L["AURA_COLOR"])
+    editor.colorDD = colorDD
+
+    local soundDD = CreateSimpleDropdown(editor, 150, auraSoundItems, "", function(v)
+        -- Play it once so the player hears what was picked
+        for _, snd in ipairs(VB.AURA_SOUNDS) do
+            if snd.value == v and snd.sound then pcall(PlaySound, snd.sound, "Master") end
+        end
+        Change("sound", v)
+    end)
+    soundDD:SetPoint("TOPLEFT", 310, -95)
+    LabelAbove(editor, soundDD, L["AURA_SOUND"])
+    editor.soundDD = soundDD
+
+    local sizeSlider = CreateSimpleSlider(editor, L["AURA_SIZE"], 16, 400, 4, 48, function(v) Change("size", v) end)
+    sizeSlider:SetPoint("TOPLEFT", 0, -135)
+    editor.sizeSlider = sizeSlider
+
+    local enabledCB = CreateFrame("CheckButton", nil, editor, "UICheckButtonTemplate")
+    enabledCB:SetPoint("TOPLEFT", 250, -145)
+    enabledCB.text:SetText(L["AURA_ENABLED"])
+    enabledCB:SetScript("OnClick", function(self) Change("enabled", self:GetChecked() and true or false) end)
+    editor.enabledCB = enabledCB
+
+    local note = editor:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    note:SetPoint("TOPLEFT", 0, -190)
+    note:SetWidth(460)
+    note:SetJustifyH("LEFT")
+    note:SetText(L["AURA_SOUND_NOTE"])
+
+    VB:RefreshScreenAurasTab()
+end
+
+local function GetOrCreateAuraSlot(index)
+    if auraSlots[index] then return auraSlots[index] end
+
+    local slot = CreateFrame("Button", nil, configFrame.aurasContent.auraScrollChild, "BackdropTemplate")
+    slot:SetSize(440, 28)
+    slot:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+    })
+
+    local icon = slot:CreateTexture(nil, "ARTWORK")
+    icon:SetSize(20, 20)
+    icon:SetPoint("LEFT", 6, 0)
+    slot.icon = icon
+
+    local nameText = slot:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    nameText:SetPoint("LEFT", 32, 0)
+    nameText:SetWidth(380)
+    nameText:SetJustifyH("LEFT")
+    nameText:SetWordWrap(false)
+    slot.nameText = nameText
+
+    slot:SetScript("OnClick", function(self)
+        selectedAura = self.auraIndex
+        VB:RefreshScreenAurasTab()
+    end)
+
+    local deleteBtn = CreateFrame("Button", nil, slot)
+    deleteBtn:SetSize(20, 20)
+    deleteBtn:SetPoint("RIGHT", -5, 0)
+    deleteBtn:SetNormalTexture("Interface\\Buttons\\UI-StopButton")
+    deleteBtn:SetHighlightTexture("Interface\\Buttons\\UI-StopButton")
+    deleteBtn:GetHighlightTexture():SetVertexColor(1, 0, 0)
+    deleteBtn:SetScript("OnClick", function()
+        if not slot.auraIndex then return end
+        table.remove(VB.screenAuras, slot.auraIndex)
+        selectedAura = nil
+        VB:RebuildScreenAuras()
+        VB:RefreshScreenAurasTab()
+    end)
+
+    auraSlots[index] = slot
+    return slot
+end
+
+function VB:RefreshScreenAurasTab()
+    if not configFrame or not configFrame.aurasContent then return end
+    local content = configFrame.aurasContent
+    local scrollChild = content.auraScrollChild
+
+    for _, slot in ipairs(auraSlots) do slot:Hide() end
+    if selectedAura and not VB.screenAuras[selectedAura] then selectedAura = nil end
+
+    local yOffset = 0
+    for i, entry in ipairs(VB.screenAuras or {}) do
+        local slot = GetOrCreateAuraSlot(i)
+        slot:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset)
+        slot.auraIndex = i
+        slot.icon:SetTexture(VB:GetSpellIcon(entry.spellID))
+        local name = VB:GetSpellName(entry.spellID) or VB.L["DISPLAY_UNKNOWN_SPELL"]
+        local color = entry.enabled == false and "|cFF888888" or "|cFF00FF00"
+        slot.nameText:SetText(color .. name .. "|r  |cFFAAAAAA" .. AuraSummary(entry) .. "|r")
+        if i == selectedAura then
+            slot:SetBackdropColor(0.25, 0.25, 0.4, 1)
+            slot:SetBackdropBorderColor(0.6, 0.6, 1, 1)
+        else
+            slot:SetBackdropColor(0.15, 0.15, 0.15, 1)
+            slot:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
+        end
+        slot:Show()
+        yOffset = yOffset + 30
+    end
+    scrollChild:SetHeight(math.max(180, yOffset + 10))
+
+    local editor = content.editor
+    local entry = selectedAura and VB.screenAuras[selectedAura]
+    if not entry then
+        editor:Hide()
+        return
+    end
+    editor.loading = true
+    editor.header:SetText(VB.L["SCREEN_AURA_SETTINGS"]:format(VB:GetSpellName(entry.spellID) or "?"))
+    SetDropdownValue(editor.unitDD, auraUnitItems, entry.unit)
+    SetDropdownValue(editor.kindDD, auraKindItems, entry.kind)
+    SetDropdownValue(editor.displayDD, auraDisplayItems, entry.display)
+    SetDropdownValue(editor.colorDD, auraColorItems, entry.color)
+    SetDropdownValue(editor.soundDD, auraSoundItems, entry.sound)
+    editor.mineCB:SetChecked(entry.mine)
+    editor.enabledCB:SetChecked(entry.enabled ~= false)
+    editor.sizeSlider.slider:SetValue(entry.size or 48)
+    editor.loading = false
+    editor:Show()
 end
 
 -------------------------------------------------

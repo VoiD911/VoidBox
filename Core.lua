@@ -358,6 +358,17 @@ function VB:OnAddonLoaded()
         VoidBoxDB.classCustomBuffs[VB.playerClass] = {}
     end
     VB.customBuffs = VoidBoxDB.classCustomBuffs[VB.playerClass]
+
+    -- === Screen auras (Auras tab) per class, same reasoning ===
+    if not VoidBoxDB.classAuras then
+        VoidBoxDB.classAuras = {}
+    end
+    if not VoidBoxDB.classAuras[VB.playerClass] then
+        VoidBoxDB.classAuras[VB.playerClass] = {}
+    end
+    VB.screenAuras = VoidBoxDB.classAuras[VB.playerClass]
+    -- Ranks come from the spellbook, which is filled a little after login
+    C_Timer.After(2, function() VB:RebuildScreenAuras() end)
     
     VB:InitMinimapButton()
     
@@ -525,6 +536,7 @@ function VB:OnSpellsChanged()
         local before = VB.healBuffIDs
         VB:BuildForeverHealBuffNames()
         VB:BuildHealBuffIDSet()
+        VB:RefreshScreenAuraIDs()
         if not SameIDSet(before, VB.healBuffIDs) then
             VB:RefreshAuraContainerFilters()
             for _, group in ipairs({ VB.unitButtons, VB.tankButtons, VB.petButtons, VB.targetButtons }) do
@@ -1234,6 +1246,7 @@ end
 SLASH_VOIDBOX1 = "/vb"
 SLASH_VOIDBOX2 = "/voidbox"
 SlashCmdList["VOIDBOX"] = function(msg)
+    local rawMsg = msg:trim()
     msg = msg:lower():trim()
     
     if msg == "lock" then
@@ -1466,6 +1479,8 @@ SlashCmdList["VOIDBOX"] = function(msg)
         VB:SpellLogRanks(msg:match("^spellranks%s+(.+)$"))
     elseif msg == "healdebug" then
         VB:HealDebug()
+    elseif msg == "auratest" or msg:find("^auratest%s+") then
+        VB:AuraTest(rawMsg:match("^%S+%s+(.+)$"))
     elseif msg == "dispeldebug" then
         VB:DispelDebug()
     elseif msg == "rezdebug" then

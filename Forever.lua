@@ -245,6 +245,8 @@ local function ForEachKnownSpell(callback)
     end
 end
 
+VB.ForEachKnownSpell = function(_, callback) ForEachKnownSpell(callback) end
+
 -------------------------------------------------
 -- Tracked (custom) buffs
 --
@@ -526,6 +528,115 @@ function VB:HealDebug()
             t:Cancel()
             VB._healDebugTicker = nil
             VB:Print("=== Heal debug done ===")
+        end
+    end)
+end
+
+-------------------------------------------------
+-- /vb auratest [name or spell ID] - probe for the planned Auras tab
+--
+-- Can a proc on the player (Clearcasting by default) be detected in combat?
+-- For 60 s, three methods are polled and each is printed only when its
+-- answer changes:
+--   direct  - the addon reads the aura (GetPlayerAuraBySpellID / by name)
+--   box     - a client AuraContainer limited to that spell ID; its frame
+--             count is a plain number even while auras are secret
+--   cost    - mana cost of Regrowth, which Clearcasting brings to 0
+-------------------------------------------------
+local CLEARCASTING_ID = 16870   -- druid Clearcasting, Forever (wowhead 2026-10-02)
+local REGROWTH_ID = 8936
+
+function VB:AuraTest(arg)
+    if VB._auraTestTicker then VB._auraTestTicker:Cancel() end
+    if VB._auraTestBox then VB._auraTestBox:Hide() end
+
+    local function safe(v)
+        if issecretvalue and issecretvalue(v) then return "secret" end
+        return tostring(v)
+    end
+
+    -- Resolve the argument into an ID and a name
+    local spellID, name = tonumber(arg or ""), nil
+    if not spellID and arg and arg ~= "" then
+        name = arg
+        local ok, info = pcall(C_Spell.GetSpellInfo, arg)
+        if ok and type(info) == "table" and info.spellID then spellID = info.spellID end
+    end
+    spellID = spellID or (not name and CLEARCASTING_ID) or nil
+    if spellID and not name then
+        local ok, n = pcall(C_Spell.GetSpellName, spellID)
+        if ok and n then name = n end
+    end
+    VB:Print(("=== Aura test (60s): %s id=%s - get the proc, in and out of combat ==="):format(
+        tostring(name), tostring(spellID)))
+
+    -- Client-rendered box, also shown on screen so you can see it draw
+    local box
+    if spellID and VB:HasAuraContainers() then
+        -- includeSpellIDs is a set (id = true), and on a ranked spellbook
+        -- every known rank of the same name must be listed
+        local ids = { [spellID] = true }
+        if name then
+            ForEachKnownSpell(function(id, n)
+                if (n or VB:GetSpellName(id)) == name then ids[id] = true end
+            end)
+        end
+        local list = {}
+        for id in pairs(ids) do list[#list + 1] = tostring(id) end
+        VB:Print("  box ids: " .. table.concat(list, ","))
+        box = VB:CreateAuraTestBox(ids, 40)
+        if not box then VB:Print("  box: creation failed") end
+    end
+    VB._auraTestBox = box
+
+    local function direct()
+        local parts = {}
+        if spellID and C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
+            local ok, a = pcall(C_UnitAuras.GetPlayerAuraBySpellID, spellID)
+            parts[#parts + 1] = "byID=" .. (ok and (a and "FOUND" or "nil") or "error")
+        end
+        if name and C_UnitAuras and C_UnitAuras.GetAuraDataBySpellName then
+            local ok, a = pcall(C_UnitAuras.GetAuraDataBySpellName, "player", name, "HELPFUL")
+            parts[#parts + 1] = "byName=" .. (ok and (a and "FOUND" or "nil") or "error")
+        end
+        parts[#parts + 1] = "buffsRead=" .. #VB:GetAuras("player", "HELPFUL")
+        return table.concat(parts, " ")
+    end
+
+    local function boxState()
+        if not box then return "n/a" end
+        local ok, n = pcall(box.GetAuraGroupFrameCount, box, "vbAuraTest")
+        return ("frames=%s shown=%d"):format(ok and safe(n) or "error",
+            VB:CountShownAuraButtons(box))
+    end
+
+    local function cost()
+        if not (C_Spell and C_Spell.GetSpellPowerCost) then return "n/a" end
+        local ok, costs = pcall(C_Spell.GetSpellPowerCost, REGROWTH_ID)
+        if not ok then return "error" end
+        if type(costs) ~= "table" or not costs[1] then return "none" end
+        return safe(costs[1].cost)
+    end
+
+    local last = {}
+    local function report(key, value)
+        if last[key] ~= value then
+            last[key] = value
+            VB:Print(("  [%s] %s: %s"):format(InCombatLockdown() and "combat" or "out", key, value))
+        end
+    end
+
+    local elapsed = 0
+    VB._auraTestTicker = C_Timer.NewTicker(0.25, function()
+        elapsed = elapsed + 0.25
+        report("direct", direct())
+        report("box", boxState())
+        report("cost", cost())
+        if elapsed >= 60 then
+            VB._auraTestTicker:Cancel()
+            VB._auraTestTicker = nil
+            if box then box:Hide() end
+            VB:Print("=== Aura test done ===")
         end
     end)
 end

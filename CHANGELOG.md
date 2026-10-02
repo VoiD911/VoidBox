@@ -1,5 +1,15 @@
 # VoidBox
 
+## v2.0.0 (2026-10-02)
+
+- **New: screen auras (Auras tab).** Pick a buff or debuff by name, ID or by
+  dropping a spell, on yourself or your target, and VoidBox shows an icon or a
+  drawing (frame or disc, in a colour of your choice) anywhere on screen while
+  it is up, with an optional sound. Drag them into place while the tab is
+  open. On WoW Forever the display keeps working in combat; the sound only
+  plays out of combat there, except Clearcasting.
+- The former Auras tab (exhaustion debuffs, tracked buffs) is now called Buffs.
+
 ## v1.22.5 (2026-10-02)
 
 - **Fix: pet frame that could not select or cast on its pets.** A pet frame

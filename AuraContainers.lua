@@ -104,6 +104,9 @@ local function StyleAuraButton(size, isDebuff, button)
     end
 end
 
+-- Shared with Auras.lua (screen auras), which builds its own containers
+VB.StyleAuraButton = StyleAuraButton
+
 -------------------------------------------------
 -- Container creation
 -------------------------------------------------
@@ -191,6 +194,35 @@ local function FitToContents(container)
 
     container:SetWidth(width)
     pcall(container.SetFlowLayoutMaximumLineSize, container, width)
+end
+
+-- Probe for /vb auratest: one icon, built exactly like the HoT row (which is
+-- known to display in combat on Forever), limited to the given spell ID set.
+function VB:CreateAuraTestBox(ids, size)
+    local box = NewContainer(UIParent, "vbAuraTest", "HELPFUL|PLAYER", 1, size, false)
+    if not box then return nil end
+    pcall(box.SetAuraGroupCandidateFilters, box, "vbAuraTest", { includeSpellIDs = ids })
+    box:SetSize(size, size)
+    box:SetPoint("CENTER", UIParent, "CENTER", 0, 150)
+    pcall(box.SetEnabled, box, true)
+    box:Show()
+    pcall(box.SetUnit, box, "player")
+    pcall(box.UpdateAllAuras, box)
+    return box
+end
+
+-- Icons the client is displaying in a container (our buttons carry .icon)
+function VB:CountShownAuraButtons(container)
+    local shown = 0
+    local ok, children = pcall(function() return { container:GetChildren() } end)
+    if not ok then return -1 end
+    for _, child in ipairs(children) do
+        if child.icon then
+            local okS, s = pcall(child.IsShown, child)
+            if okS and VB:SafeBool(s) then shown = shown + 1 end
+        end
+    end
+    return shown
 end
 
 -------------------------------------------------
