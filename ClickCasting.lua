@@ -728,6 +728,9 @@ end
 function VB:ApplyClickCastings(button)
     if InCombatLockdown() then
         VB:Debug("Cannot apply click castings in combat!")
+        -- A button created mid-fight (a pet summoned in combat) would stay
+        -- without bindings, so redo them all when combat ends
+        VB.pendingClickCastings = true
         return false
     end
     if not button then return false end

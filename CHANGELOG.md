@@ -1,5 +1,11 @@
 # VoidBox
 
+## v1.22.5 (2026-10-02)
+
+- **Fix: pet frame that could not select or cast on its pets.** A pet frame
+  button created during combat (a pet summoned or revived mid-fight) never
+  received its click bindings. They are now applied as soon as combat ends.
+
 ## v1.22.4 (2026-10-02)
 
 - **Fix: HoT and DoT icons flickering and sliding sideways on the target of
