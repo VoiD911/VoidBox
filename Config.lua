@@ -507,7 +507,7 @@ function VB:GetOrCreateBindingSlot(index)
     return slot
 end
 
--- Hostile button of a bindings list row: only for mouse buttons 1-5
+-- Hostile button of a bindings list row
 function VB:RefreshHostileButton(slot, binding)
     local btn = slot.hostileBtn
     if not btn then return end
@@ -744,7 +744,7 @@ function VB:CreateAddBindingDialog()
         dropText:SetText("|cFFAAAAFF" .. VB.L["DROP_SPELL_MACRO"] .. "|r")
     end)
 
-    -- === Step 4: hostile spell (optional, mouse buttons only) ===
+    -- === Step 4: hostile spell (optional) ===
     local hostileZone = CreateFrame("Button", nil, addDialog, "BackdropTemplate")
     hostileZone:SetSize(280, 50)
     hostileZone:SetPoint("TOP", 0, -240)
@@ -857,15 +857,11 @@ function VB:ConfirmAddBinding()
 
     local hostile = addDialog.hostile
     if hostile then
-        if VB:CanHaveHostileAction(binding) then
-            binding.hostileAction = hostile.action
-            binding.hostileValue = hostile.value
-            binding.hostileName = hostile.name
-            if hostile.action == "spell" then
-                binding.hostileRankLocked = VB:IsDownrank(hostile.value) or nil
-            end
-        else
-            VB:Print(VB.L["HOSTILE_ONLY_MOUSE"])
+        binding.hostileAction = hostile.action
+        binding.hostileValue = hostile.value
+        binding.hostileName = hostile.name
+        if hostile.action == "spell" then
+            binding.hostileRankLocked = VB:IsDownrank(hostile.value) or nil
         end
     end
 

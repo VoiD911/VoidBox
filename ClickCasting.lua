@@ -185,21 +185,42 @@ end
 -- time - it reads "harmbutton1" when UnitCanAttack("player", unit) and then
 -- uses the attributes of that virtual button ("type-vbh1", "spell-vbh1"...),
 -- modifiers included - so the addon never has to know the unit's reaction.
--- Mouse buttons 1-5 only: the wheel and keys go through other paths.
-local HOSTILE_MAX_BUTTON = 5
+-- Mouse buttons 1-5 and the bare wheel (Button6/7, clicked on the unit button
+-- itself) use the unit button. Keys and modified wheels go through proxies:
+-- see ConfigureKBProxy, and the macro conditionals of the no-snippet path.
+local HOSTILE_MAX_BUTTON = 7
 
+-- Every binding can take one; kept as a function for the config UI
 function VB:CanHaveHostileAction(binding)
-    local id = binding and not binding.combo and mouseKeyIDs[binding.mouse]
-    return id ~= nil and id <= HOSTILE_MAX_BUTTON
+    return binding ~= nil
 end
 
 -- harmbutton attribute, virtual button name, and the virtual "type" key
 local function GetHostileAttrKeys(binding)
-    if not binding.hostileAction or not VB:CanHaveHostileAction(binding) then return nil end
-    local prefix = modPrefixes[binding.mods or ""] or ""
+    if not binding.hostileAction or binding.combo then return nil end
     local id = mouseKeyIDs[binding.mouse]
+    if not id or id > HOSTILE_MAX_BUTTON then return nil end
+    local prefix = modPrefixes[binding.mods or ""] or ""
     local virtual = "vbh" .. id
     return prefix .. "harmbutton" .. id, virtual, prefix .. "type-" .. virtual
+end
+
+-- Proxies are clicked with "LeftButton" whatever modifier is held, so their
+-- hostile switch uses wildcard keys that match any modifier and button.
+local PROXY_HOSTILE_KEYS = { "*harmbutton*", "*type-vbh", "*spell-vbh", "*macro-vbh", "*macrotext-vbh" }
+
+-- Macro lines casting the hostile spell on an attackable @mouseover, then
+-- stopping there. For the no-snippet path, where a proxy cannot know the
+-- hovered unit and only macro conditionals can tell friend from foe. Spells
+-- only: two macros cannot be merged. A pinned rank casts the bare name (top
+-- rank) here, macro text cannot carry a rank on Forever.
+local function HostileMacroLines(binding, extraLine)
+    if binding.hostileAction ~= "spell" then return nil end
+    local _, name = VB:ResolveSpellForCast(binding.hostileValue, false)
+    if not name then return nil end
+    return "/cast [@mouseover,harm,nodead] " .. name .. "\n"
+        .. (extraLine or "")
+        .. "/stopmacro [@mouseover,harm,nodead]\n"
 end
 
 -------------------------------------------------
@@ -323,6 +344,37 @@ function VB:ConfigureKBProxy(proxy, binding, mouseoverMode)
     -- Ensure vehicle toggle like main unit buttons
     proxy:SetAttribute("toggleForVehicle", true)
 
+    -- Proxies are reused across bindings: drop a previous hostile switch
+    for _, key in ipairs(PROXY_HOSTILE_KEYS) do proxy:SetAttribute(key, nil) end
+
+    VB:ConfigureKBProxyMain(proxy, binding, mouseoverMode)
+
+    if not binding.hostileAction then return end
+    if not mouseoverMode then
+        -- The snippet put the hovered unit in "unit": the template can switch
+        proxy:SetAttribute("*harmbutton*", "vbh")
+        VB:SetButtonAttribute(proxy, "*type-vbh", binding.hostileAction,
+                              binding.hostileValue, binding.hostileRankLocked)
+        return
+    end
+
+    -- No snippets: put the hostile cast in front of the main macro
+    local lines = HostileMacroLines(binding)
+    if not lines then return end
+    local main = proxy:GetAttribute("type") == "macro" and proxy:GetAttribute("macrotext")
+    if not main and binding.action == "spell" then
+        -- A pinned main rank was set up as type=spell: as a macro it casts the
+        -- bare name, the price of sharing the key with a hostile spell
+        local _, name = VB:ResolveSpellForCast(binding.value, false)
+        if name then main = "/cast [@mouseover,exists,nodead][] " .. name end
+    end
+    proxy:SetAttribute("type", "macro")
+    proxy:SetAttribute("unit", nil)
+    proxy:SetAttribute("spell", nil)
+    proxy:SetAttribute("macrotext", lines .. (main or ""))
+end
+
+function VB:ConfigureKBProxyMain(proxy, binding, mouseoverMode)
     local action = binding.action
     if action == "spell" then
         local attrValue, spellName = VB:ResolveSpellForCast(binding.value, binding.rankLocked)
@@ -602,7 +654,15 @@ function VB:ApplyFallbackKeyBindings()
                         EnsureWheelProbes()
                         probes = WheelProbeLines()
                     end
-                    gate:SetAttribute("macrotext", probes
+                    -- Hostile spell first: on an attackable @mouseover it casts,
+                    -- marks the action as done (no zoom replay) and stops.
+                    -- Everything else then meets the usual friendly-only gate.
+                    local hostile = HostileMacroLines(binding, "/click [@mouseover,harm,nodead] "
+                        .. WHEEL_MARKER .. "\n")
+                    local front = hostile
+                        and ("/stopmacro [@mouseover,noexists][@mouseover,dead]\n" .. hostile)
+                        or ""
+                    gate:SetAttribute("macrotext", probes .. front
                         .. "/stopmacro " .. WHEEL_BLOCKED .. "\n" .. actionText
                         .. "\n/click " .. WHEEL_MARKER)
                     -- Modified wheels have no default action to replay

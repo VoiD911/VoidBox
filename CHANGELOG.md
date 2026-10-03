@@ -1,5 +1,13 @@
 # VoidBox
 
+## v2.3.0 (2026-10-03)
+
+- **Hostile spells on the mouse wheel and keyboard bindings too.** Every
+  binding can now have a hostile spell, not only mouse buttons. On WoW
+  Forever (no secure snippets) keys and the opt-in wheel use macro
+  conditionals: hostile *spells* work there, hostile macros do not, and a
+  pinned rank casts the top rank when the key also has a hostile spell.
+
 ## v2.2.0 (2026-10-03)
 
 - **New: hostile spells on mouse bindings (VuhDo style).** Each mouse
