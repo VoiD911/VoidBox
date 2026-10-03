@@ -1192,8 +1192,9 @@ function VB:UpdatePetFrame()
         btn:Hide()
     end
 
-    -- If disabled or solo, hide the frame
-    if not VB.config.showPetFrame or VB.groupType == "solo" then
+    -- Shown solo too: a hunter or warlock heals their pet while levelling.
+    -- "Hide when solo" still hides it, with the rest, in UpdateAllFrames.
+    if not VB.config.showPetFrame then
         pf:Hide()
         return
     end

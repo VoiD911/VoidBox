@@ -1,5 +1,11 @@
 # VoidBox
 
+## v2.0.1 (2026-10-02)
+
+- **Fix: pet frame hidden when playing solo.** The pet frame only appeared in
+  a group, which left hunters and warlocks levelling alone without it. It now
+  shows solo too, unless "Hide when solo" is checked.
+
 ## v2.0.0 (2026-10-02)
 
 - **New: screen auras (Auras tab).** Pick a buff or debuff by name, ID or by
