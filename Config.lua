@@ -1305,10 +1305,14 @@ local function TextOf(items, value)
     return ""
 end
 
-local auraUnitItems, auraKindItems, auraDisplayItems, auraColorItems, auraSoundItems
+local auraUnitItems, auraKindItems, auraDisplayItems, auraColorItems, auraSoundItems, auraShowItems
 
 local function BuildAuraItems()
     local L = VB.L
+    auraShowItems = {
+        { value = "present", text = L["AURA_SHOW_PRESENT"] },
+        { value = "missing", text = L["AURA_SHOW_MISSING"] },
+    }
     auraUnitItems = {
         { value = "player", text = L["AURA_UNIT_PLAYER"] },
         { value = "target", text = L["AURA_UNIT_TARGET"] },
@@ -1333,8 +1337,10 @@ local function BuildAuraItems()
 end
 
 local function AuraSummary(entry)
-    return TextOf(auraUnitItems, entry.unit) .. " - " .. TextOf(auraKindItems, entry.kind)
+    local text = TextOf(auraUnitItems, entry.unit) .. " - " .. TextOf(auraKindItems, entry.kind)
         .. " - " .. TextOf(auraDisplayItems, entry.display)
+    if entry.show == "missing" then text = text .. " - " .. TextOf(auraShowItems, "missing") end
+    return text
 end
 
 local function LabelAbove(parent, frame, text)
@@ -1535,7 +1541,7 @@ function VB:CreateScreenAurasTab()
     local soundDD = CreateSimpleDropdown(editor, 150, auraSoundItems, "", function(v)
         -- Play it once so the player hears what was picked
         for _, snd in ipairs(VB.AURA_SOUNDS) do
-            if snd.value == v and snd.sound then pcall(PlaySound, snd.sound, "Master") end
+            if snd.value == v and snd.file then pcall(PlaySoundFile, snd.file, "Master") end
         end
         Change("sound", v)
     end)
@@ -1543,18 +1549,29 @@ function VB:CreateScreenAurasTab()
     LabelAbove(editor, soundDD, L["AURA_SOUND"])
     editor.soundDD = soundDD
 
-    local sizeSlider = CreateSimpleSlider(editor, L["AURA_SIZE"], 16, 400, 4, 48, function(v) Change("size", v) end)
-    sizeSlider:SetPoint("TOPLEFT", 0, -135)
-    editor.sizeSlider = sizeSlider
+    local showDD = CreateSimpleDropdown(editor, 140, auraShowItems, "", function(v) Change("show", v) end)
+    showDD:SetPoint("TOPLEFT", 0, -150)
+    LabelAbove(editor, showDD, L["AURA_SHOW"])
+    editor.showDD = showDD
+
+    local glowCB = CreateFrame("CheckButton", nil, editor, "UICheckButtonTemplate")
+    glowCB:SetPoint("TOPLEFT", 155, -148)
+    glowCB.text:SetText(L["AURA_GLOW"])
+    glowCB:SetScript("OnClick", function(self) Change("glow", self:GetChecked() and true or false) end)
+    editor.glowCB = glowCB
 
     local enabledCB = CreateFrame("CheckButton", nil, editor, "UICheckButtonTemplate")
-    enabledCB:SetPoint("TOPLEFT", 250, -145)
+    enabledCB:SetPoint("TOPLEFT", 310, -148)
     enabledCB.text:SetText(L["AURA_ENABLED"])
     enabledCB:SetScript("OnClick", function(self) Change("enabled", self:GetChecked() and true or false) end)
     editor.enabledCB = enabledCB
 
+    local sizeSlider = CreateSimpleSlider(editor, L["AURA_SIZE"], 16, 400, 4, 48, function(v) Change("size", v) end)
+    sizeSlider:SetPoint("TOPLEFT", 0, -190)
+    editor.sizeSlider = sizeSlider
+
     local note = editor:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    note:SetPoint("TOPLEFT", 0, -190)
+    note:SetPoint("TOPLEFT", 0, -240)
     note:SetWidth(460)
     note:SetJustifyH("LEFT")
     note:SetText(L["AURA_SOUND_NOTE"])
@@ -1650,6 +1667,8 @@ function VB:RefreshScreenAurasTab()
     SetDropdownValue(editor.displayDD, auraDisplayItems, entry.display)
     SetDropdownValue(editor.colorDD, auraColorItems, entry.color)
     SetDropdownValue(editor.soundDD, auraSoundItems, entry.sound)
+    SetDropdownValue(editor.showDD, auraShowItems, entry.show or "present")
+    editor.glowCB:SetChecked(entry.glow)
     editor.mineCB:SetChecked(entry.mine)
     editor.enabledCB:SetChecked(entry.enabled ~= false)
     editor.sizeSlider.slider:SetValue(entry.size or 48)

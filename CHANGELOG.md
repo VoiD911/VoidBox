@@ -1,5 +1,16 @@
 # VoidBox
 
+## v2.1.0 (2026-10-03)
+
+- **Screen auras: show when missing.** Each aura can now be shown while the
+  buff or debuff is absent (e.g. "remind me to recast this"), in combat too
+  on WoW Forever and Retail.
+- **Screen auras: glow.** An optional pulsing glow around the icon or drawing.
+- **Screen auras: sounds in combat.** Sounds are now played by the game
+  itself when the aura appears (or disappears, for "missing"), so they also
+  work in combat on WoW Forever. The sound list changed (bell, warning, PvP
+  flag); auras that used a removed sound now use the bell.
+
 ## v2.0.2 (2026-10-03)
 
 - **New: hide Blizzard party/raid frames** (Appearance tab, off by default).
