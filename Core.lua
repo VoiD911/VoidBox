@@ -72,6 +72,7 @@ VB.defaults = {
     showTooltipBindings = true,
     keepGroupsTogether = false,
     hideWhenSolo = false,
+    hideBlizzardFrames = false,
     autoTargetOnCast = false,
     fallbackWheelBindings = false,  -- opt-in, see ApplyFallbackKeyBindings
     position = { point = "CENTER", x = 0, y = 0 },
@@ -213,6 +214,10 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
             VB.pendingClickCastings = false
             VB:ApplyClickCastingsToAllFrames()
         end
+        if VB.pendingHideBlizzard then
+            VB.pendingHideBlizzard = false
+            VB:ApplyHideBlizzardFrames()
+        end
     end
 end)
 
@@ -237,6 +242,7 @@ VB.profileKeys = {
     "showTooltipBindings",
     "keepGroupsTogether",
     "hideWhenSolo",
+    "hideBlizzardFrames",
     "autoTargetOnCast",
     "fallbackWheelBindings",
 }
@@ -500,6 +506,7 @@ function VB:OnPlayerEnteringWorld()
         VB:CreateMainFrame()
         VB:InitClickCastings()
     end
+    VB:ApplyHideBlizzardFrames()
     if not VB._rangeSpellID then
         VB:FindRangeCheckSpell()
     end
@@ -515,6 +522,45 @@ end
 function VB:OnGroupRosterUpdate()
     VB:UpdateGroupType()
     VB:UpdateAllFrames()
+    -- Retail builds its compact party frames on demand: catch new ones
+    VB:ApplyHideBlizzardFrames()
+end
+
+-------------------------------------------------
+-- Hide Blizzard party / raid frames (opt-in, GitHub issue #1)
+--
+-- Same approach as the usual macro: the frames are re-parented to a hidden
+-- frame, so whatever Blizzard shows on them stays invisible. They are
+-- protected, so this only runs out of combat. Undoing it needs a /reload:
+-- putting Blizzard's frames back by hand is not worth the taint risk.
+-------------------------------------------------
+local blizzardHider
+local BLIZZARD_GROUP_FRAMES = {
+    "PartyFrame",                   -- Retail party frames
+    "CompactPartyFrame",            -- Retail "raid-style" party frames
+    "CompactRaidFrameContainer",
+    "CompactRaidFrameManager",
+    "PartyMemberFrame1", "PartyMemberFrame2",   -- Classic party frames
+    "PartyMemberFrame3", "PartyMemberFrame4",
+    "PartyMemberBackground",
+}
+
+function VB:ApplyHideBlizzardFrames()
+    if not VB.config.hideBlizzardFrames then return end
+    if InCombatLockdown() then
+        VB.pendingHideBlizzard = true
+        return
+    end
+    if not blizzardHider then
+        blizzardHider = CreateFrame("Frame")
+        blizzardHider:Hide()
+    end
+    for _, name in ipairs(BLIZZARD_GROUP_FRAMES) do
+        local f = _G[name]
+        if f and f.SetParent and f:GetParent() ~= blizzardHider then
+            pcall(f.SetParent, f, blizzardHider)
+        end
+    end
 end
 
 -- The spellbook changed (new spell or rank). SPELLS_CHANGED is noisy - a druid

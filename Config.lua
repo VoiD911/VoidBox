@@ -752,6 +752,20 @@ function VB:CreateAppearanceTab()
         if not InCombatLockdown() then VB:UpdateAllFrames() end
     end)
     yOffset = yOffset - 30
+
+    local hideBlizzardCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    hideBlizzardCB:SetPoint("TOPLEFT", 10, yOffset)
+    hideBlizzardCB.text:SetText(VB.L["HIDE_BLIZZARD_FRAMES"])
+    hideBlizzardCB:SetChecked(VB.config.hideBlizzardFrames or false)
+    hideBlizzardCB:SetScript("OnClick", function(self)
+        VB.config.hideBlizzardFrames = self:GetChecked() and true or false
+        if VB.config.hideBlizzardFrames then
+            VB:ApplyHideBlizzardFrames()
+        else
+            VB:Print(VB.L["HIDE_BLIZZARD_RELOAD"])
+        end
+    end)
+    yOffset = yOffset - 30
     
     local sizeLabel = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     sizeLabel:SetPoint("TOPLEFT", 10, yOffset)

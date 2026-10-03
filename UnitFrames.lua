@@ -729,21 +729,42 @@ function VB:UpdateRange(button)
         checkHealRange = ok and canAssist
     end
     
+    local result, haveResult = nil, false
     if checkHealRange and VB._rangeSpellID and C_Spell and C_Spell.IsSpellInRange then
-        local ok, result = pcall(C_Spell.IsSpellInRange, VB._rangeSpellID, unit)
+        local ok, r = pcall(C_Spell.IsSpellInRange, VB._rangeSpellID, unit)
         if ok then
-            if result == nil then
-                inRange = false
-            else
-                -- Secret boolean: #tostring(true)=4, #tostring(false)=5
-                local ok2, len = pcall(function() return #tostring(result) end)
-                if ok2 and type(len) == "number" then
-                    inRange = (len == 4)
-                end
-            end
+            result, haveResult = r, true
+        end
+    elseif checkHealRange and VB:BoolOr(UnitIsConnected, unit, true)
+           and (VB:BoolOr(UnitInParty, unit, false) or VB:BoolOr(UnitInRaid, unit, false)) then
+        -- No usable spell (warrior, rogue, hunter..., or a client without
+        -- C_Spell.IsSpellInRange such as BCC): Blizzard's own ~40 yd group
+        -- check, the one oUF and the default raid frames use
+        local ok, r = pcall(UnitInRange, unit)
+        if ok then
+            result, haveResult = r, true
         end
     end
-    
+
+    if haveResult and issecretvalue and issecretvalue(result) then
+        -- In combat the answer is secret: it cannot be read, but the client
+        -- can apply it to the frame itself (12.0 SetAlphaFromBoolean)
+        if button.SetAlphaFromBoolean then
+            pcall(button.SetAlphaFromBoolean, button, result, 1, 0.4)
+            button.inRange = nil
+            return
+        end
+        -- Older trick, kept for clients without SetAlphaFromBoolean:
+        -- #tostring(true)=4, #tostring(false)=5
+        local ok2, len = pcall(function() return #tostring(result) end)
+        if ok2 and type(len) == "number" then
+            inRange = (len == 4)
+        end
+    elseif haveResult then
+        -- IsSpellInRange: nil = out of range or not checkable
+        inRange = result and true or false
+    end
+
     if inRange ~= button.inRange then
         button.inRange = inRange
         button:SetAlpha(inRange and 1 or 0.4)

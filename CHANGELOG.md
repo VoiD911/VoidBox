@@ -1,5 +1,16 @@
 # VoidBox
 
+## v2.0.2 (2026-10-03)
+
+- **New: hide Blizzard party/raid frames** (Appearance tab, off by default).
+  Hides the default party and raid frames so they do not duplicate VoidBox.
+  Applied out of combat; unchecking it brings them back after a /reload.
+- **Fix: out of range fading for every class.** Classes without a healing
+  spell (warrior, rogue, hunter...) and BCC now fade group members beyond
+  about 40 yards with Blizzard's own group range check. In combat the range
+  answer is hidden from addons; it is now handed straight to the frame, so
+  fading also works there.
+
 ## v2.0.1 (2026-10-02)
 
 - **Fix: pet frame hidden when playing solo.** The pet frame only appeared in
