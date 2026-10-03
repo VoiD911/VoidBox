@@ -332,16 +332,18 @@ function VB:RefreshBindingsList()
         local icon = binding.action == "spell" and type(binding.value) == "number"
             and VB:GetSpellIcon(binding.value) or nil
         slot.actionText:ClearAllPoints()
+        -- Room on the right for the hostile spell button
         if icon then
             slot.actionIcon:SetTexture(icon)
             slot.actionIcon:Show()
             slot.actionText:SetPoint("LEFT", 194, 0)
-            slot.actionText:SetWidth(176)
+            slot.actionText:SetWidth(150)
         else
             slot.actionIcon:Hide()
             slot.actionText:SetPoint("LEFT", 170, 0)
-            slot.actionText:SetWidth(200)
+            slot.actionText:SetWidth(174)
         end
+        VB:RefreshHostileButton(slot, binding)
         slot.bindingIndex = i
         slot:Show()
         yOffset = yOffset + 30
@@ -384,6 +386,76 @@ function VB:GetOrCreateBindingSlot(index)
     actionText:SetJustifyH("LEFT")
     slot.actionText = actionText
     
+    -- Hostile spell (VuhDo style): what the same click casts on an enemy
+    local hostileBtn = CreateFrame("Button", nil, slot, "BackdropTemplate")
+    hostileBtn:SetSize(22, 22)
+    hostileBtn:SetPoint("RIGHT", -30, 0)
+    hostileBtn:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+    })
+    hostileBtn:SetBackdropColor(0.2, 0.05, 0.05, 1)
+    hostileBtn:SetBackdropBorderColor(0.8, 0.2, 0.2, 1)
+    hostileBtn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    local hostileIcon = hostileBtn:CreateTexture(nil, "ARTWORK")
+    hostileIcon:SetPoint("TOPLEFT", 1, -1)
+    hostileIcon:SetPoint("BOTTOMRIGHT", -1, 1)
+    hostileIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    hostileBtn.icon = hostileIcon
+    local hostilePlus = hostileBtn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    hostilePlus:SetPoint("CENTER")
+    hostilePlus:SetText("|cFFFF5555+|r")
+    hostileBtn.plus = hostilePlus
+    slot.hostileBtn = hostileBtn
+
+    local function SetHostileFromCursor()
+        local binding = slot.bindingIndex and VB.clickCastings[slot.bindingIndex]
+        if not binding or not VB:CanHaveHostileAction(binding) then return end
+        if InCombatLockdown() then VB:Print(VB.L["CANNOT_BIND_COMBAT"]) return end
+        local spellID = VB:GetCursorSpell()
+        if spellID then
+            binding.hostileAction = "spell"
+            binding.hostileValue = spellID
+            binding.hostileRankLocked = VB:IsDownrank(spellID) or nil
+            binding.hostileName = nil
+        else
+            local macroName, _, macroBody = VB:GetCursorMacro()
+            if not (macroName and macroBody) then return end
+            binding.hostileAction = "macro"
+            binding.hostileValue = macroBody
+            binding.hostileName = macroName
+            binding.hostileRankLocked = nil
+        end
+        ClearCursor()
+        VB:ApplyClickCastingsToAllFrames()
+        VB:RefreshBindingsList()
+    end
+    hostileBtn:SetScript("OnReceiveDrag", SetHostileFromCursor)
+    hostileBtn:SetScript("OnClick", function(self, mouseButton)
+        local binding = slot.bindingIndex and VB.clickCastings[slot.bindingIndex]
+        if not binding then return end
+        if mouseButton == "RightButton" then
+            if InCombatLockdown() then VB:Print(VB.L["CANNOT_BIND_COMBAT"]) return end
+            binding.hostileAction, binding.hostileValue = nil, nil
+            binding.hostileRankLocked, binding.hostileName = nil, nil
+            VB:ApplyClickCastingsToAllFrames()
+            VB:RefreshBindingsList()
+        else
+            SetHostileFromCursor()
+        end
+    end)
+    hostileBtn:SetScript("OnEnter", function(self)
+        local binding = slot.bindingIndex and VB.clickCastings[slot.bindingIndex]
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(VB.L["HOSTILE_TITLE"], 1, 0.35, 0.35)
+        local hostile = binding and VB:GetHostileDisplayText(binding)
+        if hostile then GameTooltip:AddLine(hostile) end
+        GameTooltip:AddLine(VB.L["HOSTILE_HELP"], 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    hostileBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
     local deleteBtn = CreateFrame("Button", nil, slot)
     deleteBtn:SetSize(20, 20)
     deleteBtn:SetPoint("RIGHT", -5, 0)
@@ -435,6 +507,26 @@ function VB:GetOrCreateBindingSlot(index)
     return slot
 end
 
+-- Hostile button of a bindings list row: only for mouse buttons 1-5
+function VB:RefreshHostileButton(slot, binding)
+    local btn = slot.hostileBtn
+    if not btn then return end
+    if not VB:CanHaveHostileAction(binding) then
+        btn:Hide()
+        return
+    end
+    local icon
+    if binding.hostileAction == "spell" and type(binding.hostileValue) == "number" then
+        icon = VB:GetSpellIcon(binding.hostileValue)
+    elseif binding.hostileAction == "macro" then
+        icon = 134400   -- question mark: a macro's icon is not stored
+    end
+    btn.icon:SetTexture(icon)
+    btn.icon:SetShown(icon ~= nil)
+    btn.plus:SetShown(icon == nil)
+    btn:Show()
+end
+
 -------------------------------------------------
 -- Add Binding Dialog ("Press to Bind")
 -------------------------------------------------
@@ -483,7 +575,7 @@ local keyDisplayNames = {
 
 function VB:CreateAddBindingDialog()
     addDialog = CreateFrame("Frame", "VoidBoxAddBinding", UIParent, "BackdropTemplate")
-    addDialog:SetSize(320, 320)
+    addDialog:SetSize(320, 385)
     addDialog:SetPoint("CENTER")
     addDialog:SetBackdrop({
         bgFile = "Interface\\Buttons\\WHITE8x8",
@@ -651,6 +743,47 @@ function VB:CreateAddBindingDialog()
         addDialog.selectedMacro = nil
         dropText:SetText("|cFFAAAAFF" .. VB.L["DROP_SPELL_MACRO"] .. "|r")
     end)
+
+    -- === Step 4: hostile spell (optional, mouse buttons only) ===
+    local hostileZone = CreateFrame("Button", nil, addDialog, "BackdropTemplate")
+    hostileZone:SetSize(280, 50)
+    hostileZone:SetPoint("TOP", 0, -240)
+    hostileZone:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+    })
+    hostileZone:SetBackdropColor(0.25, 0.1, 0.1, 1)
+    hostileZone:SetBackdropBorderColor(0.7, 0.3, 0.3, 1)
+    local hostileText = hostileZone:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    hostileText:SetPoint("CENTER")
+    hostileText:SetWidth(270)
+    hostileText:SetText("|cFFFF8888" .. VB.L["HOSTILE_DROP"] .. "|r")
+    addDialog.hostileText = hostileText
+    addDialog.hostile = nil
+
+    hostileZone:SetScript("OnReceiveDrag", function()
+        local spellID, spellName, spellIcon = VB:GetCursorSpell()
+        if spellID and spellName then
+            addDialog.hostile = { action = "spell", value = spellID }
+            local iconStr = spellIcon and ("|T" .. spellIcon .. ":20|t ") or ""
+            local label = VB:GetBindingSpellLabel(spellID, VB:IsDownrank(spellID)) or spellName
+            hostileText:SetText(iconStr .. "|cFFFF5555" .. label .. "|r")
+            ClearCursor()
+            return
+        end
+        local macroName, macroIcon, macroBody = VB:GetCursorMacro()
+        if macroName and macroBody then
+            addDialog.hostile = { action = "macro", value = macroBody, name = macroName }
+            local iconStr = macroIcon and ("|T" .. macroIcon .. ":20|t ") or ""
+            hostileText:SetText(iconStr .. "|cFFFF5555" .. macroName .. "|r")
+            ClearCursor()
+        end
+    end)
+    hostileZone:SetScript("OnClick", function()
+        addDialog.hostile = nil
+        hostileText:SetText("|cFFFF8888" .. VB.L["HOSTILE_DROP"] .. "|r")
+    end)
     
     -- === Confirm button ===
     local confirmBtn = CreateFrame("Button", nil, addDialog, "BackdropTemplate")
@@ -683,6 +816,8 @@ function VB:ResetAddDialog()
     addDialog.dropText:SetText("|cFFAAAAFF" .. VB.L["DROP_SPELL_MACRO"] .. "|r")
     addDialog.actionDropdown.selectedValue = "spell"
     addDialog.actionDropdown.text:SetText(VB.L["ACTION_SPELL"])
+    addDialog.hostile = nil
+    addDialog.hostileText:SetText("|cFFFF8888" .. VB.L["HOSTILE_DROP"] .. "|r")
 end
 
 function VB:ConfirmAddBinding()
@@ -719,7 +854,21 @@ function VB:ConfirmAddBinding()
         binding.value = addDialog.selectedMacro.body
         binding.name = addDialog.selectedMacro.name
     end
-    
+
+    local hostile = addDialog.hostile
+    if hostile then
+        if VB:CanHaveHostileAction(binding) then
+            binding.hostileAction = hostile.action
+            binding.hostileValue = hostile.value
+            binding.hostileName = hostile.name
+            if hostile.action == "spell" then
+                binding.hostileRankLocked = VB:IsDownrank(hostile.value) or nil
+            end
+        else
+            VB:Print(VB.L["HOSTILE_ONLY_MOUSE"])
+        end
+    end
+
     if VB:AddBinding(binding) then
         VB:RefreshBindingsList()
         addDialog:Hide()

@@ -1456,3 +1456,61 @@ SetLocale("zhTW", "AURA_SOUND_BELL", "鐘聲")
 SetLocale("zhTW", "AURA_SOUND_WARNING", "警報")
 SetLocale("zhTW", "AURA_SOUND_FLAG", "PvP旗幟")
 SetLocale("zhTW", "AURA_SOUND_NOTE", "光環出現時（「缺少時」為消失時）由遊戲本身播放聲音，戰鬥中也有效。在WoW Forever中，戰鬥時無法追蹤敵人身上的增益和友方目標身上的減益。")
+
+-------------------------------------------------
+-- Hostile spells on mouse bindings (v2.2+)
+-------------------------------------------------
+SetDefault("HOSTILE_TITLE", "Hostile spell")
+SetDefault("HOSTILE_HELP", "Cast instead of the main action when the clicked unit is an enemy (target, focus, target of target...). Drop a spell or macro here, right-click to clear.")
+SetDefault("HOSTILE_DROP", "Hostile spell (optional): drop here")
+SetDefault("HOSTILE_ONLY_MOUSE", "Hostile spells only work on mouse buttons for now, not on the wheel or keys: it was not added.")
+
+SetLocale("frFR", "HOSTILE_TITLE", "Sort hostile")
+SetLocale("frFR", "HOSTILE_HELP", "Lancé à la place de l'action principale quand l'unité cliquée est un ennemi (cible, focus, cible de la cible...). Déposez un sort ou une macro ici, clic droit pour effacer.")
+SetLocale("frFR", "HOSTILE_DROP", "Sort hostile (optionnel) : déposez ici")
+SetLocale("frFR", "HOSTILE_ONLY_MOUSE", "Les sorts hostiles ne marchent pour l'instant que sur les boutons de la souris, pas sur la molette ni le clavier : il n'a pas été ajouté.")
+
+SetLocale("deDE", "HOSTILE_TITLE", "Feindlicher Zauber")
+SetLocale("deDE", "HOSTILE_HELP", "Wird statt der Hauptaktion gewirkt, wenn die angeklickte Einheit ein Feind ist (Ziel, Fokus, Ziel des Ziels...). Zauber oder Makro hier ablegen, Rechtsklick zum Löschen.")
+SetLocale("deDE", "HOSTILE_DROP", "Feindlicher Zauber (optional): hier ablegen")
+SetLocale("deDE", "HOSTILE_ONLY_MOUSE", "Feindliche Zauber funktionieren vorerst nur mit Maustasten, nicht mit Mausrad oder Tasten: er wurde nicht hinzugefügt.")
+
+SetLocale("esES", "HOSTILE_TITLE", "Hechizo hostil")
+SetLocale("esES", "HOSTILE_HELP", "Se lanza en lugar de la acción principal cuando la unidad pulsada es un enemigo (objetivo, foco, objetivo del objetivo...). Suelta aquí un hechizo o una macro, clic derecho para borrar.")
+SetLocale("esES", "HOSTILE_DROP", "Hechizo hostil (opcional): suéltalo aquí")
+SetLocale("esES", "HOSTILE_ONLY_MOUSE", "Por ahora los hechizos hostiles solo funcionan con los botones del ratón, no con la rueda ni el teclado: no se ha añadido.")
+
+SetLocale("esMX", "HOSTILE_TITLE", "Hechizo hostil")
+SetLocale("esMX", "HOSTILE_HELP", "Se lanza en lugar de la acción principal cuando la unidad pulsada es un enemigo (objetivo, foco, objetivo del objetivo...). Suelta aquí un hechizo o una macro, clic derecho para borrar.")
+SetLocale("esMX", "HOSTILE_DROP", "Hechizo hostil (opcional): suéltalo aquí")
+SetLocale("esMX", "HOSTILE_ONLY_MOUSE", "Por ahora los hechizos hostiles solo funcionan con los botones del ratón, no con la rueda ni el teclado: no se ha añadido.")
+
+SetLocale("ptBR", "HOSTILE_TITLE", "Feitiço hostil")
+SetLocale("ptBR", "HOSTILE_HELP", "Lançado no lugar da ação principal quando a unidade clicada é um inimigo (alvo, foco, alvo do alvo...). Solte aqui um feitiço ou macro, clique direito para limpar.")
+SetLocale("ptBR", "HOSTILE_DROP", "Feitiço hostil (opcional): solte aqui")
+SetLocale("ptBR", "HOSTILE_ONLY_MOUSE", "Por enquanto os feitiços hostis só funcionam nos botões do mouse, não na roda nem no teclado: ele não foi adicionado.")
+
+SetLocale("itIT", "HOSTILE_TITLE", "Incantesimo ostile")
+SetLocale("itIT", "HOSTILE_HELP", "Lanciato al posto dell'azione principale quando l'unità cliccata è un nemico (bersaglio, focus, bersaglio del bersaglio...). Rilascia qui un incantesimo o una macro, clic destro per cancellare.")
+SetLocale("itIT", "HOSTILE_DROP", "Incantesimo ostile (opzionale): rilascia qui")
+SetLocale("itIT", "HOSTILE_ONLY_MOUSE", "Per ora gli incantesimi ostili funzionano solo con i tasti del mouse, non con la rotella o la tastiera: non è stato aggiunto.")
+
+SetLocale("ruRU", "HOSTILE_TITLE", "Заклинание против врага")
+SetLocale("ruRU", "HOSTILE_HELP", "Применяется вместо основного действия, если кликнутая цель — враг (цель, фокус, цель цели...). Перетащите сюда заклинание или макрос, правый клик — очистить.")
+SetLocale("ruRU", "HOSTILE_DROP", "Заклинание против врага (необязательно): сюда")
+SetLocale("ruRU", "HOSTILE_ONLY_MOUSE", "Пока заклинания против врага работают только на кнопках мыши, не на колесе и не на клавишах: оно не добавлено.")
+
+SetLocale("koKR", "HOSTILE_TITLE", "적대 주문")
+SetLocale("koKR", "HOSTILE_HELP", "클릭한 유닛이 적일 때(대상, 주시 대상, 대상의 대상...) 기본 동작 대신 시전됩니다. 주문이나 매크로를 여기에 놓고, 오른쪽 클릭으로 지웁니다.")
+SetLocale("koKR", "HOSTILE_DROP", "적대 주문 (선택): 여기에 놓으세요")
+SetLocale("koKR", "HOSTILE_ONLY_MOUSE", "적대 주문은 아직 마우스 버튼에서만 작동하며 휠이나 키에서는 작동하지 않습니다: 추가되지 않았습니다.")
+
+SetLocale("zhCN", "HOSTILE_TITLE", "敌对法术")
+SetLocale("zhCN", "HOSTILE_HELP", "当点击的单位是敌人时（目标、焦点、目标的目标……）代替主动作施放。将法术或宏拖到这里，右键清除。")
+SetLocale("zhCN", "HOSTILE_DROP", "敌对法术（可选）：拖到这里")
+SetLocale("zhCN", "HOSTILE_ONLY_MOUSE", "敌对法术目前只能用于鼠标按键，不能用于滚轮或键盘：未添加。")
+
+SetLocale("zhTW", "HOSTILE_TITLE", "敵對法術")
+SetLocale("zhTW", "HOSTILE_HELP", "當點擊的單位是敵人時（目標、專注、目標的目標……）代替主動作施放。將法術或巨集拖到這裡，右鍵清除。")
+SetLocale("zhTW", "HOSTILE_DROP", "敵對法術（可選）：拖到這裡")
+SetLocale("zhTW", "HOSTILE_ONLY_MOUSE", "敵對法術目前只能用於滑鼠按鍵，不能用於滾輪或鍵盤：未新增。")

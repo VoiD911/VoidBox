@@ -180,6 +180,28 @@ local function GetMouseAttrKey(binding)
     return nil
 end
 
+-- Hostile spells (VuhDo style): the same click casts something else when the
+-- clicked unit can be attacked. The secure template does the switch at click
+-- time - it reads "harmbutton1" when UnitCanAttack("player", unit) and then
+-- uses the attributes of that virtual button ("type-vbh1", "spell-vbh1"...),
+-- modifiers included - so the addon never has to know the unit's reaction.
+-- Mouse buttons 1-5 only: the wheel and keys go through other paths.
+local HOSTILE_MAX_BUTTON = 5
+
+function VB:CanHaveHostileAction(binding)
+    local id = binding and not binding.combo and mouseKeyIDs[binding.mouse]
+    return id ~= nil and id <= HOSTILE_MAX_BUTTON
+end
+
+-- harmbutton attribute, virtual button name, and the virtual "type" key
+local function GetHostileAttrKeys(binding)
+    if not binding.hostileAction or not VB:CanHaveHostileAction(binding) then return nil end
+    local prefix = modPrefixes[binding.mods or ""] or ""
+    local id = mouseKeyIDs[binding.mouse]
+    local virtual = "vbh" .. id
+    return prefix .. "harmbutton" .. id, virtual, prefix .. "type-" .. virtual
+end
+
 -------------------------------------------------
 -- Keyboard Proxy Buttons
 -- Each keyboard binding gets a dedicated invisible SecureActionButton.
@@ -744,6 +766,12 @@ function VB:ApplyClickCastings(button)
             if attrKey then
                 VB:SetButtonAttribute(button, attrKey, binding.action, binding.value, binding.rankLocked)
             end
+            local harmKey, virtual, hostileKey = GetHostileAttrKeys(binding)
+            if harmKey then
+                button:SetAttribute(harmKey, virtual)
+                VB:SetButtonAttribute(button, hostileKey, binding.hostileAction,
+                                      binding.hostileValue, binding.hostileRankLocked)
+            end
         end
     end
     
@@ -821,6 +849,12 @@ function VB:ClearClickCastings(button)
             button:SetAttribute(attrKey:gsub("type", "spell"), nil)
             button:SetAttribute(attrKey:gsub("type", "macro"), nil)
             button:SetAttribute(attrKey:gsub("type", "macrotext"), nil)
+            if id <= HOSTILE_MAX_BUTTON then
+                button:SetAttribute(mod .. "harmbutton" .. id, nil)
+                for _, kind in ipairs({ "type", "spell", "macro", "macrotext" }) do
+                    button:SetAttribute(mod .. kind .. "-vbh" .. id, nil)
+                end
+            end
         end
     end
     
@@ -928,6 +962,27 @@ end
 
 function VB:GetActionDisplayText(binding)
     if type(binding) ~= "table" then return "?" end
+    local main = VB:GetMainActionDisplayText(binding)
+    local hostile = VB:GetHostileDisplayText(binding)
+    if hostile then return main .. " |cFF888888/|r " .. hostile end
+    return main
+end
+
+-- The hostile half, in red, or nil
+function VB:GetHostileDisplayText(binding)
+    if not binding.hostileAction then return nil end
+    local label
+    if binding.hostileAction == "spell" then
+        label = type(binding.hostileValue) == "number"
+            and VB:GetBindingSpellLabel(binding.hostileValue, binding.hostileRankLocked)
+            or VB.L["DISPLAY_UNKNOWN_SPELL"]
+    else
+        label = binding.hostileName or "Macro"
+    end
+    return "|cFFFF5555" .. tostring(label) .. "|r"
+end
+
+function VB:GetMainActionDisplayText(binding)
     local action = binding.action
     local value = binding.value
     local dname = binding.name

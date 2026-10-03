@@ -1,5 +1,15 @@
 # VoidBox
 
+## v2.2.0 (2026-10-03)
+
+- **New: hostile spells on mouse bindings (VuhDo style).** Each mouse
+  binding (left, right, middle, buttons 4 and 5, with any modifier) can have a
+  second spell or macro, cast instead when the clicked unit is an enemy - on
+  the target, focus and target of target frames for example. The game picks
+  the spell at click time, so it also works in combat on WoW Forever. Set it
+  with the red box in the bindings list or in the add binding window.
+  The mouse wheel and keyboard bindings will follow.
+
 ## v2.1.0 (2026-10-03)
 
 - **Screen auras: show when missing.** Each aura can now be shown while the
