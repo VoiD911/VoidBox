@@ -1,5 +1,20 @@
 # VoidBox
 
+## v2.5.0 (2026-10-04)
+
+Screen auras (Auras tab), all drawn by the game so they work in combat on
+WoW Forever too:
+
+- **Countdown**: the time left in numbers on the icon.
+- **Stacks**: the stack count, bigger, on icons and bars.
+- **Bar display**: icon, name and a bar that empties as the aura runs out.
+- **"Expiring" mode**: the aura only shows in its last seconds (1 to 60),
+  to remind you to refresh a HoT or a buff.
+- **Debuff types**: track "any debuff I can dispel", or Magic, Curse,
+  Disease or Poison, on yourself or your target (button "+ Debuff type").
+  On WoW Forever this is also the way to see debuffs on yourself in combat:
+  Blizzard hides a debuff on you chosen by spell while in combat.
+
 ## v2.4.0 (2026-10-04)
 
 - **New: export / import.** Profiles tab → Export gives one line of text with

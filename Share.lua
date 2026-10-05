@@ -246,12 +246,18 @@ end
 
 local function CleanAura(a)
     if type(a) ~= "table" then return nil end
-    if not SpellExists(a.spellID) then return nil, "unknown" end
-    local clean = VB:NewScreenAura(a.spellID)
+    local isType = a.source == "type"
+    if not isType and not SpellExists(a.spellID) then return nil, "unknown" end
+    local clean = VB:NewScreenAura(SpellExists(a.spellID) and a.spellID or nil)
+    clean.source = isType and "type" or "spell"
+    clean.dispelType = OneOf(a.dispelType, VB.AURA_DISPEL_TYPES, "any")
     clean.unit = OneOf(a.unit, { "player", "target" }, "player")
     clean.kind = OneOf(a.kind, { "HELPFUL", "HARMFUL" }, "HELPFUL")
-    clean.show = OneOf(a.show, { "present", "missing" }, "present")
-    clean.display = OneOf(a.display, { "icon", "frame", "disc" }, "icon")
+    clean.show = OneOf(a.show, { "present", "missing", "expiring" }, "present")
+    clean.expire = math.floor(Num(a.expire, 1, 60) or 5)
+    clean.display = OneOf(a.display, { "icon", "bar", "frame", "disc" }, "icon")
+    if Bool(a.countdown) ~= nil then clean.countdown = a.countdown end
+    if Bool(a.stacks) ~= nil then clean.stacks = a.stacks end
     clean.color = OneOf(a.color, VB.AURA_COLORS, "yellow")
     clean.sound = OneOf(a.sound, VB.AURA_SOUNDS, "none")
     clean.size = math.floor(Num(a.size, 16, 400) or 48)

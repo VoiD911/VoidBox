@@ -1451,13 +1451,23 @@ local function TextOf(items, value)
 end
 
 local auraUnitItems, auraKindItems, auraDisplayItems, auraColorItems, auraSoundItems, auraShowItems
+local auraSourceItems, auraTypeItems
 
 local function BuildAuraItems()
     local L = VB.L
     auraShowItems = {
         { value = "present", text = L["AURA_SHOW_PRESENT"] },
         { value = "missing", text = L["AURA_SHOW_MISSING"] },
+        { value = "expiring", text = L["AURA_SHOW_EXPIRING"] },
     }
+    auraSourceItems = {
+        { value = "spell", text = L["AURA_SOURCE_SPELL"] },
+        { value = "type", text = L["AURA_SOURCE_TYPE"] },
+    }
+    auraTypeItems = {}
+    for _, t in ipairs(VB.AURA_DISPEL_TYPES) do
+        auraTypeItems[#auraTypeItems + 1] = { value = t, text = L["AURA_TYPE_" .. t:upper()] }
+    end
     auraUnitItems = {
         { value = "player", text = L["AURA_UNIT_PLAYER"] },
         { value = "target", text = L["AURA_UNIT_TARGET"] },
@@ -1468,6 +1478,7 @@ local function BuildAuraItems()
     }
     auraDisplayItems = {
         { value = "icon", text = L["AURA_DISPLAY_ICON"] },
+        { value = "bar", text = L["AURA_DISPLAY_BAR"] },
         { value = "frame", text = L["AURA_DISPLAY_FRAME"] },
         { value = "disc", text = L["AURA_DISPLAY_DISC"] },
     }
@@ -1484,7 +1495,7 @@ end
 local function AuraSummary(entry)
     local text = TextOf(auraUnitItems, entry.unit) .. " - " .. TextOf(auraKindItems, entry.kind)
         .. " - " .. TextOf(auraDisplayItems, entry.display)
-    if entry.show == "missing" then text = text .. " - " .. TextOf(auraShowItems, "missing") end
+    if entry.show ~= "present" then text = text .. " - " .. TextOf(auraShowItems, entry.show) end
     return text
 end
 
@@ -1579,12 +1590,12 @@ function VB:CreateScreenAurasTab()
     end
 
     local input = CreateFrame("EditBox", nil, content, "InputBoxTemplate")
-    input:SetSize(190, 22)
+    input:SetSize(130, 22)
     input:SetPoint("TOPLEFT", 12, -62)
     input:SetAutoFocus(false)
 
     local addBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
-    addBtn:SetSize(80, 22)
+    addBtn:SetSize(70, 22)
     addBtn:SetPoint("LEFT", input, "RIGHT", 8, 0)
     addBtn:SetText(L["SCREEN_AURA_ADD"])
 
@@ -1599,7 +1610,7 @@ function VB:CreateScreenAurasTab()
     input:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
 
     local dropZone = CreateFrame("Button", nil, content, "BackdropTemplate")
-    dropZone:SetSize(165, 22)
+    dropZone:SetSize(120, 22)
     dropZone:SetPoint("LEFT", addBtn, "RIGHT", 8, 0)
     dropZone:SetBackdrop({
         bgFile = "Interface\\Buttons\\WHITE8x8",
@@ -1620,6 +1631,18 @@ function VB:CreateScreenAurasTab()
     end
     dropZone:SetScript("OnReceiveDrag", AcceptCursorSpell)
     dropZone:SetScript("OnClick", AcceptCursorSpell)
+
+    -- An aura by debuff type rather than by spell
+    local typeBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+    typeBtn:SetSize(110, 22)
+    typeBtn:SetPoint("LEFT", dropZone, "RIGHT", 8, 0)
+    typeBtn:SetText(L["AURA_ADD_TYPE"])
+    typeBtn:SetScript("OnClick", function()
+        table.insert(VB.screenAuras, VB:NewScreenAura(nil))
+        selectedAura = #VB.screenAuras
+        VB:RebuildScreenAuras()
+        VB:RefreshScreenAurasTab()
+    end)
 
     -- === List ===
     local scrollFrame = CreateFrame("ScrollFrame", nil, content, "UIPanelScrollFrameTemplate")
@@ -1711,12 +1734,38 @@ function VB:CreateScreenAurasTab()
     enabledCB:SetScript("OnClick", function(self) Change("enabled", self:GetChecked() and true or false) end)
     editor.enabledCB = enabledCB
 
+    local sourceDD = CreateSimpleDropdown(editor, 140, auraSourceItems, "", function(v) Change("source", v) end)
+    sourceDD:SetPoint("TOPLEFT", 0, -205)
+    LabelAbove(editor, sourceDD, L["AURA_SOURCE"])
+    editor.sourceDD = sourceDD
+
+    local typeDD = CreateSimpleDropdown(editor, 140, auraTypeItems, "", function(v) Change("dispelType", v) end)
+    typeDD:SetPoint("TOPLEFT", 155, -205)
+    editor.typeLabel = LabelAbove(editor, typeDD, L["AURA_DISPEL_TYPE"])
+    editor.typeDD = typeDD
+
+    local countdownCB = CreateFrame("CheckButton", nil, editor, "UICheckButtonTemplate")
+    countdownCB:SetPoint("TOPLEFT", 310, -203)
+    countdownCB.text:SetText(L["AURA_COUNTDOWN"])
+    countdownCB:SetScript("OnClick", function(self) Change("countdown", self:GetChecked() and true or false) end)
+    editor.countdownCB = countdownCB
+
     local sizeSlider = CreateSimpleSlider(editor, L["AURA_SIZE"], 16, 400, 4, 48, function(v) Change("size", v) end)
-    sizeSlider:SetPoint("TOPLEFT", 0, -190)
+    sizeSlider:SetPoint("TOPLEFT", 0, -240)
     editor.sizeSlider = sizeSlider
 
+    local expireSlider = CreateSimpleSlider(editor, L["AURA_EXPIRE"], 1, 60, 1, 5, function(v) Change("expire", v) end)
+    expireSlider:SetPoint("TOPLEFT", 250, -240)
+    editor.expireSlider = expireSlider
+
+    local stacksCB = CreateFrame("CheckButton", nil, editor, "UICheckButtonTemplate")
+    stacksCB:SetPoint("TOPLEFT", 0, -283)
+    stacksCB.text:SetText(L["AURA_STACKS"])
+    stacksCB:SetScript("OnClick", function(self) Change("stacks", self:GetChecked() and true or false) end)
+    editor.stacksCB = stacksCB
+
     local note = editor:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    note:SetPoint("TOPLEFT", 0, -240)
+    note:SetPoint("TOPLEFT", 0, -315)
     note:SetWidth(460)
     note:SetJustifyH("LEFT")
     note:SetText(L["AURA_SOUND_NOTE"])
@@ -1783,8 +1832,8 @@ function VB:RefreshScreenAurasTab()
         local slot = GetOrCreateAuraSlot(i)
         slot:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset)
         slot.auraIndex = i
-        slot.icon:SetTexture(VB:GetSpellIcon(entry.spellID))
-        local name = VB:GetSpellName(entry.spellID) or VB.L["DISPLAY_UNKNOWN_SPELL"]
+        slot.icon:SetTexture(VB:ScreenAuraIcon(entry))
+        local name = VB:ScreenAuraName(entry)
         local color = entry.enabled == false and "|cFF888888" or "|cFF00FF00"
         slot.nameText:SetText(color .. name .. "|r  |cFFAAAAAA" .. AuraSummary(entry) .. "|r")
         if i == selectedAura then
@@ -1806,7 +1855,7 @@ function VB:RefreshScreenAurasTab()
         return
     end
     editor.loading = true
-    editor.header:SetText(VB.L["SCREEN_AURA_SETTINGS"]:format(VB:GetSpellName(entry.spellID) or "?"))
+    editor.header:SetText(VB.L["SCREEN_AURA_SETTINGS"]:format(VB:ScreenAuraName(entry) or "?"))
     SetDropdownValue(editor.unitDD, auraUnitItems, entry.unit)
     SetDropdownValue(editor.kindDD, auraKindItems, entry.kind)
     SetDropdownValue(editor.displayDD, auraDisplayItems, entry.display)
@@ -1817,6 +1866,20 @@ function VB:RefreshScreenAurasTab()
     editor.mineCB:SetChecked(entry.mine)
     editor.enabledCB:SetChecked(entry.enabled ~= false)
     editor.sizeSlider.slider:SetValue(entry.size or 48)
+    editor.expireSlider.slider:SetValue(entry.expire or 5)
+    editor.expireSlider:SetShown(entry.show == "expiring")
+    editor.countdownCB:SetChecked(entry.countdown)
+    editor.stacksCB:SetChecked(entry.stacks ~= false)
+    -- Spell or debuff type. A spell-less entry (added as a type) stays a type.
+    local isType = entry.source == "type"
+    SetDropdownValue(editor.sourceDD, auraSourceItems, isType and "type" or "spell")
+    editor.sourceDD:SetEnabled(entry.spellID ~= nil)
+    SetDropdownValue(editor.typeDD, auraTypeItems, entry.dispelType or "any")
+    editor.typeDD:SetShown(isType)
+    editor.typeLabel:SetShown(isType)
+    -- A type is always a debuff, and has no spell to watch for "own only"
+    editor.kindDD:SetEnabled(not isType)
+    editor.mineCB:SetEnabled(not isType)
     editor.loading = false
     editor:Show()
 end
