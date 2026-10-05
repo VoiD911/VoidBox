@@ -247,9 +247,10 @@ end
 local function CleanAura(a)
     if type(a) ~= "table" then return nil end
     local isType = a.source == "type"
+    local source = OneOf(a.source, { "spell", "type", "usable" }, "spell")
     if not isType and not SpellExists(a.spellID) then return nil, "unknown" end
     local clean = VB:NewScreenAura(SpellExists(a.spellID) and a.spellID or nil)
-    clean.source = isType and "type" or "spell"
+    clean.source = source
     clean.dispelType = OneOf(a.dispelType, VB.AURA_DISPEL_TYPES, "any")
     clean.unit = OneOf(a.unit, { "player", "target" }, "player")
     clean.kind = OneOf(a.kind, { "HELPFUL", "HARMFUL" }, "HELPFUL")
@@ -257,6 +258,7 @@ local function CleanAura(a)
     clean.expire = math.floor(Num(a.expire, 1, 60) or 5)
     clean.display = OneOf(a.display, { "icon", "bar", "frame", "disc" }, "icon")
     if Bool(a.countdown) ~= nil then clean.countdown = a.countdown end
+    if SpellExists(a.form) then clean.form = a.form end
     if Bool(a.stacks) ~= nil then clean.stacks = a.stacks end
     clean.color = OneOf(a.color, VB.AURA_COLORS, "yellow")
     clean.sound = OneOf(a.sound, VB.AURA_SOUNDS, "none")

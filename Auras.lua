@@ -25,6 +25,11 @@
                  client evaluates the curve.
     Elsewhere the addon reads the auras itself.
 
+    "Spell usable" entries are not auras: they show while a spell can be cast
+    (enough energy, rage, mana...). C_Spell.IsSpellUsable stays readable in
+    combat on Forever, while the power itself is secret even out of combat
+    (/vb usetest, 2026-10-04), so the addon draws those itself.
+
     Blizzard does not let addons pick a debuff ON THE PLAYER by spell while
     auras are secret (EverAuras' finding): such an aura only shows out of
     combat on Forever. Debuff types are aura properties, not identities, so
@@ -96,6 +101,39 @@ local function SoundFileOf(key)
 end
 
 local function IsType(entry) return entry.source == "type" end
+local function IsUsableEntry(entry) return entry.source == "usable" end
+
+-- Form condition (druid forms, warrior stances...): entry.form is the spell
+-- ID of the form, nil = any form. The stance bar API stays readable in
+-- combat; if it ever is not, the aura is left visible rather than hidden.
+local function ActiveFormSpell()
+    local ok, index = pcall(GetShapeshiftForm)
+    if not ok or (issecretvalue and issecretvalue(index)) then return nil, false end
+    if not index or index == 0 then return 0, true end
+    local okI, _, _, _, spellID = pcall(GetShapeshiftFormInfo, index)
+    if not okI or (issecretvalue and issecretvalue(spellID)) then return nil, false end
+    return spellID or 0, true
+end
+
+local function FormOK(entry)
+    if not entry.form then return true end
+    local spellID, known = ActiveFormSpell()
+    if not known then return true end
+    return spellID == entry.form
+end
+
+-- The player's forms, for the config: { { spellID, name }, ... }
+function VB:GetPlayerForms()
+    local forms = {}
+    local okN, n = pcall(GetNumShapeshiftForms)
+    for i = 1, (okN and n or 0) do
+        local ok, _, _, _, spellID = pcall(GetShapeshiftFormInfo, i)
+        if ok and spellID then
+            forms[#forms + 1] = { spellID = spellID, name = VB:GetSpellName(spellID) or tostring(spellID) }
+        end
+    end
+    return forms
+end
 
 local function FilterOf(entry)
     if IsType(entry) then
@@ -169,11 +207,19 @@ local function Normalize(entry)
         entry.kind = "HARMFUL"
         if entry.show == "expiring" then entry.show = "present" end
     end
+    if IsUsableEntry(entry) then
+        -- Not an aura: no unit, no timer, nothing for a bar to show
+        entry.unit = "player"
+        if entry.show == "expiring" then entry.show = "present" end
+        if entry.display == "bar" then entry.display = "icon" end
+    end
 end
 
 -- Every rank sharing the spell's name: ranked spellbooks give each rank its own ID
 local function ResolveIDs(entry)
     if IsType(entry) or not entry.spellID then return {}, nil end
+    -- Asked by name, which the client answers for the best known rank
+    if IsUsableEntry(entry) then return {}, VB:GetSpellName(entry.spellID) end
     local ids = { [entry.spellID] = true }
     local name = VB:GetSpellName(entry.spellID)
     if name and VB.hasRankedSpellbook then
@@ -662,9 +708,18 @@ end
 -- Detection (addon-played sounds, and the display without containers)
 -------------------------------------------------
 
+-- Spell usable: true / false, nil when the answer is hidden
+local function ReadUsable(w)
+    if not (C_Spell and C_Spell.IsSpellUsable) then return nil end
+    local ok, usable = pcall(C_Spell.IsSpellUsable, w.name or w.entry.spellID)
+    if not ok or (issecretvalue and issecretvalue(usable)) then return nil end
+    return usable and true or false
+end
+
 -- true / false when the addon can tell, nil when it cannot (secret auras)
 local function ReadAura(w)
     local entry = w.entry
+    if IsUsableEntry(entry) then return ReadUsable(w) end
     if not UnitExists(entry.unit) then return false end
 
     local auras = VB:GetAuras(entry.unit, (FilterOf(entry):gsub("|", " ")))
@@ -689,7 +744,7 @@ end
 
 local function CostSaysActive(w)
     local probe = COST_PROBES[w.entry.spellID]
-    if not probe or w.entry.unit ~= "player" or IsType(w.entry) then return nil end
+    if not probe or w.entry.unit ~= "player" or IsType(w.entry) or IsUsableEntry(w.entry) then return nil end
     if not (C_Spell and C_Spell.GetSpellPowerCost) then return nil end
     local ok, costs = pcall(C_Spell.GetSpellPowerCost, probe)
     if not ok or type(costs) ~= "table" or not costs[1] then return nil end
@@ -767,6 +822,9 @@ local function UpdateWatcher(w)
         end
     end
 
+    -- Out of the chosen form the aura is not wanted at all
+    if shown ~= nil and not FormOK(entry) then shown = false end
+
     if w.lua and shown ~= nil then
         if shown and entry.show ~= "missing" then
             ShowLuaAura(w.lua, aura, entry)
@@ -785,18 +843,20 @@ local function UpdateWatcher(w)
     end
 end
 
+-- Hide a whole aura when its unit is missing (no target: the container would
+-- call the aura "missing") or the player is not in its form. The holder is a
+-- plain frame of ours, so this also works in combat.
+local function UpdateHolders()
+    for _, w in ipairs(watchers) do
+        local wanted = (w.entry.unit ~= "target" or UnitExists("target")) and FormOK(w.entry)
+        w.holder:SetShown(wanted or VB._screenAuraPreview)
+    end
+end
+
 local ticker
 local function UpdateAll()
     for _, w in ipairs(watchers) do UpdateWatcher(w) end
-end
-
--- No target, nothing to watch: the container would call the aura "missing"
-local function UpdateTargetHolders()
-    for _, w in ipairs(watchers) do
-        if w.entry.unit == "target" then
-            w.holder:SetShown(UnitExists("target") or VB._screenAuraPreview)
-        end
-    end
+    UpdateHolders()
 end
 
 -------------------------------------------------
@@ -816,7 +876,7 @@ function VB:RebuildScreenAuras()
             local w = { entry = entry, index = i }
             w.ids, w.name = ResolveIDs(entry)
             w.holder = CreateHolder(entry)
-            if VB:HasAuraContainers() then
+            if VB:HasAuraContainers() and not IsUsableEntry(entry) then
                 if entry.show == "missing" then
                     w.container = BuildMissingContainer(w)
                 elseif entry.show == "expiring" then
@@ -845,7 +905,7 @@ end
 -- New ranks learned: widen the ID sets without rebuilding the frames
 function VB:RefreshScreenAuraIDs()
     for _, w in ipairs(watchers) do
-        if not IsType(w.entry) then
+        if not IsType(w.entry) and not IsUsableEntry(w.entry) then
             w.ids, w.name = ResolveIDs(w.entry)
             if w.container then
                 pcall(w.container.SetAuraGroupCandidateFilters, w.container, GROUP_KEY, CandidateOf(w))
@@ -871,17 +931,20 @@ function VB:SetScreenAuraPreview(on)
         if w.clip then w.clip:SetShown(not VB._screenAuraPreview) end
         if w.lua and VB._screenAuraPreview then w.lua:Hide() end
     end
-    UpdateTargetHolders()
+    UpdateHolders()
 end
 
 -- The container's unit token stays "target": ask it to re-read on a new target
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_TARGET_CHANGED")
-events:SetScript("OnEvent", function()
-    for _, w in ipairs(watchers) do
-        if w.container and w.entry.unit == "target" then
-            pcall(w.container.UpdateAllAuras, w.container)
+events:RegisterEvent("UPDATE_SHAPESHIFT_FORM")
+events:SetScript("OnEvent", function(_, event)
+    if event == "PLAYER_TARGET_CHANGED" then
+        for _, w in ipairs(watchers) do
+            if w.container and w.entry.unit == "target" then
+                pcall(w.container.UpdateAllAuras, w.container)
+            end
         end
     end
-    UpdateTargetHolders()
+    UpdateHolders()
 end)

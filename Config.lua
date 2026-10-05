@@ -1463,6 +1463,7 @@ local function BuildAuraItems()
     auraSourceItems = {
         { value = "spell", text = L["AURA_SOURCE_SPELL"] },
         { value = "type", text = L["AURA_SOURCE_TYPE"] },
+        { value = "usable", text = L["AURA_SOURCE_USABLE"] },
     }
     auraTypeItems = {}
     for _, t in ipairs(VB.AURA_DISPEL_TYPES) do
@@ -1744,6 +1745,22 @@ function VB:CreateScreenAurasTab()
     editor.typeLabel = LabelAbove(editor, typeDD, L["AURA_DISPEL_TYPE"])
     editor.typeDD = typeDD
 
+    -- Form condition, same place as the debuff type (a type never needs it).
+    -- Only for classes with forms or stances.
+    local formItems = { { value = 0, text = L["AURA_FORM_ANY"] } }
+    for _, form in ipairs(VB:GetPlayerForms()) do
+        formItems[#formItems + 1] = { value = form.spellID, text = form.name }
+    end
+    editor.formItems = formItems
+    if #formItems > 1 then
+        local formDD = CreateSimpleDropdown(editor, 140, formItems, "", function(v)
+            Change("form", v ~= 0 and v or nil)
+        end)
+        formDD:SetPoint("TOPLEFT", 155, -205)
+        editor.formLabel = LabelAbove(editor, formDD, L["AURA_FORM"])
+        editor.formDD = formDD
+    end
+
     local countdownCB = CreateFrame("CheckButton", nil, editor, "UICheckButtonTemplate")
     countdownCB:SetPoint("TOPLEFT", 310, -203)
     countdownCB.text:SetText(L["AURA_COUNTDOWN"])
@@ -1872,14 +1889,22 @@ function VB:RefreshScreenAurasTab()
     editor.stacksCB:SetChecked(entry.stacks ~= false)
     -- Spell or debuff type. A spell-less entry (added as a type) stays a type.
     local isType = entry.source == "type"
-    SetDropdownValue(editor.sourceDD, auraSourceItems, isType and "type" or "spell")
+    local isUsable = entry.source == "usable"
+    SetDropdownValue(editor.sourceDD, auraSourceItems, entry.source or "spell")
     editor.sourceDD:SetEnabled(entry.spellID ~= nil)
     SetDropdownValue(editor.typeDD, auraTypeItems, entry.dispelType or "any")
     editor.typeDD:SetShown(isType)
     editor.typeLabel:SetShown(isType)
+    if editor.formDD then
+        SetDropdownValue(editor.formDD, editor.formItems, entry.form or 0)
+        editor.formDD:SetShown(not isType)
+        editor.formLabel:SetShown(not isType)
+    end
     -- A type is always a debuff, and has no spell to watch for "own only"
-    editor.kindDD:SetEnabled(not isType)
-    editor.mineCB:SetEnabled(not isType)
+    editor.kindDD:SetEnabled(not isType and not isUsable)
+    editor.mineCB:SetEnabled(not isType and not isUsable)
+    -- "Spell usable" is about the player only
+    editor.unitDD:SetEnabled(not isUsable)
     editor.loading = false
     editor:Show()
 end

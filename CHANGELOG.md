@@ -1,5 +1,15 @@
 # VoidBox
 
+## v2.6.0 (2026-10-04)
+
+- **Screen auras: "spell usable".** Track = "A spell usable" shows the icon
+  (or frame, disc, glow, sound) while a spell can be cast - enough energy for
+  Shred, rage for a finisher, mana for a heal. Works in combat on WoW
+  Forever, with the sound too. "Missing" shows it while the spell can NOT be
+  cast.
+- **Screen auras: "Only in form".** Any aura can be limited to one druid
+  form, warrior stance and so on (e.g. Shred only in Cat Form).
+
 ## v2.5.0 (2026-10-04)
 
 Screen auras (Auras tab), all drawn by the game so they work in combat on
