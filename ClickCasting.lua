@@ -48,6 +48,10 @@ local modPrefixes = {
     ["alt-ctrl-shift"] = "alt-ctrl-shift-",
 }
 
+-- Read by Share.lua to validate imported bindings
+VB.MOUSE_KEY_IDS = mouseKeyIDs
+VB.MOD_PREFIXES = modPrefixes
+
 -- Ignored keys (modifiers themselves, escape, etc.)
 local ignoredKeys = {
     LSHIFT = true, RSHIFT = true, LCTRL = true, RCTRL = true,

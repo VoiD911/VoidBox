@@ -315,7 +315,28 @@ function VB:OnAddonLoaded()
     end
 
     -- Merge defaults into active profile for any missing keys
-    local activeProfile = VoidBoxDB.profiles[VoidBoxDB.activeProfile]
+    -- Each character remembers its own profile. One that has none yet (a new
+    -- character, or everyone right after the update) takes the last profile
+    -- used on the account, which is what it used to share before.
+    VoidBoxDB.charProfiles = VoidBoxDB.charProfiles or {}
+    -- A character that never chose a profile gets its own copy of the last
+    -- one used, named after it: same settings, but its changes no longer
+    -- spill into the profile other characters share.
+    local charKey = VB:GetCharacterKey()
+    if not VoidBoxDB.charProfiles[charKey] then
+        local source = VoidBoxDB.profiles[VB:GetActiveProfileName()] or VoidBoxDB.profiles["Default"]
+        local own = VB:SuggestProfileName()
+        VoidBoxDB.profiles[own] = VB:CopyTable(source)
+        VoidBoxDB.profiles[own]._class = VB.playerClass
+        VoidBoxDB.charProfiles[charKey] = own
+    end
+    local activeName = VB:GetActiveProfileName()
+    VoidBoxDB.charProfiles[VB:GetCharacterKey()] = activeName
+    local activeProfile = VoidBoxDB.profiles[activeName]
+    -- Profiles from before v2.4 have no class: the first one to use it claims it
+    if activeName ~= "Default" and not activeProfile._class then
+        activeProfile._class = VB.playerClass
+    end
     for _, key in ipairs(VB.profileKeys) do
         if activeProfile[key] == nil and VB.defaults[key] ~= nil then
             activeProfile[key] = VB:CopyTable(VB.defaults[key])
@@ -407,8 +428,18 @@ function VB:GetProfileList()
     return list
 end
 
+-- "Name-Realm": the key of this character's profile choice
+function VB:GetCharacterKey()
+    return (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?")
+end
+
 function VB:GetActiveProfileName()
-    return VoidBoxDB and VoidBoxDB.activeProfile or "Default"
+    if not VoidBoxDB then return "Default" end
+    local mine = VoidBoxDB.charProfiles and VoidBoxDB.charProfiles[VB:GetCharacterKey()]
+    if mine and VoidBoxDB.profiles and VoidBoxDB.profiles[mine] then return mine end
+    local last = VoidBoxDB.activeProfile
+    if last and VoidBoxDB.profiles and VoidBoxDB.profiles[last] then return last end
+    return "Default"
 end
 
 function VB:SwitchProfile(name)
@@ -418,7 +449,10 @@ function VB:SwitchProfile(name)
         return false
     end
     
+    -- This character's choice, and the account's last used (for new characters)
     VoidBoxDB.activeProfile = name
+    VoidBoxDB.charProfiles = VoidBoxDB.charProfiles or {}
+    VoidBoxDB.charProfiles[VB:GetCharacterKey()] = name
     VB.config = VoidBoxDB.profiles[name]
     
     -- Merge defaults for any missing keys
@@ -447,6 +481,20 @@ function VB:SwitchProfile(name)
             VB.frames.tankFrame:SetPoint(tpos.point, UIParent, tpos.relPoint or tpos.point, tpos.x or 0, tpos.y or 0)
         end
     end
+    -- The pet frame only read its position when created, so it stayed where
+    -- the previous profile had it until a /reload. (The target frame is
+    -- placed by UpdateTargetFrame, below.)
+    if VB.frames.petFrame then
+        local ppos = VB.config.petFramePosition
+        VB.frames.petFrame:ClearAllPoints()
+        if ppos and ppos.point then
+            VB.frames.petFrame:SetPoint(ppos.point, UIParent, ppos.relPoint or ppos.point, ppos.x or 0, ppos.y or 0)
+        elseif VB.frames.main then
+            VB.frames.petFrame:SetPoint("BOTTOMRIGHT", VB.frames.main, "TOPRIGHT", 0, 20)
+        else
+            VB.frames.petFrame:SetPoint("CENTER", UIParent, "CENTER", 200, 0)
+        end
+    end
     VB:UpdateAllFrames()
     VB:ApplyClickCastingsToAllFrames()
     
@@ -463,6 +511,7 @@ function VB:CreateProfile(name)
     for _, key in ipairs(VB.profileKeys) do
         profile[key] = VB:CopyTable(VB.defaults[key])
     end
+    profile._class = VB.playerClass
     VoidBoxDB.profiles[name] = profile
     return true
 end
@@ -471,19 +520,81 @@ function VB:CopyProfile(srcName, destName)
     if not destName or destName == "" then return false end
     if not VoidBoxDB.profiles[srcName] then return false end
     if VoidBoxDB.profiles[destName] then return false end
-    
+
     VoidBoxDB.profiles[destName] = VB:CopyTable(VoidBoxDB.profiles[srcName])
+    VoidBoxDB.profiles[destName]._class = VB.playerClass
     return true
+end
+
+-- Back to VoidBox's defaults. Same table, so every character on it follows;
+-- the class colour stays.
+function VB:ResetProfile(name)
+    local profile = VoidBoxDB.profiles[name]
+    if not profile then return false end
+    if InCombatLockdown() then
+        VB:Print(VB.L["CANNOT_CONFIG_COMBAT"])
+        return false
+    end
+    local class = profile._class
+    wipe(profile)
+    for _, key in ipairs(VB.profileKeys) do
+        profile[key] = VB:CopyTable(VB.defaults[key])
+    end
+    profile._class = class
+    if name == VB:GetActiveProfileName() then
+        VB:SwitchProfile(name)   -- re-applies positions, sizes, bindings
+    end
+    return true
+end
+
+-- Every character on the old name follows the profile to its new name
+function VB:RenameProfile(oldName, newName)
+    if not newName or newName == "" or oldName == "Default" then return false end
+    if not VoidBoxDB.profiles[oldName] or VoidBoxDB.profiles[newName] then return false end
+    VoidBoxDB.profiles[newName] = VoidBoxDB.profiles[oldName]
+    VoidBoxDB.profiles[oldName] = nil
+    for char, profile in pairs(VoidBoxDB.charProfiles or {}) do
+        if profile == oldName then VoidBoxDB.charProfiles[char] = newName end
+    end
+    if VoidBoxDB.activeProfile == oldName then VoidBoxDB.activeProfile = newName end
+    return true
+end
+
+-- Profile name in the colour of the class that made it (_class), plain for
+-- Default and for profiles from before v2.4
+function VB:ColoredProfileName(name)
+    local profile = VoidBoxDB and VoidBoxDB.profiles and VoidBoxDB.profiles[name]
+    local class = profile and profile._class
+    local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+    if c then
+        return ("|cFF%02x%02x%02x%s|r"):format(math.floor(c.r * 255), math.floor(c.g * 255),
+                                               math.floor(c.b * 255), name)
+    end
+    return name
+end
+
+-- Default name for a new profile: the character's name, made unique
+function VB:SuggestProfileName(base)
+    base = (base or UnitName("player") or "Profile"):sub(1, 26)
+    local name, n = base, 2
+    while VoidBoxDB.profiles[name] do
+        name = base .. " " .. n
+        n = n + 1
+    end
+    return name
 end
 
 function VB:DeleteProfile(name)
     if name == "Default" then return false end  -- Can't delete Default
     if not VoidBoxDB.profiles[name] then return false end
     
+    local wasActive = VB:GetActiveProfileName() == name
     VoidBoxDB.profiles[name] = nil
-    
+    if VoidBoxDB.activeProfile == name then VoidBoxDB.activeProfile = "Default" end
+    -- Other characters on it fall back by themselves (GetActiveProfileName)
+
     -- If we deleted the active profile, switch to Default
-    if VoidBoxDB.activeProfile == name then
+    if wasActive then
         VB:SwitchProfile("Default")
     end
     return true

@@ -1,5 +1,23 @@
 # VoidBox
 
+## v2.4.0 (2026-10-04)
+
+- **New: export / import.** Profiles tab → Export gives one line of text with
+  your profile, click bindings, tracked buffs and screen auras (pick which).
+  Paste it with Import on another character, another game version or a
+  friend's game. Import shows what the text contains before applying it,
+  lists any macros (they run when you click, so only import from people you
+  trust) and skips spells that do not exist in your game version.
+- **Profiles are now per character.** Each character remembers its own
+  profile; a new character gets its own copy of the last profile used, named
+  after it, so its changes no longer affect your other characters (existing
+  characters get one the first time they log in). A new Reset button puts a
+  profile back to the default settings. Profiles can be
+  renamed, new ones are named after the character by default, and the list
+  shows each profile in the colour of the class that made it.
+- **Fix: pet frame position on profile switch.** It stayed where the
+  previous profile had it until a /reload.
+
 ## v2.3.0 (2026-10-03)
 
 - **Hostile spells on the mouse wheel and keyboard bindings too.** Every

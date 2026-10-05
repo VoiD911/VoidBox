@@ -1839,7 +1839,7 @@ function VB:CreateProfilesTab()
     
     local activeName = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     activeName:SetPoint("LEFT", activeLabel, "RIGHT", 8, 0)
-    activeName:SetText("|cFF9966FF" .. VB:GetActiveProfileName() .. "|r")
+    activeName:SetText(VB:ColoredProfileName(VB:GetActiveProfileName()))
     content.activeName = activeName
     yOffset = yOffset - 35
     
@@ -1902,14 +1902,55 @@ function VB:CreateProfilesTab()
     deleteBtn:SetBackdropBorderColor(0.6, 0.3, 0.3, 1)
     deleteBtn:SetScript("OnEnter", function(self) self:SetBackdropColor(0.5, 0.2, 0.2, 1) end)
     deleteBtn:SetScript("OnLeave", function(self) self:SetBackdropColor(0.4, 0.15, 0.15, 1) end)
-    
+
+    -- Reset the selected (or active) profile to the defaults, after a confirmation
+    StaticPopupDialogs["VOIDBOX_RESET_PROFILE"] = {
+        text = VB.L["PROFILE_RESET_CONFIRM"],
+        button1 = YES,
+        button2 = NO,
+        OnAccept = function(_, name)
+            if VB:ResetProfile(name) then
+                VB:Print(VB.L["PROFILE_RESET_DONE"]:format(name))
+                VB:RefreshProfilesTab()
+            end
+        end,
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+        preferredIndex = 3,
+    }
+    MakeProfileBtn(VB.L["PROFILE_RESET"], (btnWidth + btnSpacing) * 3, function()
+        local name = content.selectedProfile or VB:GetActiveProfileName()
+        local dialog = StaticPopup_Show("VOIDBOX_RESET_PROFILE", name)
+        if dialog then dialog.data = name end
+    end)
+
+    -- Share the configuration as text (Share.lua)
+    btnY = btnY - 35
+    MakeProfileBtn(VB.L["PROFILE_RENAME"], 0, function()
+        local name = content.selectedProfile or VB:GetActiveProfileName()
+        if name == "Default" then
+            VB:Print(VB.L["PROFILE_CANNOT_RENAME_DEFAULT"])
+            return
+        end
+        VB:ShowProfileNameDialog("rename", name)
+    end)
+    MakeProfileBtn(VB.L["SHARE_EXPORT"], btnWidth + btnSpacing, function() VB:ShowExportDialog() end)
+    MakeProfileBtn(VB.L["SHARE_IMPORT"], (btnWidth + btnSpacing) * 2, function() VB:ShowImportDialog() end)
+
+    local note = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    note:SetPoint("TOPLEFT", 10, btnY - 35)
+    note:SetWidth(440)
+    note:SetJustifyH("LEFT")
+    note:SetText(VB.L["PROFILE_PER_CHARACTER_NOTE"])
+
     content.selectedProfile = nil
 end
 
 function VB:RefreshProfilesTab()
     if not configFrame or not configFrame.profilesContent then return end
     local content = configFrame.profilesContent
-    content.activeName:SetText("|cFF9966FF" .. VB:GetActiveProfileName() .. "|r")
+    content.activeName:SetText(VB:ColoredProfileName(VB:GetActiveProfileName()))
     
     for _, btn in ipairs(content.profileButtons) do btn:Hide() end
     
@@ -1933,7 +1974,7 @@ function VB:RefreshProfilesTab()
         
         btn:SetPoint("TOPLEFT", 2, -(i-1) * 26 - 2)
         btn.profileName = name
-        btn.text:SetText(name)
+        btn.text:SetText(VB:ColoredProfileName(name))
         
         local isActive = (name == activeName)
         local isSelected = (name == content.selectedProfile)
@@ -1968,7 +2009,7 @@ end
 -------------------------------------------------
 local profileDialog = nil
 
-function VB:ShowProfileNameDialog(mode)
+function VB:ShowProfileNameDialog(mode, renaming)
     if not profileDialog then
         profileDialog = CreateFrame("Frame", "VoidBoxProfileDialog", UIParent, "BackdropTemplate")
         profileDialog:SetSize(280, 120)
@@ -2033,8 +2074,12 @@ function VB:ShowProfileNameDialog(mode)
     end
     
     profileDialog.mode = mode
-    profileDialog.editBox:SetText("")
-    profileDialog.title:SetText(mode == "new" and VB.L["PROFILE_NEW"] or VB.L["PROFILE_COPY"])
+    -- New and copied profiles are named after the character by default
+    profileDialog.renaming = renaming
+    profileDialog.editBox:SetText(mode == "rename" and renaming or VB:SuggestProfileName())
+    profileDialog.editBox:HighlightText()
+    profileDialog.title:SetText(mode == "new" and VB.L["PROFILE_NEW"]
+        or mode == "rename" and VB.L["PROFILE_RENAME"] or VB.L["PROFILE_COPY"])
     
     profileDialog.okBtn:SetScript("OnClick", function()
         local name = profileDialog.editBox:GetText():trim()
@@ -2045,6 +2090,11 @@ function VB:ShowProfileNameDialog(mode)
         end
         if profileDialog.mode == "new" then
             VB:CreateProfile(name)
+        elseif profileDialog.mode == "rename" then
+            VB:RenameProfile(profileDialog.renaming, name)
+            if configFrame.profilesContent.selectedProfile == profileDialog.renaming then
+                configFrame.profilesContent.selectedProfile = name
+            end
         elseif profileDialog.mode == "copy" then
             local src = configFrame.profilesContent.selectedProfile or VB:GetActiveProfileName()
             VB:CopyProfile(src, name)
