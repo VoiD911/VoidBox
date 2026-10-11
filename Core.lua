@@ -74,6 +74,8 @@ VB.defaults = {
     hideWhenSolo = false,
     hideBlizzardFrames = false,
     autoTargetOnCast = false,
+    clickToRez = false,         -- plain left click on a dead ally casts res
+    smoothGroupUpdates = true,  -- re-check frames shortly after joins / pet summons
     fallbackWheelBindings = false,  -- opt-in, see ApplyFallbackKeyBindings
     position = { point = "CENTER", x = 0, y = 0 },
     clickCastings = {},
@@ -173,6 +175,9 @@ for _, event in ipairs({
     "LEARNED_SPELL_IN_SKILL_LINE",
     "SPELLS_CHANGED",
     "PLAYER_REGEN_ENABLED",
+    "UNIT_NAME_UPDATE",
+    "UNIT_CONNECTION",
+    "PLAYER_ROLES_ASSIGNED",
 }) do
     VB:SafeRegisterEvent(eventFrame, event)
 end
@@ -189,8 +194,26 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
         VB:OnPlayerEnteringWorld()
     elseif event == "GROUP_ROSTER_UPDATE" then
         VB:OnGroupRosterUpdate()
+        VB:ScheduleGroupRefresh()
     elseif event == "UNIT_PET" then
-        if VB.config.showPetFrame then VB:UpdatePetFrame() end
+        if VB.config.showPetFrame then
+            if InCombatLockdown() then
+                -- Pet buttons are secure: moving or showing them in combat is
+                -- blocked, so lay them out when combat ends
+                VB.pendingUpdate = true
+            else
+                VB:UpdatePetFrame()
+            end
+        end
+        VB:ScheduleGroupRefresh()
+    elseif event == "UNIT_NAME_UPDATE" or event == "UNIT_CONNECTION" then
+        -- These fire for nameplates and NPCs too: only group units matter
+        local unit = ...
+        if unit and (unit:find("^party") or unit:find("^raid") or unit:find("pet$")) then
+            VB:ScheduleGroupRefresh()
+        end
+    elseif event == "PLAYER_ROLES_ASSIGNED" then
+        VB:ScheduleGroupRefresh()
     elseif event == "PLAYER_SPECIALIZATION_CHANGED"
         or event == "PLAYER_TALENT_UPDATE"
         or event == "LEARNED_SPELL_IN_TAB" then
@@ -244,6 +267,8 @@ VB.profileKeys = {
     "hideWhenSolo",
     "hideBlizzardFrames",
     "autoTargetOnCast",
+    "clickToRez",
+    "smoothGroupUpdates",
     "fallbackWheelBindings",
 }
 
@@ -628,6 +653,29 @@ function VB:OnPlayerEnteringWorld()
     VB:RefreshAuraContainerFilters()
     VB:UpdateGroupType()
     VB:UpdateAllFrames()
+end
+
+-- A member who just joined, or a pet just summoned, often has no name, class
+-- or even UnitExists on the first event, so the frame came up blank or not
+-- at all until the next roster change. Re-run the update a moment later, a
+-- few times, coalescing bursts of events into one pass.
+local refreshGen = 0
+function VB:ScheduleGroupRefresh()
+    if not VB.config.smoothGroupUpdates or not C_Timer then return end
+    refreshGen = refreshGen + 1
+    local gen = refreshGen
+    for _, delay in ipairs({ 0.3, 1.0, 2.5 }) do
+        C_Timer.After(delay, function()
+            if gen ~= refreshGen then return end   -- a newer burst took over
+            if InCombatLockdown() then
+                VB.pendingUpdate = true
+                return
+            end
+            VB:UpdateAllFrames()
+            -- Newly built buttons need their bindings (incl. click-to-rez)
+            VB:ApplyClickCastingsToAllFrames()
+        end)
+    end
 end
 
 function VB:OnGroupRosterUpdate()

@@ -1241,6 +1241,25 @@ function VB:CreateAppearanceTab()
     end)
     yOffset = yOffset - 30
 
+    local clickRezCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    clickRezCB:SetPoint("TOPLEFT", 10, yOffset)
+    clickRezCB.text:SetText(VB.L["CLICK_TO_REZ"])
+    clickRezCB:SetChecked(VB.config.clickToRez or false)
+    clickRezCB:SetScript("OnClick", function(self)
+        VB.config.clickToRez = self:GetChecked()
+        VB:ApplyClickCastingsToAllFrames()
+    end)
+    yOffset = yOffset - 30
+
+    local smoothCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    smoothCB:SetPoint("TOPLEFT", 10, yOffset)
+    smoothCB.text:SetText(VB.L["SMOOTH_GROUP_UPDATES"])
+    smoothCB:SetChecked(VB.config.smoothGroupUpdates ~= false)
+    smoothCB:SetScript("OnClick", function(self)
+        VB.config.smoothGroupUpdates = self:GetChecked()
+    end)
+    yOffset = yOffset - 30
+
     -- Only meaningful where secure snippets are dead (Forever): elsewhere the
     -- wheel is bound on hover and needs no opt-in.
     if not VB.hasSecureSnippets then
