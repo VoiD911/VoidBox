@@ -206,8 +206,13 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
             end
         end
         VB:ScheduleGroupRefresh()
-    elseif event == "UNIT_NAME_UPDATE" or event == "UNIT_CONNECTION"
-        or event == "PLAYER_ROLES_ASSIGNED" then
+    elseif event == "UNIT_NAME_UPDATE" or event == "UNIT_CONNECTION" then
+        -- These fire for nameplates and NPCs too: only group units matter
+        local unit = ...
+        if unit and (unit:find("^party") or unit:find("^raid") or unit:find("pet$")) then
+            VB:ScheduleGroupRefresh()
+        end
+    elseif event == "PLAYER_ROLES_ASSIGNED" then
         VB:ScheduleGroupRefresh()
     elseif event == "PLAYER_SPECIALIZATION_CHANGED"
         or event == "PLAYER_TALENT_UPDATE"
