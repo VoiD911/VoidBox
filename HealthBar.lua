@@ -21,7 +21,7 @@ function VB:CreateHealthBar(parent)
     
     local healPrediction = CreateFrame("StatusBar", nil, healthBar)
     healPrediction:SetStatusBarTexture(VB.config.texture)
-    healPrediction:SetStatusBarColor(0, 0.8, 0, 0.5)
+    healPrediction:SetStatusBarColor(0.35, 1, 0.35, 0.6)
     healPrediction:SetPoint("TOPLEFT", healthBar:GetStatusBarTexture(), "TOPRIGHT")
     healPrediction:SetPoint("BOTTOMLEFT", healthBar:GetStatusBarTexture(), "BOTTOMRIGHT")
     -- Two left anchors leave the width undefined (zero), which made the bar
@@ -177,16 +177,19 @@ function VB:UpdateHealPrediction(button)
     
     -- === Incoming heals (green overlay) ===
     local showHeal = false
-    pcall(function()
-        if UnitGetIncomingHeals then
-            local incomingHeal = UnitGetIncomingHeals(unit) or 0
-            -- SetValue accepts secrets; StatusBar clips to min/max automatically
-            healPredictionBar:SetMinMaxValues(0, maxHealth)
-            healPredictionBar:SetValue(incomingHeal)
-            -- Anchor after health bar fill (already set in CreateHealthBar)
-            showHeal = true
-        end
-    end)
+    if VB.config.showHealPrediction ~= false then
+        pcall(function()
+            if UnitGetIncomingHeals then
+                -- "or 0" is a truthiness test, which a secret number allows
+                local incomingHeal = UnitGetIncomingHeals(unit) or 0
+                -- SetValue accepts secrets; StatusBar clips to min/max automatically
+                healPredictionBar:SetMinMaxValues(0, maxHealth)
+                healPredictionBar:SetValue(incomingHeal)
+                -- Anchor after health bar fill (already set in CreateHealthBar)
+                showHeal = true
+            end
+        end)
+    end
     if showHeal then
         healPredictionBar:Show()
     else
@@ -197,8 +200,9 @@ function VB:UpdateHealPrediction(button)
     local showAbsorb = false
     pcall(function()
         if UnitGetTotalAbsorbs then
-            local absorb = UnitGetTotalAbsorbs(unit)
-            if absorb == nil then absorb = 0 end
+            -- Not "absorb == nil": comparing a secret value raises, so in
+            -- combat the pcall failed and the shield overlay was hidden
+            local absorb = UnitGetTotalAbsorbs(unit) or 0
             absorbBar:SetMinMaxValues(0, maxHealth)
             absorbBar:SetValue(absorb)
             showAbsorb = true

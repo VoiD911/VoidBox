@@ -1223,6 +1223,18 @@ function VB:CreateAppearanceTab()
     end)
     yOffset = yOffset - 30
 
+    local healPredCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    healPredCB:SetPoint("TOPLEFT", 10, yOffset)
+    healPredCB.text:SetText(VB.L["SHOW_HEAL_PREDICTION"])
+    healPredCB:SetChecked(VB.config.showHealPrediction ~= false)
+    healPredCB:SetScript("OnClick", function(self)
+        VB.config.showHealPrediction = self:GetChecked()
+        for _, group in ipairs({ VB.unitButtons, VB.tankButtons, VB.petButtons, VB.targetButtons }) do
+            for _, button in pairs(group) do VB:UpdateHealPrediction(button) end
+        end
+    end)
+    yOffset = yOffset - 30
+
     local tooltipBindingsCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
     tooltipBindingsCB:SetPoint("TOPLEFT", 10, yOffset)
     tooltipBindingsCB.text:SetText(VB.L["SHOW_TOOLTIP_BINDINGS"])
