@@ -839,6 +839,8 @@ function VB:ApplyClickCastings(button)
         end
     end
     
+    if VB.config.clickToRez then VB:ApplyClickToRez(button) end
+
     -- Setup secure keyboard + scroll bindings
     VB:SetupSecureBindings(button)
     
@@ -899,6 +901,34 @@ function VB:SetButtonAttribute(button, attrKey, actionType, actionValue, rankLoc
             button:SetAttribute(macroKey, macro)
         end
     end
+end
+
+-- Option "clickToRez": a plain left click on a DEAD ally casts the class res,
+-- whatever left click is bound to. On a living unit the old left click still
+-- runs: it is rebuilt as macro lines after a /stopmacro on a dead mouseover.
+function VB:ApplyClickToRez(button)
+    local rez = VB:BuildRezMacro()
+    if not rez then return end
+    local kind = button:GetAttribute("type1")
+    local rest
+    if kind == "macro" then
+        rest = button:GetAttribute("macrotext1") or ""
+    elseif kind == "spell" then
+        local spell = button:GetAttribute("spell1")
+        local name = type(spell) == "number" and VB:GetSpellName(spell) or spell
+        -- A pinned rank becomes the bare name (macros cannot take an ID)
+        if name then rest = "/cast [@mouseover,exists][] " .. name end
+    elseif kind == "target" or kind == nil then
+        rest = "/target [@mouseover,exists]"
+    elseif kind == "focus" then
+        rest = "/focus [@mouseover,exists]"
+    elseif kind == "assist" then
+        rest = "/assist [@mouseover,exists]"
+    else
+        return   -- togglemenu etc.: leave it alone
+    end
+    button:SetAttribute("type1", "macro")
+    button:SetAttribute("macrotext1", rez .. "\n/stopmacro [@mouseover,dead]\n" .. (rest or ""))
 end
 
 function VB:ClearClickCastings(button)
