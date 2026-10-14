@@ -122,6 +122,41 @@ local function FormOK(entry)
     return spellID == entry.form
 end
 
+-- A boolean query that may come back secret: unknown counts as "yes", so a
+-- condition never hides an aura on a value it could not read
+local function SoftBool(fn, ...)
+    local ok, v = pcall(fn, ...)
+    if not ok or (issecretvalue and issecretvalue(v)) then return true end
+    return v and true or false
+end
+
+-- Every condition of an entry. All of them are readable in combat.
+local function ConditionsOK(entry)
+    if not FormOK(entry) then return false end
+    if entry.unit ~= "player" and not UnitExists(entry.unit) then return false end
+    if entry.combat == "in" and not InCombatLockdown() then return false end
+    if entry.combat == "out" and InCombatLockdown() then return false end
+    if entry.group == "group" and not IsInGroup() then return false end
+    if entry.group == "raid" and not IsInRaid() then return false end
+    if entry.hostileTarget then
+        if not UnitExists("target") or not SoftBool(UnitCanAttack, "player", "target") then
+            return false
+        end
+    end
+    if entry.inRange and entry.spellID then
+        -- The spell's own range to the target; answers in combat on Forever
+        if not UnitExists("target") then return false end
+        if C_Spell and C_Spell.IsSpellInRange then
+            local name = VB:GetSpellName(entry.spellID) or entry.spellID
+            local ok, r = pcall(C_Spell.IsSpellInRange, name, "target")
+            if ok and r ~= nil and not (issecretvalue and issecretvalue(r)) and not r then
+                return false
+            end
+        end
+    end
+    return true
+end
+
 -- The player's forms, for the config: { { spellID, name }, ... }
 function VB:GetPlayerForms()
     local forms = {}
@@ -202,6 +237,8 @@ local function Normalize(entry)
     if entry.countdown == nil then entry.countdown = false end
     if entry.stacks == nil then entry.stacks = true end
     if entry.glow == nil then entry.glow = false end
+    entry.combat = entry.combat or "any"
+    entry.group = entry.group or "any"
     if entry.sound ~= "none" and not SoundFileOf(entry.sound) then entry.sound = "bell" end
     if IsType(entry) then
         entry.kind = "HARMFUL"
@@ -823,7 +860,7 @@ local function UpdateWatcher(w)
     end
 
     -- Out of the chosen form the aura is not wanted at all
-    if shown ~= nil and not FormOK(entry) then shown = false end
+    if shown ~= nil and not ConditionsOK(entry) then shown = false end
 
     if w.lua and shown ~= nil then
         if shown and entry.show ~= "missing" then
@@ -848,7 +885,7 @@ end
 -- plain frame of ours, so this also works in combat.
 local function UpdateHolders()
     for _, w in ipairs(watchers) do
-        local wanted = (w.entry.unit ~= "target" or UnitExists("target")) and FormOK(w.entry)
+        local wanted = ConditionsOK(w.entry)
         w.holder:SetShown(wanted or VB._screenAuraPreview)
     end
 end
@@ -936,15 +973,32 @@ end
 
 -- The container's unit token stays "target": ask it to re-read on a new target
 local events = CreateFrame("Frame")
-events:RegisterEvent("PLAYER_TARGET_CHANGED")
-events:RegisterEvent("UPDATE_SHAPESHIFT_FORM")
-events:SetScript("OnEvent", function(_, event)
-    if event == "PLAYER_TARGET_CHANGED" then
+-- Focus and pet the same way. Events a client lacks are skipped.
+local UNIT_EVENTS = { PLAYER_TARGET_CHANGED = "target", PLAYER_FOCUS_CHANGED = "focus", UNIT_PET = "pet" }
+for event in pairs(UNIT_EVENTS) do pcall(events.RegisterEvent, events, event) end
+for _, event in ipairs({ "UPDATE_SHAPESHIFT_FORM", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
+                         "GROUP_ROSTER_UPDATE" }) do
+    pcall(events.RegisterEvent, events, event)
+end
+events:SetScript("OnEvent", function(_, event, arg1)
+    local unit = UNIT_EVENTS[event]
+    if unit and not (event == "UNIT_PET" and arg1 ~= "player") then
         for _, w in ipairs(watchers) do
-            if w.container and w.entry.unit == "target" then
+            if w.container and w.entry.unit == unit then
                 pcall(w.container.UpdateAllAuras, w.container)
             end
         end
     end
     UpdateHolders()
 end)
+
+-- Copy of an aura, placed a little lower so both can be seen
+function VB:DuplicateScreenAura(index)
+    local src = VB.screenAuras[index]
+    if not src then return nil end
+    local copy = VB:CopyTable(src)
+    copy.y = (copy.y or 0) - (copy.size or 48) - 10
+    table.insert(VB.screenAuras, index + 1, copy)
+    VB:RebuildScreenAuras()
+    return index + 1
+end

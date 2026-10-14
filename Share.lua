@@ -150,6 +150,11 @@ function VB:ExportString(parts)
     if parts.bindings then data.bindings = VB:CopyTable(VB.clickCastings) end
     if parts.buffs then data.buffs = VB:CopyTable(VB.customBuffs) end
     if parts.auras then data.auras = VB:CopyTable(VB.screenAuras) end
+    -- A single aura (the Share button of one aura): added, not replacing
+    if parts.auraIndex and VB.screenAuras[parts.auraIndex] then
+        data.auras = { VB:CopyTable(VB.screenAuras[parts.auraIndex]) }
+        data.single = true
+    end
 
     local out = {}
     Serialize(data, out, 0)
@@ -252,7 +257,11 @@ local function CleanAura(a)
     local clean = VB:NewScreenAura(SpellExists(a.spellID) and a.spellID or nil)
     clean.source = source
     clean.dispelType = OneOf(a.dispelType, VB.AURA_DISPEL_TYPES, "any")
-    clean.unit = OneOf(a.unit, { "player", "target" }, "player")
+    clean.unit = OneOf(a.unit, { "player", "target", "focus", "pet" }, "player")
+    clean.combat = OneOf(a.combat, { "any", "in", "out" }, "any")
+    clean.group = OneOf(a.group, { "any", "group", "raid" }, "any")
+    clean.hostileTarget = Bool(a.hostileTarget) or false
+    clean.inRange = Bool(a.inRange) or false
     clean.kind = OneOf(a.kind, { "HELPFUL", "HARMFUL" }, "HELPFUL")
     clean.show = OneOf(a.show, { "present", "missing", "expiring" }, "present")
     clean.expire = math.floor(Num(a.expire, 1, 60) or 5)
@@ -288,6 +297,7 @@ function VB:ReadImportString(text)
                  charName = Str(data.charName, 30) },
         unknown = 0,
         macros = {},
+        single = data.single == true,
     }
     local function note(clean, why)
         if why == "unknown" then plan.unknown = plan.unknown + 1 end
@@ -356,7 +366,7 @@ function VB:ApplyImport(plan, parts)
         VB:RefreshCustomBuffs()
     end
     if parts.auras and plan.auras then
-        wipe(VB.screenAuras)
+        if not plan.single then wipe(VB.screenAuras) end
         for _, a in ipairs(plan.auras) do VB.screenAuras[#VB.screenAuras + 1] = a end
         VB:RebuildScreenAuras()
         if VB.RefreshScreenAurasTab then VB:RefreshScreenAurasTab() end
@@ -460,10 +470,17 @@ local function CheckedParts(checks)
 end
 
 local exportDialog
-function VB:ShowExportDialog()
+-- auraIndex: export that one screen aura only (its Share button)
+function VB:ShowExportDialog(auraIndex)
     if not exportDialog then
         local f = MakeDialog("VoidBoxExportDialog", VB.L["SHARE_EXPORT"], 360)
         local function Refresh()
+            if f.auraIndex then
+                f.box:SetText(VB:ExportString({ auraIndex = f.auraIndex }))
+                f.box:HighlightText()
+                f.box:SetFocus()
+                return
+            end
             local parts, any = CheckedParts(f.checks)
             f.box:SetText(any and VB:ExportString(parts) or "")
             f.box:HighlightText()
@@ -478,6 +495,8 @@ function VB:ShowExportDialog()
         f.Refresh = Refresh
         exportDialog = f
     end
+    exportDialog.auraIndex = auraIndex
+    for _, cb in pairs(exportDialog.checks) do cb:SetShown(auraIndex == nil) end
     exportDialog:Show()
     exportDialog.Refresh()
 end
@@ -548,7 +567,8 @@ function VB:ShowImportDialog()
             end
             if plan.auras then
                 f.checks.auras:Show(); f.checks.auras:SetChecked(true)
-                lines[#lines + 1] = L["SHARE_SUMMARY_AURAS"]:format(#plan.auras)
+                lines[#lines + 1] = plan.single and L["SHARE_SUMMARY_ONE_AURA"]
+                    or L["SHARE_SUMMARY_AURAS"]:format(#plan.auras)
             end
             if plan.from.class ~= VB.playerClass and (plan.bindings or plan.buffs or plan.auras) then
                 lines[#lines + 1] = "|cFFFFCC00" .. L["SHARE_OTHER_CLASS"]:format(plan.from.class) .. "|r"

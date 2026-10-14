@@ -1,5 +1,17 @@
 # VoidBox
 
+## v2.7.0 (2026-10-13)
+
+Screen auras (Auras tab):
+
+- **Conditions**: show an aura only in or out of combat, only in a group or
+  a raid, only with a hostile target, or only while the spell is in range of
+  the target. All of them work in combat on WoW Forever.
+- **Focus and pet** can be watched, next to yourself and your target.
+- **Duplicate** an aura to make a variant without setting it up again.
+- **Share one aura** as text (Share button). Importing it adds it to your
+  auras instead of replacing them.
+
 ## v2.6.0 (2026-10-04)
 
 - **Screen auras: "spell usable".** Track = "A spell usable" shows the icon

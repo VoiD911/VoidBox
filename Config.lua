@@ -1472,6 +1472,8 @@ local function BuildAuraItems()
     auraUnitItems = {
         { value = "player", text = L["AURA_UNIT_PLAYER"] },
         { value = "target", text = L["AURA_UNIT_TARGET"] },
+        { value = "focus", text = L["AURA_UNIT_FOCUS"] },
+        { value = "pet", text = L["AURA_UNIT_PET"] },
     }
     auraKindItems = {
         { value = "HELPFUL", text = L["AURA_KIND_HELPFUL"] },
@@ -1648,16 +1650,16 @@ function VB:CreateScreenAurasTab()
     -- === List ===
     local scrollFrame = CreateFrame("ScrollFrame", nil, content, "UIPanelScrollFrameTemplate")
     scrollFrame:SetPoint("TOPLEFT", 5, -95)
-    scrollFrame:SetSize(440, 180)
+    scrollFrame:SetSize(440, 140)
     local scrollChild = CreateFrame("Frame", nil, scrollFrame)
-    scrollChild:SetSize(440, 180)
+    scrollChild:SetSize(440, 140)
     scrollFrame:SetScrollChild(scrollChild)
     content.auraScrollChild = scrollChild
 
     -- === Editor for the selected aura ===
     local editor = CreateFrame("Frame", nil, content)
-    editor:SetPoint("TOPLEFT", 5, -290)
-    editor:SetSize(470, 330)
+    editor:SetPoint("TOPLEFT", 5, -250)
+    editor:SetSize(470, 420)
     editor:Hide()
     content.editor = editor
 
@@ -1781,8 +1783,62 @@ function VB:CreateScreenAurasTab()
     stacksCB:SetScript("OnClick", function(self) Change("stacks", self:GetChecked() and true or false) end)
     editor.stacksCB = stacksCB
 
+    -- === Conditions ===
+    local combatItems = {
+        { value = "any", text = L["AURA_COND_ANY"] },
+        { value = "in", text = L["AURA_COMBAT_IN"] },
+        { value = "out", text = L["AURA_COMBAT_OUT"] },
+    }
+    local groupItems = {
+        { value = "any", text = L["AURA_COND_ANY"] },
+        { value = "group", text = L["AURA_GROUP_GROUP"] },
+        { value = "raid", text = L["AURA_GROUP_RAID"] },
+    }
+    editor.combatItems, editor.groupItems = combatItems, groupItems
+
+    local combatDD = CreateSimpleDropdown(editor, 140, combatItems, "", function(v) Change("combat", v) end)
+    combatDD:SetPoint("TOPLEFT", 0, -330)
+    LabelAbove(editor, combatDD, L["AURA_COMBAT"])
+    editor.combatDD = combatDD
+
+    local groupDD = CreateSimpleDropdown(editor, 140, groupItems, "", function(v) Change("group", v) end)
+    groupDD:SetPoint("TOPLEFT", 155, -330)
+    LabelAbove(editor, groupDD, L["AURA_GROUP"])
+    editor.groupDD = groupDD
+
+    local hostileCB = CreateFrame("CheckButton", nil, editor, "UICheckButtonTemplate")
+    hostileCB:SetPoint("TOPLEFT", 310, -328)
+    hostileCB.text:SetText(L["AURA_HOSTILE_TARGET"])
+    hostileCB:SetScript("OnClick", function(self) Change("hostileTarget", self:GetChecked() and true or false) end)
+    editor.hostileCB = hostileCB
+
+    local rangeCB = CreateFrame("CheckButton", nil, editor, "UICheckButtonTemplate")
+    rangeCB:SetPoint("TOPLEFT", 155, -283)
+    rangeCB.text:SetText(L["AURA_IN_RANGE"])
+    rangeCB:SetScript("OnClick", function(self) Change("inRange", self:GetChecked() and true or false) end)
+    editor.rangeCB = rangeCB
+
+    -- === Duplicate / share this aura ===
+    local dupBtn = CreateFrame("Button", nil, editor, "UIPanelButtonTemplate")
+    dupBtn:SetSize(110, 22)
+    dupBtn:SetPoint("TOPLEFT", 0, -362)
+    dupBtn:SetText(L["AURA_DUPLICATE"])
+    dupBtn:SetScript("OnClick", function()
+        if not selectedAura then return end
+        selectedAura = VB:DuplicateScreenAura(selectedAura) or selectedAura
+        VB:RefreshScreenAurasTab()
+    end)
+
+    local shareBtn = CreateFrame("Button", nil, editor, "UIPanelButtonTemplate")
+    shareBtn:SetSize(110, 22)
+    shareBtn:SetPoint("LEFT", dupBtn, "RIGHT", 8, 0)
+    shareBtn:SetText(L["AURA_SHARE"])
+    shareBtn:SetScript("OnClick", function()
+        if selectedAura then VB:ShowExportDialog(selectedAura) end
+    end)
+
     local note = editor:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    note:SetPoint("TOPLEFT", 0, -315)
+    note:SetPoint("TOPLEFT", 0, -392)
     note:SetWidth(460)
     note:SetJustifyH("LEFT")
     note:SetText(L["AURA_SOUND_NOTE"])
@@ -1863,7 +1919,7 @@ function VB:RefreshScreenAurasTab()
         slot:Show()
         yOffset = yOffset + 30
     end
-    scrollChild:SetHeight(math.max(180, yOffset + 10))
+    scrollChild:SetHeight(math.max(140, yOffset + 10))
 
     local editor = content.editor
     local entry = selectedAura and VB.screenAuras[selectedAura]
@@ -1905,6 +1961,12 @@ function VB:RefreshScreenAurasTab()
     editor.mineCB:SetEnabled(not isType and not isUsable)
     -- "Spell usable" is about the player only
     editor.unitDD:SetEnabled(not isUsable)
+    SetDropdownValue(editor.combatDD, editor.combatItems, entry.combat or "any")
+    SetDropdownValue(editor.groupDD, editor.groupItems, entry.group or "any")
+    editor.hostileCB:SetChecked(entry.hostileTarget)
+    editor.rangeCB:SetChecked(entry.inRange)
+    -- Range needs a spell to measure with
+    editor.rangeCB:SetShown(not isType)
     editor.loading = false
     editor:Show()
 end
