@@ -1,5 +1,12 @@
 # VoidBox
 
+## v2.7.1 (2026-10-21)
+
+- **Classic Era / Hardcore support (1.15.9).** VoidBox now loads on Classic
+  Era and its Hardcore realms without "Load out of date AddOns".
+- **Retail 12.1.5.** The interface number is updated, so Retail no longer
+  shows VoidBox as out of date.
+
 ## v2.7.0 (2026-10-13)
 
 Screen auras (Auras tab):
