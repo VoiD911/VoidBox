@@ -149,10 +149,15 @@ function VB:ExportString(parts)
     end
     if parts.bindings then data.bindings = VB:CopyTable(VB.clickCastings) end
     if parts.buffs then data.buffs = VB:CopyTable(VB.customBuffs) end
-    if parts.auras then data.auras = VB:CopyTable(VB.screenAuras) end
-    -- A single aura (the Share button of one aura): added, not replacing
+    if parts.auras then
+        data.auras = VB:CopyTable(VB.screenAuras)
+        data.auraGroups = VB:CopyTable(VB.screenAuraGroups)
+    end
+    -- A single aura (the Share button of one aura): added, not replacing, and
+    -- outside any group, where it is on screen
     if parts.auraIndex and VB.screenAuras[parts.auraIndex] then
-        data.auras = { VB:CopyTable(VB.screenAuras[parts.auraIndex]) }
+        data.auras = { VB:UngroupedAuraCopy(VB.screenAuras[parts.auraIndex]) }
+        data.auraGroups = nil
         data.single = true
     end
 
@@ -268,6 +273,18 @@ local function CleanAura(a)
     clean.display = OneOf(a.display, { "icon", "bar", "frame", "disc" }, "icon")
     if Bool(a.countdown) ~= nil then clean.countdown = a.countdown end
     if SpellExists(a.form) then clean.form = a.form end
+    if SpellExists(a.needs) then clean.needs = a.needs end
+    -- Its screen group's key (checked against the imported groups when applied)
+    local key = Num(a.screenGroup, 1, 100000)
+    if key then clean.screenGroup = math.floor(key) end
+    -- Other spells counting as the same aura (Auras.lua ResolveIDs): a short list
+    if type(a.also) == "table" then
+        local also = {}
+        for _, id in ipairs(a.also) do
+            if #also < 8 and SpellExists(id) and id ~= clean.spellID then also[#also + 1] = id end
+        end
+        if #also > 0 then clean.also = also end
+    end
     if Bool(a.stacks) ~= nil then clean.stacks = a.stacks end
     clean.color = OneOf(a.color, VB.AURA_COLORS, "yellow")
     clean.sound = OneOf(a.sound, VB.AURA_SOUNDS, "none")
@@ -278,6 +295,12 @@ local function CleanAura(a)
     if Bool(a.glow) ~= nil then clean.glow = a.glow end
     if Bool(a.enabled) ~= nil then clean.enabled = a.enabled end
     return clean
+end
+
+-- For Templates.lua: a recommended aura goes through the same cleaning as an
+-- imported one, so it ends up exactly like an aura made by hand
+function VB:CleanScreenAura(a)
+    return CleanAura(a)
 end
 
 -- Decodes and cleans an import text. Returns a plan or nil, error.
@@ -334,7 +357,23 @@ function VB:ReadImportString(text)
         plan.auras = {}
         for _, a in ipairs(data.auras) do
             local clean = note(CleanAura(a))
-            if clean then plan.auras[#plan.auras + 1] = clean end
+            if clean then
+                if plan.single then clean.screenGroup = nil end
+                plan.auras[#plan.auras + 1] = clean
+            end
+        end
+        plan.auraGroups = {}
+        if not plan.single and type(data.auraGroups) == "table" then
+            for key, g in pairs(data.auraGroups) do
+                if type(key) == "number" and type(g) == "table" then
+                    plan.auraGroups[key] = { name = Str(g.name, 40) or "?", x = Num(g.x, -5000, 5000) or 0,
+                                             y = Num(g.y, -5000, 5000) or 0, scale = Num(g.scale, 0.5, 2) or 1 }
+                end
+            end
+        end
+        -- (an aura naming a group the text does not carry leaves it)
+        for _, a in ipairs(plan.auras) do
+            if a.screenGroup and not plan.auraGroups[a.screenGroup] then a.screenGroup = nil end
         end
     end
 
@@ -366,7 +405,11 @@ function VB:ApplyImport(plan, parts)
         VB:RefreshCustomBuffs()
     end
     if parts.auras and plan.auras then
-        if not plan.single then wipe(VB.screenAuras) end
+        if not plan.single then
+            wipe(VB.screenAuras)
+            wipe(VB.screenAuraGroups)
+            for key, g in pairs(plan.auraGroups or {}) do VB.screenAuraGroups[key] = g end
+        end
         for _, a in ipairs(plan.auras) do VB.screenAuras[#VB.screenAuras + 1] = a end
         VB:RebuildScreenAuras()
         if VB.RefreshScreenAurasTab then VB:RefreshScreenAurasTab() end
@@ -387,7 +430,8 @@ end
 -------------------------------------------------
 -- Dialogs
 -------------------------------------------------
-local function MakeDialog(name, title, height)
+-- Shared with TemplatesWindow.lua
+function VB:MakeDialog(name, title, height)
     local f = CreateFrame("Frame", name, UIParent, "BackdropTemplate")
     f:SetSize(460, height)
     f:SetPoint("CENTER")
@@ -434,12 +478,15 @@ local function MakeTextBox(parent, top, height)
     return box
 end
 
-local function MakeButton(parent, text, width)
+function VB:MakeButton(parent, text, width)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
     b:SetSize(width or 110, 24)
     b:SetText(text)
     return b
 end
+
+local function MakeDialog(...) return VB:MakeDialog(...) end
+local function MakeButton(...) return VB:MakeButton(...) end
 
 local PARTS = { "profile", "bindings", "buffs", "auras" }
 local PART_LABELS = {

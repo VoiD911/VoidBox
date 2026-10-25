@@ -394,6 +394,10 @@ function VB:OnAddonLoaded()
         VoidBoxDB.classAuras[VB.playerClass] = {}
     end
     VB.screenAuras = VoidBoxDB.classAuras[VB.playerClass]
+    -- Their screen groups (Auras.lua), per class with them
+    VoidBoxDB.classAuraGroups = VoidBoxDB.classAuraGroups or {}
+    VoidBoxDB.classAuraGroups[VB.playerClass] = VoidBoxDB.classAuraGroups[VB.playerClass] or {}
+    VB.screenAuraGroups = VoidBoxDB.classAuraGroups[VB.playerClass]
     -- Ranks come from the spellbook, which is filled a little after login
     C_Timer.After(2, function() VB:RebuildScreenAuras() end)
     
@@ -1639,6 +1643,10 @@ SlashCmdList["VOIDBOX"] = function(msg)
         VB:HealDebug()
     elseif msg == "auratest" or msg:find("^auratest%s+") then
         VB:AuraTest(rawMsg:match("^%S+%s+(.+)$"))
+    elseif msg == "spec" then
+        VB:PrintTalentSpec()
+    elseif msg == "auradebug" then
+        VB:ScreenAuraDebug()
     elseif msg == "dispeldebug" then
         VB:DispelDebug()
     elseif msg == "rezdebug" then

@@ -1,5 +1,30 @@
 # VoidBox
 
+## v2.8.0 (2026-10-24)
+
+Screen auras (Auras tab):
+
+- **Recommended auras.** A new button under the auras list opens a window
+  with a starter set for your class, one tab per talent spec plus "All
+  specs". It opens on your spec (the tree with the most points) with its
+  auras checked; those whose spell you have not learned yet are marked and
+  come on once you learn it, and auras you already have are left out. All
+  nine classes on Classic Era, TBC Anniversary and WoW Forever, and all
+  thirteen on Retail, where the window opens on your specialization (spell
+  IDs checked against each client's spell table).
+- An aura can now count several spells as one: the mage's "Armor missing"
+  is satisfied by any armor (Frost, Ice, Mage, Molten), Arcane Intellect by
+  Arcane Brilliance, Mark of the Wild by Gift of the Wild.
+- Recommended auras stay hidden until you learn their spell.
+- **Aura groups.** Auras can be put in named groups (Group button in the
+  aura's settings). While the Auras tab is open a handle above each group
+  moves it as one block, and the mouse wheel on the handle makes the whole
+  group bigger or smaller (50 to 200%). Recommended auras added together
+  arrive in a group of their own. Exporting all your auras takes their
+  groups along.
+- `/vb spec` shows the talent points the addon reads and the detected spec.
+- `/vb auradebug` lists each screen aura, how it is drawn and what it matches.
+
 ## v2.7.1 (2026-10-21)
 
 - **Classic Era / Hardcore support (1.15.9).** VoidBox now loads on Classic

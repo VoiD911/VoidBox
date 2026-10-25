@@ -130,8 +130,24 @@ local function SoftBool(fn, ...)
     return v and true or false
 end
 
+-- entry.needs (recommended auras, Templates.lua): the spell that must be
+-- known before the aura means anything, so "Ice Armor missing" stays quiet
+-- until Ice Armor is learned. Looked up once per spell, again when the
+-- spellbook changes (RefreshScreenAuraIDs).
+local knownCache = {}
+local function NeedsOK(entry)
+    if not entry.needs or not VB.KnowsSpell then return true end
+    local known = knownCache[entry.needs]
+    if known == nil then
+        known = VB:KnowsSpell(entry.needs) and true or false
+        knownCache[entry.needs] = known
+    end
+    return known
+end
+
 -- Every condition of an entry. All of them are readable in combat.
 local function ConditionsOK(entry)
+    if not NeedsOK(entry) then return false end
     if not FormOK(entry) then return false end
     if entry.unit ~= "player" and not UnitExists(entry.unit) then return false end
     if entry.combat == "in" and not InCombatLockdown() then return false end
@@ -252,19 +268,28 @@ local function Normalize(entry)
     end
 end
 
--- Every rank sharing the spell's name: ranked spellbooks give each rank its own ID
+-- Every rank sharing the spell's name: ranked spellbooks give each rank its own ID.
+-- entry.also: other spells that count as the same aura (one mage armor or
+-- another, Arcane Intellect or Arcane Brilliance). Returns the ID set, the
+-- spell's own name, and the set of every accepted name.
 local function ResolveIDs(entry)
-    if IsType(entry) or not entry.spellID then return {}, nil end
+    if IsType(entry) or not entry.spellID then return {}, nil, {} end
     -- Asked by name, which the client answers for the best known rank
-    if IsUsableEntry(entry) then return {}, VB:GetSpellName(entry.spellID) end
-    local ids = { [entry.spellID] = true }
-    local name = VB:GetSpellName(entry.spellID)
-    if name and VB.hasRankedSpellbook then
+    if IsUsableEntry(entry) then return {}, VB:GetSpellName(entry.spellID), {} end
+    local ids, names = {}, {}
+    local spells = { entry.spellID }
+    for _, id in ipairs(entry.also or {}) do spells[#spells + 1] = id end
+    for _, spellID in ipairs(spells) do
+        ids[spellID] = true
+        local n = VB:GetSpellName(spellID)
+        if n then names[n] = true end
+    end
+    if VB.hasRankedSpellbook and next(names) then
         VB:ForEachKnownSpell(function(id, n)
-            if (n or VB:GetSpellName(id)) == name then ids[id] = true end
+            if names[n or VB:GetSpellName(id) or ""] then ids[id] = true end
         end)
     end
-    return ids, name
+    return ids, VB:GetSpellName(entry.spellID), names
 end
 
 -- Frames hung on a container that owns an aura group must refuse untrusted
@@ -423,10 +448,146 @@ end
 -- Holder: the movable frame the display sits in, plus the preview used to
 -- place it while the Auras tab is open
 -------------------------------------------------
+-------------------------------------------------
+-- Screen groups (2.8.0): auras moved and sized as one block.
+-- A group is { name, x, y (its centre, UIParent units), scale }. An entry in
+-- one (entry.screenGroup = its key; entry.group is the "in a group / raid"
+-- condition) has x / y relative to the group's centre in the group's own
+-- units, so the group frame's scale sizes its auras. While the Auras tab is
+-- open a handle above the group moves it (drag) and sizes it (wheel).
+-- Static on purpose: where the client draws the auras (Forever, Retail) the
+-- addon never learns which are up, so nothing could close the gaps.
+-------------------------------------------------
+VB.screenAuraGroups = VB.screenAuraGroups or {}
+local groupFrames = {}  -- key -> frame, kept across rebuilds
+
+local function GroupOf(entry)
+    return entry.screenGroup and VB.screenAuraGroups[entry.screenGroup]
+end
+
+-- SetPoint offsets are in the frame's own (scaled) units
+local function PlaceGroup(f, g)
+    local s = g.scale or 1
+    f:SetScale(s)
+    f:ClearAllPoints()
+    f:SetPoint("CENTER", UIParent, "CENTER", (g.x or 0) / s, (g.y or 0) / s)
+    if f.handle then
+        f.handle.text:SetText(("%s  %d%%"):format(g.name or "?", math.floor(s * 100 + 0.5)))
+    end
+end
+
+local function GroupFrame(key)
+    local f = groupFrames[key]
+    if not f then
+        f = CreateFrame("Frame", nil, UIParent)
+        f:SetSize(1, 1)
+        f:SetFrameStrata("MEDIUM")
+        f:SetMovable(true)
+        local handle = CreateFrame("Button", nil, f, "BackdropTemplate")
+        handle:SetHeight(18)
+        handle:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
+        handle:SetBackdropColor(0.4, 0.25, 0.8, 0.85)
+        handle.text = handle:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        handle.text:SetPoint("CENTER")
+        handle:RegisterForDrag("LeftButton")
+        handle:EnableMouseWheel(true)
+        handle:SetScript("OnDragStart", function() f:StartMoving() end)
+        handle:SetScript("OnDragStop", function()
+            f:StopMovingOrSizing()
+            local g = VB.screenAuraGroups[f.key]
+            if not g then return end
+            local cx, cy = f:GetCenter()
+            local ux, uy = UIParent:GetCenter()
+            g.x = math.floor(cx * (g.scale or 1) - ux + 0.5)
+            g.y = math.floor(cy * (g.scale or 1) - uy + 0.5)
+            PlaceGroup(f, g)
+        end)
+        handle:SetScript("OnMouseWheel", function(_, delta)
+            local g = VB.screenAuraGroups[f.key]
+            if g then VB:SetScreenGroupScale(f.key, (g.scale or 1) + 0.1 * delta) end
+        end)
+        handle:Hide()
+        f.handle = handle
+        groupFrames[key] = f
+    end
+    f.key = key
+    PlaceGroup(f, VB.screenAuraGroups[key])
+    f:Show()
+    return f
+end
+
+-- The handle sits above the group's auras, as wide as they are
+local function PlaceHandle(key)
+    local f = groupFrames[key]
+    if not f then return end
+    local l, r, t
+    for _, entry in ipairs(VB.screenAuras or {}) do
+        if entry.screenGroup == key then
+            local w, h = SizeOf(entry)
+            local x, y = entry.x or 0, entry.y or 0
+            l, r = math.min(l or x - w / 2, x - w / 2), math.max(r or x + w / 2, x + w / 2)
+            t = math.max(t or y + h / 2, y + h / 2)
+        end
+    end
+    if not l then return end
+    f.handle:ClearAllPoints()
+    f.handle:SetPoint("BOTTOM", f, "CENTER", (l + r) / 2, t + 16)
+    f.handle:SetWidth(math.max(90, r - l))
+end
+
+function VB:SetScreenGroupScale(key, scale)
+    local g = VB.screenAuraGroups[key]
+    if not g then return end
+    g.scale = math.max(0.5, math.min(2, math.floor(scale * 20 + 0.5) / 20))
+    if groupFrames[key] then PlaceGroup(groupFrames[key], g) end
+end
+
+-- A new group centred at x, y (UIParent units); returns its key
+function VB:NewScreenGroup(name, x, y)
+    local key = 0
+    for k in pairs(VB.screenAuraGroups) do
+        if type(k) == "number" and k > key then key = k end
+    end
+    key = key + 1
+    VB.screenAuraGroups[key] = { name = name, x = x or 0, y = y or 150, scale = 1 }
+    return key
+end
+
+-- Where an entry is on screen (UIParent units), group or not
+local function AbsolutePos(entry)
+    local g = GroupOf(entry)
+    local x, y = entry.x or 0, entry.y or 0
+    if g then return g.x + x * (g.scale or 1), g.y + y * (g.scale or 1) end
+    return x, y
+end
+
+-- Into another group (nil = none), staying where it is on screen
+function VB:SetAuraScreenGroup(entry, key)
+    local ax, ay = AbsolutePos(entry)
+    local g = key and VB.screenAuraGroups[key]
+    if g then
+        local s = g.scale or 1
+        entry.x, entry.y = math.floor((ax - g.x) / s + 0.5), math.floor((ay - g.y) / s + 0.5)
+        entry.screenGroup = key
+    else
+        entry.x, entry.y = math.floor(ax + 0.5), math.floor(ay + 0.5)
+        entry.screenGroup = nil
+    end
+end
+
+-- A copy outside any group, where the original is on screen (sharing one aura)
+function VB:UngroupedAuraCopy(entry)
+    local copy = VB:CopyTable(entry)
+    copy.x, copy.y = AbsolutePos(entry)
+    copy.screenGroup = nil
+    return copy
+end
+
 local function CreateHolder(entry)
-    local holder = CreateFrame("Frame", nil, UIParent)
+    local parent = GroupOf(entry) and GroupFrame(entry.screenGroup) or UIParent
+    local holder = CreateFrame("Frame", nil, parent)
     holder:SetSize(SizeOf(entry))
-    holder:SetPoint("CENTER", UIParent, "CENTER", entry.x or 0, entry.y or 0)
+    holder:SetPoint("CENTER", parent, "CENTER", entry.x or 0, entry.y or 0)
     holder:SetFrameStrata("MEDIUM")
     holder:SetMovable(true)
     holder:SetClampedToScreen(true)
@@ -435,12 +596,14 @@ local function CreateHolder(entry)
     holder:SetScript("OnDragStart", holder.StartMoving)
     holder:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
+        -- (a grouped holder has its group's scale: both centres in the same units)
         local cx, cy = self:GetCenter()
-        local ux, uy = UIParent:GetCenter()
-        entry.x = math.floor(cx - ux + 0.5)
-        entry.y = math.floor(cy - uy + 0.5)
+        local px, py = parent:GetCenter()
+        entry.x = math.floor(cx - px + 0.5)
+        entry.y = math.floor(cy - py + 0.5)
         self:ClearAllPoints()
-        self:SetPoint("CENTER", UIParent, "CENTER", entry.x, entry.y)
+        self:SetPoint("CENTER", parent, "CENTER", entry.x, entry.y)
+        if entry.screenGroup then PlaceHandle(entry.screenGroup) end
     end)
 
     local preview = CreateFrame("Frame", nil, holder)
@@ -766,7 +929,7 @@ local function ReadAura(w)
             if IsType(entry) then
                 return entry.dispelType == "any" or a.dispelName == entry.dispelType
             end
-            return (a.spellId and w.ids[a.spellId]) or (w.name and a.name == w.name)
+            return (a.spellId and w.ids[a.spellId]) or (a.name and w.names and w.names[a.name])
         end)
         if not ok then
             unreadable = true
@@ -900,6 +1063,20 @@ end
 -- Build / refresh
 -------------------------------------------------
 function VB:RebuildScreenAuras()
+    wipe(knownCache)
+    -- Groups no aura uses any more go; auras naming a group that is gone leave it
+    local used = {}
+    for _, entry in ipairs(VB.screenAuras or {}) do
+        if entry.screenGroup then
+            if VB.screenAuraGroups[entry.screenGroup] then used[entry.screenGroup] = true
+            else entry.screenGroup = nil end
+        end
+    end
+    for key in pairs(VB.screenAuraGroups) do
+        if not used[key] then VB.screenAuraGroups[key] = nil end
+    end
+    for _, f in pairs(groupFrames) do f:Hide() end
+
     for _, w in ipairs(watchers) do
         RemoveGameSounds(w)
         w.holder:Hide()
@@ -911,7 +1088,7 @@ function VB:RebuildScreenAuras()
         Normalize(entry)
         if (entry.spellID or IsType(entry)) and entry.enabled ~= false then
             local w = { entry = entry, index = i }
-            w.ids, w.name = ResolveIDs(entry)
+            w.ids, w.name, w.names = ResolveIDs(entry)
             w.holder = CreateHolder(entry)
             if VB:HasAuraContainers() and not IsUsableEntry(entry) then
                 if entry.show == "missing" then
@@ -928,6 +1105,7 @@ function VB:RebuildScreenAuras()
         end
     end
     SaveSoundIDs()
+    for key in pairs(used) do PlaceHandle(key) end
 
     VB:SetScreenAuraPreview(VB._screenAuraPreview)
 
@@ -939,11 +1117,55 @@ function VB:RebuildScreenAuras()
     end
 end
 
+-- /vb auradebug: each live aura, how it is drawn and what it matches. The IDs
+-- are what the client is asked for (every known rank of the spell); "reads"
+-- is the addon's own reading (true / false / nil = hidden).
+function VB:ScreenAuraDebug()
+    VB:Print(("=== Screen auras: %d live, containers=%s ==="):format(#watchers, tostring(VB:HasAuraContainers())))
+    for _, w in ipairs(watchers) do
+        local ids = {}
+        for id in pairs(w.ids or {}) do ids[#ids + 1] = tostring(id) end
+        table.sort(ids)
+        local okR, active = pcall(ReadAura, w)
+        VB:Print(("  %d. %s [%s %s %s%s] %s ids=%s reads=%s"):format(w.index, tostring(w.name or w.entry.spellID),
+            tostring(w.entry.show), tostring(w.entry.unit), tostring(w.entry.kind), w.entry.mine and "|PLAYER" or "",
+            w.container and "container" or "lua", #ids > 0 and table.concat(ids, ",") or "-",
+            okR and tostring(active) or "error"))
+    end
+    -- What each way of reading the player's buffs returns on this client
+    local function Names(list)
+        local out = {}
+        for i = 1, math.min(#list, 4) do
+            local ok, n = pcall(function() return tostring(list[i].name) .. "#" .. tostring(list[i].spellId) end)
+            out[#out + 1] = ok and n or "?"
+        end
+        return #list .. " " .. table.concat(out, ", ")
+    end
+    VB:Print("  GetUnitAuras exists=" .. tostring(C_UnitAuras and C_UnitAuras.GetUnitAuras ~= nil)
+        .. ", GetAuraDataByIndex exists=" .. tostring(C_UnitAuras and C_UnitAuras.GetAuraDataByIndex ~= nil))
+    for _, filter in ipairs({ "HELPFUL", "HELPFUL|PLAYER" }) do
+        if C_UnitAuras and C_UnitAuras.GetUnitAuras then
+            local ok, list = pcall(C_UnitAuras.GetUnitAuras, "player", filter, 40)
+            VB:Print(("  GetUnitAuras(%s): %s"):format(filter, ok and type(list) == "table" and Names(list) or "error/" .. type(list)))
+        end
+        if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
+            local list = {}
+            for i = 1, 40 do
+                local ok, a = pcall(C_UnitAuras.GetAuraDataByIndex, "player", i, (filter:gsub("|", " ")))
+                if not ok or not a then break end
+                list[#list + 1] = a
+            end
+            VB:Print(("  GetAuraDataByIndex(%s): %s"):format(filter, Names(list)))
+        end
+    end
+end
+
 -- New ranks learned: widen the ID sets without rebuilding the frames
 function VB:RefreshScreenAuraIDs()
+    wipe(knownCache)
     for _, w in ipairs(watchers) do
         if not IsType(w.entry) and not IsUsableEntry(w.entry) then
-            w.ids, w.name = ResolveIDs(w.entry)
+            w.ids, w.name, w.names = ResolveIDs(w.entry)
             if w.container then
                 pcall(w.container.SetAuraGroupCandidateFilters, w.container, GROUP_KEY, CandidateOf(w))
                 pcall(w.container.UpdateAllAuras, w.container)
@@ -967,6 +1189,9 @@ function VB:SetScreenAuraPreview(on)
         if w.container then w.container:SetShown(not VB._screenAuraPreview) end
         if w.clip then w.clip:SetShown(not VB._screenAuraPreview) end
         if w.lua and VB._screenAuraPreview then w.lua:Hide() end
+    end
+    for key, f in pairs(groupFrames) do
+        f.handle:SetShown(VB._screenAuraPreview and f:IsShown() and VB.screenAuraGroups[key] ~= nil)
     end
     UpdateHolders()
 end

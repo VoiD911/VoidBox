@@ -62,6 +62,9 @@ adapts itself at login:
     from your spellbook; it shows in the HoT row when you cast it
   - "+N" indicator for other healers' HOTs/shields on the target
   - Stack badges: dark background, gold text, red at 5+ stacks
+- Screen auras (Auras tab): icons, bars or drawings anywhere on screen while a
+  buff or debuff is up, missing or running out, or while a spell is usable
+  - Recommended auras per class and spec (druid, mage), added in one click
 - Role icons (tank/heal/dps) — real atlas icons
 - Threat border (red/yellow)
 - Range check (reduced opacity when out of range)
@@ -83,6 +86,7 @@ adapts itself at login:
 | `/vb minimap` | Toggle minimap button |
 | `/vb profile` | List profiles |
 | `/vb profile <name>` | Switch profile |
+| `/vb spec` | Show your talent points and the detected spec |
 
 ## License
 

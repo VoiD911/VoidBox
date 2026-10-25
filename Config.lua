@@ -1650,11 +1650,29 @@ function VB:CreateScreenAurasTab()
     -- === List ===
     local scrollFrame = CreateFrame("ScrollFrame", nil, content, "UIPanelScrollFrameTemplate")
     scrollFrame:SetPoint("TOPLEFT", 5, -95)
-    scrollFrame:SetSize(440, 140)
+    scrollFrame:SetSize(440, 114)
     local scrollChild = CreateFrame("Frame", nil, scrollFrame)
-    scrollChild:SetSize(440, 140)
+    scrollChild:SetSize(440, 114)
     scrollFrame:SetScrollChild(scrollChild)
     content.auraScrollChild = scrollChild
+
+    -- === Recommended auras (Templates.lua, TemplatesWindow.lua) ===
+    -- Under the list: the input row above is full
+    local recBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+    recBtn:SetSize(170, 22)
+    recBtn:SetPoint("TOPLEFT", 12, -216)
+    recBtn:SetText(L["TEMPLATES_BUTTON"])
+    recBtn:SetScript("OnClick", function() VB:ShowTemplatesWindow() end)
+    if not VB:GetAuraTemplates() then
+        recBtn:Disable()
+        if recBtn.SetMotionScriptsWhileDisabled then recBtn:SetMotionScriptsWhileDisabled(true) end
+        recBtn:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(L["TEMPLATES_NONE"], 1, 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        recBtn:SetScript("OnLeave", GameTooltip_Hide)
+    end
 
     -- === Editor for the selected aura ===
     local editor = CreateFrame("Frame", nil, content)
@@ -1837,6 +1855,91 @@ function VB:CreateScreenAurasTab()
         if selectedAura then VB:ShowExportDialog(selectedAura) end
     end)
 
+    -- === Screen group (Auras.lua): a small menu of the groups, and a new one ===
+    local function MoveToGroup(key)
+        local entry = selectedAura and VB.screenAuras[selectedAura]
+        if not entry then return end
+        VB:SetAuraScreenGroup(entry, key)
+        VB:RebuildScreenAuras()
+        VB:RefreshScreenAurasTab()
+    end
+    if not StaticPopupDialogs["VOIDBOX_NEW_AURA_GROUP"] then
+        StaticPopupDialogs["VOIDBOX_NEW_AURA_GROUP"] = {
+            text = L["AURA_SCREEN_GROUP_NAME"],
+            button1 = OKAY, button2 = CANCEL,
+            hasEditBox = true, maxLetters = 40,
+            timeout = 0, whileDead = true, hideOnEscape = true,
+            OnAccept = function(self)
+                local box = self.editBox or self.EditBox
+                local name = strtrim(box and box:GetText() or "")
+                if name == "" then return end
+                local entry = selectedAura and VB.screenAuras[selectedAura]
+                if not entry then return end
+                -- the new group starts where the aura is, so nothing moves
+                local copy = VB:UngroupedAuraCopy(entry)
+                MoveToGroup(VB:NewScreenGroup(name, copy.x, copy.y))
+            end,
+            EditBoxOnEnterPressed = function(self)
+                local popup = self:GetParent()
+                StaticPopupDialogs["VOIDBOX_NEW_AURA_GROUP"].OnAccept(popup)
+                popup:Hide()
+            end,
+        }
+    end
+
+    local groupMenu = CreateFrame("Frame", nil, editor, "BackdropTemplate")
+    groupMenu:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
+    groupMenu:SetBackdropColor(0.12, 0.12, 0.12, 0.98)
+    groupMenu:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+    groupMenu:SetFrameStrata("FULLSCREEN_DIALOG")
+    groupMenu:Hide()
+    groupMenu.buttons = {}
+
+    local screenGroupBtn = CreateFrame("Button", nil, editor, "UIPanelButtonTemplate")
+    screenGroupBtn:SetSize(220, 22)
+    screenGroupBtn:SetPoint("LEFT", shareBtn, "RIGHT", 8, 0)
+    editor.screenGroupBtn = screenGroupBtn
+    groupMenu:SetPoint("TOPLEFT", screenGroupBtn, "BOTTOMLEFT", 0, -2)
+
+    -- (none), every group by name, then New group...
+    local function ShowGroupMenu()
+        local choices = { { text = L["AURA_SCREEN_GROUP_NONE"], key = false } }
+        local keys = {}
+        for key in pairs(VB.screenAuraGroups) do keys[#keys + 1] = key end
+        table.sort(keys)
+        for _, key in ipairs(keys) do choices[#choices + 1] = { text = VB.screenAuraGroups[key].name, key = key } end
+        choices[#choices + 1] = { text = L["AURA_SCREEN_GROUP_NEW"], new = true }
+        for _, b in ipairs(groupMenu.buttons) do b:Hide() end
+        for i, choice in ipairs(choices) do
+            local b = groupMenu.buttons[i]
+            if not b then
+                b = CreateFrame("Button", nil, groupMenu)
+                b:SetSize(216, 20)
+                b:SetPoint("TOPLEFT", 2, -(i - 1) * 22 - 2)
+                b:SetHighlightTexture("Interface\\Buttons\\WHITE8x8")
+                b:GetHighlightTexture():SetVertexColor(0.3, 0.3, 0.3, 1)
+                b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+                b.text:SetPoint("LEFT", 6, 0)
+                groupMenu.buttons[i] = b
+            end
+            b.text:SetText(choice.text)
+            b:SetScript("OnClick", function()
+                groupMenu:Hide()
+                if choice.new then
+                    StaticPopup_Show("VOIDBOX_NEW_AURA_GROUP")
+                else
+                    MoveToGroup(choice.key or nil)
+                end
+            end)
+            b:Show()
+        end
+        groupMenu:SetSize(220, #choices * 22 + 4)
+        groupMenu:Show()
+    end
+    screenGroupBtn:SetScript("OnClick", function()
+        if groupMenu:IsShown() then groupMenu:Hide() else ShowGroupMenu() end
+    end)
+
     local note = editor:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     note:SetPoint("TOPLEFT", 0, -392)
     note:SetWidth(460)
@@ -1892,6 +1995,12 @@ local function GetOrCreateAuraSlot(index)
     return slot
 end
 
+-- For Templates.lua: show this aura selected in the tab (refreshes it)
+function VB:SelectScreenAura(index)
+    selectedAura = index
+    VB:RefreshScreenAurasTab()
+end
+
 function VB:RefreshScreenAurasTab()
     if not configFrame or not configFrame.aurasContent then return end
     local content = configFrame.aurasContent
@@ -1919,7 +2028,7 @@ function VB:RefreshScreenAurasTab()
         slot:Show()
         yOffset = yOffset + 30
     end
-    scrollChild:SetHeight(math.max(140, yOffset + 10))
+    scrollChild:SetHeight(math.max(114, yOffset + 10))
 
     local editor = content.editor
     local entry = selectedAura and VB.screenAuras[selectedAura]
@@ -1929,6 +2038,9 @@ function VB:RefreshScreenAurasTab()
     end
     editor.loading = true
     editor.header:SetText(VB.L["SCREEN_AURA_SETTINGS"]:format(VB:ScreenAuraName(entry) or "?"))
+    local screenGroup = entry.screenGroup and VB.screenAuraGroups[entry.screenGroup]
+    editor.screenGroupBtn:SetText(VB.L["AURA_SCREEN_GROUP"]:format(
+        screenGroup and screenGroup.name or VB.L["AURA_SCREEN_GROUP_NONE"]))
     SetDropdownValue(editor.unitDD, auraUnitItems, entry.unit)
     SetDropdownValue(editor.kindDD, auraKindItems, entry.kind)
     SetDropdownValue(editor.displayDD, auraDisplayItems, entry.display)
