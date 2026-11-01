@@ -6,3 +6,6 @@ VoidBoxDB.lua
 
 # Superpowers brainstorming scratch
 .superpowers/
+
+# secrets (Battle.net API client)
+.env
