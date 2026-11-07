@@ -129,20 +129,51 @@ end
 -------------------------------------------------
 -- Cursor Info Wrapper
 -- GetCursorInfo for spells returns: "spell", spellIndex, bookType, spellID
--- The real spellID is the 4th return value (id3)
+-- The real spellID is the 4th return value (id3). When a client leaves it out,
+-- id1 is a spellbook SLOT, not a spell: look the spell up in the book instead
+-- of taking the slot number for a spell ID (that bound a random spell, or none).
 -------------------------------------------------
+local function SpellFromBookSlot(slot, bookType)
+    if type(slot) ~= "number" then return nil end
+    if C_SpellBook and C_SpellBook.GetSpellBookItemInfo then
+        local banks = Enum and Enum.SpellBookSpellBank
+        local bank = banks and ((bookType == "pet" and banks.Pet) or banks.Player) or 0
+        local ok, item = pcall(C_SpellBook.GetSpellBookItemInfo, slot, bank)
+        if ok and type(item) == "table" then
+            local id = item.spellID or item.actionID
+            if type(id) == "number" then return id end
+        end
+    end
+    if _G.GetSpellBookItemInfo then
+        local ok, _, id = pcall(_G.GetSpellBookItemInfo, slot, bookType or "spell")
+        if ok and type(id) == "number" then return id end
+    end
+    return nil
+end
+
 function VB:GetCursorSpell()
     local cursorType, id1, id2, id3 = GetCursorInfo()
-    
+
     if cursorType == "spell" then
-        -- id1 = spellIndex in spellbook, id3 = actual spellID
-        local spellID = id3 or id1
+        local spellID = (type(id3) == "number" and id3) or SpellFromBookSlot(id1, id2)
+        if not spellID then return nil end
         local spellName = VB:GetSpellName(spellID)
+        if not spellName then return nil end
         local spellIcon = VB:GetSpellIcon(spellID)
         return spellID, spellName, spellIcon
     end
-    
+
     return nil
+end
+
+-- What is on the cursor, for /vb cursor (drag-and-drop reports).
+function VB:DescribeCursor()
+    local info = { GetCursorInfo() }
+    if #info == 0 then return "empty" end
+    for i = 1, #info do info[i] = tostring(info[i]) end
+    local spellID, spellName = VB:GetCursorSpell()
+    return table.concat(info, ", ") .. " -> " ..
+        (spellID and (tostring(spellName) .. " (" .. spellID .. ")") or "no spell")
 end
 
 -------------------------------------------------

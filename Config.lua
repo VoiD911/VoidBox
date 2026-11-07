@@ -471,6 +471,13 @@ function VB:GetOrCreateBindingSlot(index)
     
     -- Drag spell/macro onto existing slot to replace action
     slot:RegisterForDrag("LeftButton")
+    -- Picking a spell up and then clicking the row works like dropping it
+    slot:SetScript("OnClick", function(self)
+        if GetCursorInfo() then
+            local onDrop = self:GetScript("OnReceiveDrag")
+            if onDrop then onDrop(self) end
+        end
+    end)
     slot:SetScript("OnReceiveDrag", function(self)
         if not self.bindingIndex then return end
         local binding = VB.clickCastings[self.bindingIndex]
@@ -738,7 +745,13 @@ function VB:CreateAddBindingDialog()
         end
     end)
     
-    dropZone:SetScript("OnClick", function()
+    dropZone:SetScript("OnClick", function(self)
+        -- Holding a spell or macro: a click drops it, as many players do
+        -- (pick up, then click). Empty cursor: the click clears the choice.
+        if GetCursorInfo() then
+            self:GetScript("OnReceiveDrag")(self)
+            return
+        end
         addDialog.selectedSpell = nil
         addDialog.selectedMacro = nil
         dropText:SetText("|cFFAAAAFF" .. VB.L["DROP_SPELL_MACRO"] .. "|r")
@@ -780,7 +793,11 @@ function VB:CreateAddBindingDialog()
             ClearCursor()
         end
     end)
-    hostileZone:SetScript("OnClick", function()
+    hostileZone:SetScript("OnClick", function(self)
+        if GetCursorInfo() then
+            self:GetScript("OnReceiveDrag")(self)
+            return
+        end
         addDialog.hostile = nil
         hostileText:SetText("|cFFFF8888" .. VB.L["HOSTILE_DROP"] .. "|r")
     end)
@@ -1309,6 +1326,7 @@ function VB:CreateDebuffsTab()
     exhaustionCB:SetChecked(VB.config.hideExhaustionDebuffs ~= false)
     exhaustionCB:SetScript("OnClick", function(self)
         VB.config.hideExhaustionDebuffs = self:GetChecked()
+        if VB.RefreshAuraContainerFilters then VB:RefreshAuraContainerFilters() end
         for _, button in pairs(VB.unitButtons) do VB:UpdateAuras(button) end
         for _, button in pairs(VB.tankButtons) do VB:UpdateAuras(button) end
         for _, button in pairs(VB.petButtons) do VB:UpdateAuras(button) end

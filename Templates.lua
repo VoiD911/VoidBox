@@ -805,3 +805,47 @@ function VB:AddTemplateAuras(items, groupName)
     VB:Print(VB.L["TEMPLATES_ADDED"]:format(#entries))
     return #entries
 end
+
+-------------------------------------------------
+-- /vb templatecheck: the recommended auras' spells this client does not have
+-------------------------------------------------
+-- Every class, not only the player's: one run checks the whole list against
+-- the live build (Blizzard patches can retire or renumber IDs). Spells
+-- expected to be missing here (a TBC armor in a mage's "also" on Era or
+-- Forever) are listed too; the report says which item they belong to.
+function VB:TemplateCheck()
+    local all = Flavor() == "retail" and VB.AURA_TEMPLATES_RETAIL or VB.AURA_TEMPLATES
+    local missing, checked, seen = {}, 0, {}
+    local function check(class, id, role)
+        if type(id) ~= "number" or seen[id] then return end
+        seen[id] = true
+        checked = checked + 1
+        if not VB:GetSpellName(id) then
+            missing[#missing + 1] = ("%s %d (%s)"):format(class, id, role)
+        end
+    end
+    local function checkItems(class, items)
+        for _, item in ipairs(items or {}) do
+            if not (item.tbc and Flavor() ~= "tbc") then
+                check(class, VB:TemplateItemSpell(item), "spell")
+                for _, id in ipairs(item.also or {}) do check(class, id, "also") end
+                check(class, item.requires, "requires")
+                check(class, item.needs, "needs")
+            end
+        end
+    end
+    for class, t in pairs(all or {}) do
+        checkItems(class, t.common)
+        for _, spec in ipairs(t.specs or {}) do
+            checkItems(class, spec.items)
+            for _, group in ipairs(spec.groups or {}) do checkItems(class, group.items) end
+        end
+    end
+    for key, ids in pairs(FORMS) do
+        for _, id in ipairs(ids) do check("form", id, key) end
+    end
+    local build = GetBuildInfo and select(2, GetBuildInfo()) or "?"
+    VB:Print(("Recommended auras, build %s: %d spells checked, %d missing"):format(
+        tostring(build), checked, #missing))
+    for _, line in ipairs(missing) do VB:Print("  " .. line) end
+end

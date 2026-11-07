@@ -2,7 +2,8 @@
 
 Minimalist solo/party/raid unit frames with click-casting — Cell/Healbot-Click/Grid/VuhDo style.
 
-Compatible with **WoW 12.0 Midnight** and **WoW: Forever** (Classic+, interface 16001).
+Compatible with **Retail (Midnight 12.1.5)**, **WoW: Forever** (1.60.1), **Burning Crusade
+Classic Anniversary** (2.5.6) and **Classic Era / Hardcore** (1.15.9), from one download.
 
 ### Notes for WoW: Forever
 
@@ -64,7 +65,8 @@ adapts itself at login:
   - Stack badges: dark background, gold text, red at 5+ stacks
 - Screen auras (Auras tab): icons, bars or drawings anywhere on screen while a
   buff or debuff is up, missing or running out, or while a spell is usable
-  - Recommended auras per class and spec (druid, mage), added in one click
+  - Recommended auras per class and spec (all nine Classic classes, all thirteen
+    Retail classes), added in one click, in named groups that move as one block
 - Role icons (tank/heal/dps) — real atlas icons
 - Threat border (red/yellow)
 - Range check (reduced opacity when out of range)
@@ -73,7 +75,7 @@ adapts itself at login:
 - Tooltip anchored to bottom-right of screen (non-intrusive)
 - Config UI: scaling, class colors, orientation, role order, lock/unlock
 - Theme color: purple (#9966FF)
-- Fully localized: enUS, frFR, deDE, esES, esMX, ptBR, itIT, ruRU, koKR, zhCN, zhTW
+- Localized: French nearly complete; deDE, esES, esMX, ptBR, itIT, ruRU, koKR, zhCN, zhTW partial (English for the rest)
 
 ## Commands
 
@@ -87,6 +89,8 @@ adapts itself at login:
 | `/vb profile` | List profiles |
 | `/vb profile <name>` | Switch profile |
 | `/vb spec` | Show your talent points and the detected spec |
+| `/vb templatecheck` | List the recommended auras' spells this game version does not have |
+| `/vb cursor` | Type it while holding a spell: what VoidBox reads from the cursor |
 
 ## License
 

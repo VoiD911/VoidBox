@@ -158,7 +158,21 @@ end
 -- heal ranks collected from the spellbook - the client still does the matching,
 -- we only hand it the list.
 function VB:ApplyAuraContainerFilters(container)
-    if not container or container._isDebuff then return end
+    if not container then return end
+
+    -- Debuff row: "Hide exhaustion debuffs". The client refuses spell filters
+    -- on debuffs of friendly units, except for spells flagged never-secret,
+    -- which Blizzard exempts precisely for Sated/Exhaustion
+    -- (AuraContainerUtil.CanApplyIdentityCandidateFilters). Until 2.8.1 the
+    -- option only reached the Lua debuff row (TBC, Era), not this one.
+    if container._isDebuff then
+        local filters = {}
+        if VB.config and VB.config.hideExhaustionDebuffs ~= false then
+            filters.excludeSpellIDs = VB.EXHAUSTION_DEBUFF_IDS
+        end
+        pcall(container.SetAuraGroupCandidateFilters, container, container._groupKey, filters)
+        return
+    end
 
     local ids = VB.healBuffIDs
     if not ids or not next(ids) then return end
@@ -171,9 +185,12 @@ end
 function VB:RefreshAuraContainerFilters()
     for _, group in ipairs({ VB.unitButtons, VB.tankButtons, VB.petButtons, VB.targetButtons }) do
         for _, button in pairs(group or {}) do
-            if button.buffContainer then
-                VB:ApplyAuraContainerFilters(button.buffContainer)
-                pcall(button.buffContainer.UpdateAllAuras, button.buffContainer)
+            for _, key in ipairs({ "buffContainer", "debuffContainer" }) do
+                local container = button[key]
+                if container then
+                    VB:ApplyAuraContainerFilters(container)
+                    pcall(container.UpdateAllAuras, container)
+                end
             end
         end
     end

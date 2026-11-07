@@ -1,5 +1,22 @@
 # VoidBox
 
+## v2.8.1 (2026-11-06)
+
+- **Fix: adding a binding by "pick up, then click".** Clicking the drop zone
+  of the add binding window (or a binding row) while holding a spell or a
+  macro now drops it there, as dragging does; before, the click only cleared
+  the choice. When the game does not say which spell is on the cursor,
+  VoidBox now looks it up in the spellbook instead of binding a wrong spell.
+- **Fix: "Hide exhaustion debuffs" on Retail and WoW Forever.** The option
+  only worked on Burning Crusade Classic and Classic Era. The debuff row is
+  now told to leave out Sated, Exhaustion and the like, in combat too.
+- **Fix: Mexican Spanish** showed English wherever it has no translation of
+  its own; it now falls back to Spanish (Spain).
+- `/vb templatecheck` lists the recommended auras' spells your game version
+  does not have, to check them after a patch.
+- `/vb cursor`, typed while holding a spell, shows what VoidBox reads from the
+  cursor (for drag-and-drop reports).
+
 ## v2.8.0 (2026-10-24)
 
 Screen auras (Auras tab):

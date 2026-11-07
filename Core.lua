@@ -499,9 +499,11 @@ function VB:SwitchProfile(name)
             VB.frames.petFrame:SetPoint("CENTER", UIParent, "CENTER", 200, 0)
         end
     end
+    -- The new profile may hide exhaustion debuffs differently
+    if VB.RefreshAuraContainerFilters then VB:RefreshAuraContainerFilters() end
     VB:UpdateAllFrames()
     VB:ApplyClickCastingsToAllFrames()
-    
+
     VB:Print(VB.L["PROFILE_SWITCHED"] .. " " .. name)
     return true
 end
@@ -1647,6 +1649,11 @@ SlashCmdList["VOIDBOX"] = function(msg)
         VB:PrintTalentSpec()
     elseif msg == "auradebug" then
         VB:ScreenAuraDebug()
+    elseif msg == "templatecheck" then
+        VB:TemplateCheck()
+    elseif msg == "cursor" then
+        -- Type it while holding a spell: what the game hands a drop zone
+        VB:Print("Cursor: " .. VB:DescribeCursor())
     elseif msg == "dispeldebug" then
         VB:DispelDebug()
     elseif msg == "rezdebug" then

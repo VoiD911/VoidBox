@@ -15,9 +15,14 @@ local function SetDefault(key, value)
     L[key] = value
 end
 
--- Override for specific locale
+-- Override for specific locale. esMX falls back to esES for the strings it
+-- does not translate itself (whatever the order of the lines below).
+local ownMX = {}
 local function SetLocale(loc, key, value)
     if locale == loc then
+        L[key] = value
+        if loc == "esMX" then ownMX[key] = true end
+    elseif loc == "esES" and locale == "esMX" and not ownMX[key] then
         L[key] = value
     end
 end
