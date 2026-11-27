@@ -146,6 +146,7 @@ function VB:ExportString(parts)
         data.profile = {}
         for _, key in ipairs(VB.profileKeys) do data.profile[key] = VB:CopyTable(VB.config[key]) end
         data.profile.hideExhaustionDebuffs = VB.config.hideExhaustionDebuffs
+        data.profile.hideBoostedRest = VB.config.hideBoostedRest
     end
     if parts.bindings then data.bindings = VB:CopyTable(VB.clickCastings) end
     if parts.buffs then data.buffs = VB:CopyTable(VB.customBuffs) end
@@ -191,6 +192,7 @@ local function CleanProfile(src)
     local keys = {}
     for _, k in ipairs(VB.profileKeys) do keys[#keys + 1] = k end
     keys[#keys + 1] = "hideExhaustionDebuffs"
+    keys[#keys + 1] = "hideBoostedRest"
     for _, key in ipairs(keys) do
         local v, default = src[key], VB.defaults[key]
         if key:find("[Pp]osition$") then

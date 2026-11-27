@@ -350,7 +350,15 @@ VB.healBuffSpellIDs = {
     -- Prêtre (Holy / Discipline)
     [139]    = true,  -- Renew / Rénovation
     [17]     = true,  -- Power Word: Shield / Mot de pouvoir : Bouclier
-    [41635]  = true,  -- Prayer of Mending / Prière de guérison
+    [41635]  = true,  -- Prayer of Mending / Prière de guérison (ward)
+    -- Other PoM IDs on Retail (Wowhead, 2026-11-27). Which one Midnight puts
+    -- on the target is not verified: a Holy priest reported none showing
+    -- with 41635 alone, so all variants are accepted.
+    [33076]  = true,  -- Prayer of Mending (cast)
+    [155793] = true,  -- Prayer of Mending
+    [225275] = true,  -- Prayer of Mending (5 jumps)
+    [245451] = true,  -- Prayer of Mending (4 jumps)
+    [245452] = true,  -- Prayer of Mending (4 jumps)
     [194384] = true,  -- Atonement / Expiation
     [77489]  = true,  -- Echo of Light (Mastery Holy)
     [47788]  = true,  -- Guardian Spirit / Esprit gardien
@@ -501,7 +509,29 @@ VB.EXHAUSTION_DEBUFF_IDS = {
     [15007] = true,  -- Fatigued (resurrection sickness / battle rez debuff)
 }
 
+-- WoW Forever's rested-XP bonus, shown as a debuff on every frame. Only exists
+-- on Forever (Wowhead, 2026-11-27); requested on CurseForge.
+VB.BOOSTED_REST_DEBUFF_IDS = {
+    [1229451] = true,  -- Boosted Rest
+}
+
+-- Every debuff ID the current options hide: a fresh table, used as is by the
+-- native containers' excludeSpellIDs filter
+function VB:GetHiddenDebuffIDs()
+    local ids = {}
+    local cfg = VB.config or {}
+    if cfg.hideExhaustionDebuffs ~= false then
+        for id in pairs(VB.EXHAUSTION_DEBUFF_IDS) do ids[id] = true end
+    end
+    if cfg.hideBoostedRest ~= false then
+        for id in pairs(VB.BOOSTED_REST_DEBUFF_IDS) do ids[id] = true end
+    end
+    return ids
+end
+
 function VB:IsDebuffBlocked(id)
     if not id then return false end
-    return VB.EXHAUSTION_DEBUFF_IDS[id] and VB.config.hideExhaustionDebuffs ~= false
+    if VB.EXHAUSTION_DEBUFF_IDS[id] then return VB.config.hideExhaustionDebuffs ~= false end
+    if VB.BOOSTED_REST_DEBUFF_IDS[id] then return VB.config.hideBoostedRest ~= false end
+    return false
 end

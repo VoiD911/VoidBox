@@ -165,12 +165,19 @@ function VB:ApplyAuraContainerFilters(container)
     -- which Blizzard exempts precisely for Sated/Exhaustion
     -- (AuraContainerUtil.CanApplyIdentityCandidateFilters). Until 2.8.1 the
     -- option only reached the Lua debuff row (TBC, Era), not this one.
+    -- Boosted Rest (Forever) rides the same filter. It is not known to be
+    -- flagged never-secret: if the client rejects the set because of it, fall
+    -- back to the exhaustion IDs alone so Sated stays hidden.
     if container._isDebuff then
         local filters = {}
-        if VB.config and VB.config.hideExhaustionDebuffs ~= false then
-            filters.excludeSpellIDs = VB.EXHAUSTION_DEBUFF_IDS
+        local hidden = VB:GetHiddenDebuffIDs()
+        if next(hidden) then filters.excludeSpellIDs = hidden end
+        local ok = pcall(container.SetAuraGroupCandidateFilters, container, container._groupKey, filters)
+        if not ok and VB.config and VB.config.hideExhaustionDebuffs ~= false then
+            pcall(container.SetAuraGroupCandidateFilters, container, container._groupKey,
+                  { excludeSpellIDs = VB.EXHAUSTION_DEBUFF_IDS })
+            VB:Debug("Debuff filter refused with Boosted Rest; exhaustion only")
         end
-        pcall(container.SetAuraGroupCandidateFilters, container, container._groupKey, filters)
         return
     end
 

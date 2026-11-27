@@ -1324,29 +1324,47 @@ function VB:CreateDebuffsTab()
     exhaustionCB:SetPoint("TOPLEFT", 5, -5)
     exhaustionCB.text:SetText(VB.L["HIDE_EXHAUSTION_DEBUFFS"])
     exhaustionCB:SetChecked(VB.config.hideExhaustionDebuffs ~= false)
-    exhaustionCB:SetScript("OnClick", function(self)
-        VB.config.hideExhaustionDebuffs = self:GetChecked()
+    local function refreshDebuffRows()
         if VB.RefreshAuraContainerFilters then VB:RefreshAuraContainerFilters() end
         for _, button in pairs(VB.unitButtons) do VB:UpdateAuras(button) end
         for _, button in pairs(VB.tankButtons) do VB:UpdateAuras(button) end
         for _, button in pairs(VB.petButtons) do VB:UpdateAuras(button) end
         for _, button in pairs(VB.targetButtons) do VB:UpdateAuras(button) end
+    end
+    exhaustionCB:SetScript("OnClick", function(self)
+        VB.config.hideExhaustionDebuffs = self:GetChecked()
+        refreshDebuffRows()
     end)
+
+    -- Forever only: Boosted Rest, the rested-XP bonus shown as a debuff.
+    -- Everything below moves down to make room for it.
+    local shift = 0
+    if VB.isForever then
+        shift = 28
+        local restCB = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+        restCB:SetPoint("TOPLEFT", 5, -33)
+        restCB.text:SetText(VB.L["HIDE_BOOSTED_REST"])
+        restCB:SetChecked(VB.config.hideBoostedRest ~= false)
+        restCB:SetScript("OnClick", function(self)
+            VB.config.hideBoostedRest = self:GetChecked()
+            refreshDebuffRows()
+        end)
+    end
 
     -- === Tracked buffs ===
     local header = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    header:SetPoint("TOPLEFT", 5, -45)
+    header:SetPoint("TOPLEFT", 5, -45 - shift)
     header:SetText(VB.L["CUSTOM_BUFFS_HEADER"])
 
     local help = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    help:SetPoint("TOPLEFT", 5, -65)
+    help:SetPoint("TOPLEFT", 5, -65 - shift)
     help:SetWidth(460)
     help:SetJustifyH("LEFT")
     help:SetText(VB.L["CUSTOM_BUFFS_HELP"])
 
     local dropZone = CreateFrame("Button", nil, content, "BackdropTemplate")
     dropZone:SetSize(460, 40)
-    dropZone:SetPoint("TOPLEFT", 5, -100)
+    dropZone:SetPoint("TOPLEFT", 5, -100 - shift)
     dropZone:SetBackdrop({
         bgFile = "Interface\\Buttons\\WHITE8x8",
         edgeFile = "Interface\\Buttons\\WHITE8x8",
@@ -1370,7 +1388,7 @@ function VB:CreateDebuffsTab()
     dropZone:SetScript("OnClick", acceptCursorSpell)
 
     local scrollFrame = CreateFrame("ScrollFrame", nil, content, "UIPanelScrollFrameTemplate")
-    scrollFrame:SetPoint("TOPLEFT", 5, -150)
+    scrollFrame:SetPoint("TOPLEFT", 5, -150 - shift)
     scrollFrame:SetPoint("BOTTOMRIGHT", -30, 10)
     local scrollChild = CreateFrame("Frame", nil, scrollFrame)
     scrollChild:SetSize(440, 300)

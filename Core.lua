@@ -67,6 +67,7 @@ VB.defaults = {
     debuffIconSize = 18,
     buffIconSize = 12,
     hideExhaustionDebuffs = true,
+    hideBoostedRest = true,         -- Forever's rested-XP debuff
     showDispelHighlight = true,
     showEatDrink = true,
     showTooltipBindings = true,

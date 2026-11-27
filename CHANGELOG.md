@@ -1,5 +1,16 @@
 # VoidBox
 
+## Unreleased
+
+- **Fix: keyboard bindings on the backslash key.** A binding on `\` (alone or
+  with a modifier) broke the hover bindings of every frame with a Lua error
+  each time the mouse entered one (reported on CurseForge).
+- **Prayer of Mending** now shows in the HoT row on Retail: the other spell
+  IDs of the ward are recognised too (reported on CurseForge).
+- **WoW Forever: hide the Boosted Rest debuff.** The bonus XP debuff is hidden
+  from the frames by default; a new option in the Buffs tab shows it again
+  (requested on CurseForge).
+
 ## v2.8.1 (2026-11-06)
 
 - **Fix: adding a binding by "pick up, then click".** Clicking the drop zone

@@ -742,9 +742,9 @@ function VB:SetupSecureBindings(button)
     
     -- Scroll wheel: always bind bare scroll up/down
     table.insert(enterParts, string.format(
-        'self:SetBindingClick(true, "MOUSEWHEELUP", "%s", "Button6")', btnName))
+        'self:SetBindingClick(true, "MOUSEWHEELUP", %q, "Button6")', btnName))
     table.insert(enterParts, string.format(
-        'self:SetBindingClick(true, "MOUSEWHEELDOWN", "%s", "Button7")', btnName))
+        'self:SetBindingClick(true, "MOUSEWHEELDOWN", %q, "Button7")', btnName))
     
     -- Also bind modifier+scroll combos via dedicated proxy buttons
     -- SetBindingClick doesn't transmit modifier state, so we need proxies
@@ -779,8 +779,10 @@ function VB:SetupSecureBindings(button)
             'local p%d = self:GetFrameRef("vbProxy%d")', i, i))
         table.insert(enterParts, string.format(
             'if p%d then p%d:SetAttribute("unit", unit) end', i, i))
+        -- %q, not "%s": a key name can be a backslash or a quote (the "\"
+        -- key gives "SHIFT-\"), which would break the snippet's syntax
         table.insert(enterParts, string.format(
-            'self:SetBindingClick(true, "%s", "%s", "LeftButton")',
+            'self:SetBindingClick(true, %q, %q, "LeftButton")',
             kb.combo, kb.proxyName))
     end
     
