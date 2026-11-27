@@ -1,6 +1,6 @@
 # VoidBox
 
-## Unreleased
+## v2.8.2 (2026-11-27)
 
 - **Fix: keyboard bindings on the backslash key.** A binding on `\` (alone or
   with a modifier) broke the hover bindings of every frame with a Lua error
