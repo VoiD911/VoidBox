@@ -350,15 +350,9 @@ VB.healBuffSpellIDs = {
     -- Prêtre (Holy / Discipline)
     [139]    = true,  -- Renew / Rénovation
     [17]     = true,  -- Power Word: Shield / Mot de pouvoir : Bouclier
-    [41635]  = true,  -- Prayer of Mending / Prière de guérison (ward)
-    -- Other PoM IDs on Retail (Wowhead, 2026-11-27). Which one Midnight puts
-    -- on the target is not verified: a Holy priest reported none showing
-    -- with 41635 alone, so all variants are accepted.
-    [33076]  = true,  -- Prayer of Mending (cast)
-    [155793] = true,  -- Prayer of Mending
-    [225275] = true,  -- Prayer of Mending (5 jumps)
-    [245451] = true,  -- Prayer of Mending (4 jumps)
-    [245452] = true,  -- Prayer of Mending (4 jumps)
+    [41635]  = true,  -- Prayer of Mending / Prière de guérison (the ward on
+                      -- the target, source "player": verified in game on
+                      -- Retail 12.1.5, 2026-11-27)
     [194384] = true,  -- Atonement / Expiation
     [77489]  = true,  -- Echo of Light (Mastery Holy)
     [47788]  = true,  -- Guardian Spirit / Esprit gardien
